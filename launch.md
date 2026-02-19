@@ -1,5 +1,5 @@
 # Mindful Webapp Development Launch Guide
-
+nn
 This guide shows how to run the app locally and test each feature area in development.
 
 ## 1. Prerequisites
