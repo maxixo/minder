@@ -1,0 +1,5 @@
+.botanical-pattern {
+  background-color: transparent;
+  background-image: radial-gradient(rgba(95, 120, 96, 0.1333333333) 1px, transparent 1px);
+  background-size: 40px 40px;
+}

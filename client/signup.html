@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Create Your Account - MindfulNature</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=Literata:ital,opsz,wght@0,7..72,400;0,7..72,500;1,7..72,400&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#5e7860",
+                        "background-light": "#f7f7f7",
+                        "background-dark": "#181a18",
+                    },
+                    fontFamily: {
+                        "display": ["Inter", "sans-serif"],
+                        "serif": ["Literata", "serif"]
+                    },
+                    borderRadius: {"DEFAULT": "1rem", "lg": "2rem", "xl": "3rem", "full": "9999px"},
+                },
+            },
+        }
+    </script>
+<style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .serif-text {
+            font-family: 'Literata', serif;
+        }
+    </style>
+</head>
+<body class="bg-background-light dark:bg-background-dark text-[#141514] dark:text-white min-h-screen">
+<div class="relative flex min-h-screen w-full flex-col overflow-x-hidden">
+<div class="layout-container flex h-full grow flex-col">
+<!-- Navigation -->
+<header class="flex items-center justify-between whitespace-nowrap border-b border-solid border-[#e0e1e0] dark:border-[#2d2f2d] px-10 py-3 bg-white dark:bg-[#1f211f]">
+<div class="flex items-center gap-3 text-primary">
+<span class="material-symbols-outlined text-3xl">filter_vintage</span>
+<h2 class="text-[#141514] dark:text-white text-lg font-bold leading-tight tracking-[-0.015em] font-display">MindfulNature</h2>
+</div>
+<div class="flex flex-1 justify-end gap-8">
+<div class="hidden md:flex items-center gap-9">
+<a class="text-[#141514] dark:text-white text-sm font-medium leading-normal hover:text-primary transition-colors" href="#">Our Vision</a>
+<a class="text-[#141514] dark:text-white text-sm font-medium leading-normal hover:text-primary transition-colors" href="#">Practices</a>
+<a class="text-[#141514] dark:text-white text-sm font-medium leading-normal hover:text-primary transition-colors" href="#">Journal</a>
+</div>
+<div class="flex gap-2">
+<button class="flex min-w-[84px] cursor-pointer items-center justify-center overflow-hidden rounded-full h-10 px-4 bg-[#f2f3f2] dark:bg-[#2d2f2d] text-[#141514] dark:text-white text-sm font-bold leading-normal">
+<span>Login</span>
+</button>
+</div>
+</div>
+</header>
+<main class="flex flex-1 items-center justify-center py-12 px-4 bg-[radial-gradient(circle_at_top_right,_var(--tw-gradient-stops))] from-primary/10 via-background-light to-background-light dark:from-primary/5 dark:via-background-dark dark:to-background-dark">
+<div class="layout-content-container flex flex-col max-w-[560px] w-full bg-white dark:bg-[#1f211f] p-8 md:p-12 rounded-xl shadow-sm border border-[#e0e1e0] dark:border-[#2d2f2d]">
+<!-- Progress Section -->
+<div class="flex flex-col gap-3 mb-8">
+<div class="flex gap-6 justify-between items-end">
+<p class="text-primary font-semibold text-sm tracking-wide uppercase">Step 1 of 2: Basics</p>
+<p class="text-[#737873] text-sm font-normal">50%</p>
+</div>
+<div class="h-1.5 w-full rounded-full bg-[#e0e1e0] dark:bg-[#2d2f2d] overflow-hidden">
+<div class="h-full bg-primary" style="width: 50%;"></div>
+</div>
+</div>
+<!-- Header -->
+<div class="text-center mb-10">
+<h1 class="text-[#141514] dark:text-white tracking-tight text-3xl font-bold leading-tight mb-3 font-display">Create Your Account</h1>
+<p class="serif-text text-[#737873] dark:text-[#a0a3a0] text-lg leading-relaxed">Begin your journey towards emotional wellness and mindful reflection.</p>
+</div>
+<!-- Form -->
+<form class="flex flex-col gap-5">
+<div class="flex flex-col gap-2">
+<label class="text-[#141514] dark:text-white text-sm font-medium">Full Name</label>
+<input class="form-input w-full rounded-lg border-[#e0e1e0] dark:border-[#2d2f2d] dark:bg-[#181a18] dark:text-white h-12 px-4 focus:ring-primary focus:border-primary placeholder:text-[#b0b3b0]" placeholder="Enter your name" type="text"/>
+</div>
+<div class="flex flex-col gap-2">
+<label class="text-[#141514] dark:text-white text-sm font-medium">Email Address</label>
+<input class="form-input w-full rounded-lg border-[#e0e1e0] dark:border-[#2d2f2d] dark:bg-[#181a18] dark:text-white h-12 px-4 focus:ring-primary focus:border-primary placeholder:text-[#b0b3b0]" placeholder="hello@nature.com" type="email"/>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+<div class="flex flex-col gap-2">
+<label class="text-[#141514] dark:text-white text-sm font-medium">Password</label>
+<input class="form-input w-full rounded-lg border-[#e0e1e0] dark:border-[#2d2f2d] dark:bg-[#181a18] dark:text-white h-12 px-4 focus:ring-primary focus:border-primary placeholder:text-[#b0b3b0]" placeholder="••••••••" type="password"/>
+</div>
+<div class="flex flex-col gap-2">
+<label class="text-[#141514] dark:text-white text-sm font-medium">Confirm Password</label>
+<input class="form-input w-full rounded-lg border-[#e0e1e0] dark:border-[#2d2f2d] dark:bg-[#181a18] dark:text-white h-12 px-4 focus:ring-primary focus:border-primary placeholder:text-[#b0b3b0]" placeholder="••••••••" type="password"/>
+</div>
+</div>
+<div class="flex items-start gap-3 mt-2">
+<input class="mt-1 rounded border-[#e0e1e0] text-primary focus:ring-primary h-4 w-4" id="privacy" type="checkbox"/>
+<label class="serif-text text-sm text-[#737873] dark:text-[#a0a3a0] leading-relaxed" for="privacy">
+                                I agree to the <a class="text-primary underline underline-offset-2" href="#">Privacy Policy</a> and <a class="text-primary underline underline-offset-2" href="#">Terms of Service</a>.
+                            </label>
+</div>
+<button class="mt-4 flex w-full cursor-pointer items-center justify-center rounded-full h-12 bg-primary text-white text-base font-bold leading-normal transition-opacity hover:opacity-90" type="submit">
+                            Create Account
+                        </button>
+</form>
+<div class="mt-8 pt-6 border-t border-[#e0e1e0] dark:border-[#2d2f2d] text-center">
+<p class="serif-text text-[#737873] dark:text-[#a0a3a0]">
+                            Already have an account? 
+                            <a class="font-display font-semibold text-primary hover:underline underline-offset-4 ml-1" href="#">Sign in here</a>
+</p>
+</div>
+</div>
+</main>
+<!-- Decorative background element -->
+<div class="fixed bottom-0 left-0 p-10 pointer-events-none opacity-20 dark:opacity-10">
+<span class="material-symbols-outlined text-9xl text-primary">eco</span>
+</div>
+<div class="fixed top-20 right-0 p-10 pointer-events-none opacity-20 dark:opacity-10">
+<span class="material-symbols-outlined text-9xl text-primary">psychiatry</span>
+</div>
+<!-- Simple Footer -->
+<footer class="flex flex-col items-center gap-4 py-8 bg-white dark:bg-[#1f211f] border-t border-[#e0e1e0] dark:border-[#2d2f2d]">
+<div class="flex gap-6">
+<a class="text-[#737873] text-xs hover:text-primary transition-colors" href="#">Privacy</a>
+<a class="text-[#737873] text-xs hover:text-primary transition-colors" href="#">Terms</a>
+<a class="text-[#737873] text-xs hover:text-primary transition-colors" href="#">Help</a>
+</div>
+<p class="text-[#b0b3b0] text-[10px] uppercase tracking-widest font-display">© 2024 MindfulNature. All rights reserved.</p>
+</footer>
+</div>
+</div>
+</body></html>
