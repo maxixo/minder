@@ -35,9 +35,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const register = async (data: any) => {
     const res = await authService.register(data);
-    setUser(res.data.user);
-    setIsAuthenticated(true);
-    toast.success('Welcome to Mindful Webapp! 🌿');
+    setUser(null);
+    setIsAuthenticated(false);
+    toast.success(res.message || 'Account created. Please log in.');
     return res;
   };
 

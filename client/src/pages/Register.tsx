@@ -50,7 +50,7 @@ export default function Register() {
 
     try {
       await register({ name: trimmedName, email: trimmedEmail, password });
-      navigate('/dashboard', { replace: true });
+      navigate('/login', { replace: true });
     } catch (err: any) {
       const apiError = err.response?.data;
       const validationMessage = apiError?.errors?.[0]?.message;

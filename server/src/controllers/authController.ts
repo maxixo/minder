@@ -22,11 +22,10 @@ export const register = async (req: Request, res: Response) => {
     if (await User.findOne({ email }))
       return res.status(400).json({ success: false, message: 'Email already registered' });
     const user = await User.create({ name, email, password });
-    const token = generateToken(user._id.toString());
 
     setNoStore(res);
-    setSessionCookie(res, token);
-    res.status(201).json({ success: true, data: { user: userPayload(user) } });
+    clearSessionCookie(res);
+    res.status(201).json({ success: true, message: 'Account created successfully. Please log in.', data: { user: userPayload(user) } });
   } catch (err: any) {
     res.status(500).json({ success: false, message: err.message });
   }
