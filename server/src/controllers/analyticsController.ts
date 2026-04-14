@@ -44,7 +44,7 @@ export const getSummary = async (req: AuthRequest, res: Response) => {
         averageSleepHours: avg(entries, 'sleepHours'),
         completionRate: entries.length
           ? Math.round(entries.reduce((a, e) => {
-              const m = new Entry(e); return a + m.getCompletionPercentage();
+              const m = new Entry(e) as any; return a + m.getCompletionPercentage();
             }, 0) / entries.length)
           : 0,
       },

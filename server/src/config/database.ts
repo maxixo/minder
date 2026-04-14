@@ -1,18 +1,30 @@
-﻿import mongoose from 'mongoose';
+import mongoose from 'mongoose';
 
-const connectDB = async (): Promise<void> => {
+type DatabaseConnection = Pick<typeof mongoose.connection, 'on' | 'close'>;
+
+type DatabaseClient = {
+  connect: typeof mongoose.connect;
+  connection: DatabaseConnection;
+};
+
+type ProcessLike = Pick<NodeJS.Process, 'on' | 'exit'>;
+
+const connectDB = async (
+  dbClient: DatabaseClient = mongoose,
+  processRef: ProcessLike = process,
+): Promise<void> => {
   try {
-    const conn = await mongoose.connect(process.env.MONGODB_URI as string);
+    const conn = await dbClient.connect(process.env.MONGODB_URI as string);
     console.log(` MongoDB Connected: ${conn.connection.host}`);
-    mongoose.connection.on('error', (err) => console.error(`MongoDB error: ${err}`));
-    mongoose.connection.on('disconnected', () => console.log('MongoDB disconnected'));
-    process.on('SIGINT', async () => {
-      await mongoose.connection.close();
-      process.exit(0);
+    dbClient.connection.on('error', (err) => console.error(`MongoDB error: ${err}`));
+    dbClient.connection.on('disconnected', () => console.log('MongoDB disconnected'));
+    processRef.on('SIGINT', async () => {
+      await dbClient.connection.close();
+      processRef.exit(0);
     });
   } catch (error: any) {
     console.error(`MongoDB connection failed: ${error.message}`);
-    process.exit(1);
+    processRef.exit(1);
   }
 };
 

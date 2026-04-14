@@ -8,7 +8,7 @@ export const errorHandler = (err: any, req: Request, res: Response, next: NextFu
   if (err.code === 11000)       { statusCode = 400; message = 'Duplicate field value'; }
   if (err.name === 'ValidationError') {
     statusCode = 400;
-    message = Object.values(err.errors).map(e => e.message).join(', ');
+    message = Object.values(err.errors).map((e: any) => e.message).join(', ');
   }
 
   res.status(statusCode).json({

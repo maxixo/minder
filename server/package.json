@@ -8,8 +8,8 @@
     "start": "tsx src/server.ts",
     "dev": "tsx watch src/server.ts",
     "build": "tsc",
-    "test": "jest --watchAll=false",
-    "test:watch": "jest --watchAll"
+    "test": "node --import tsx --test test/database.test.ts",
+    "test:watch": "node --import tsx --test --watch test/database.test.ts"
   },
   "dependencies": {
     "express": "^4.18.2",

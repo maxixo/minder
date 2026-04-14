@@ -1,6 +1,6 @@
 ﻿import express from 'express';
 import { body } from 'express-validator';
-import { register, login, getMe, updateProfile, updatePassword } from '../controllers/authController.js';
+import { register, login, logout, getMe, updateProfile, updatePassword } from '../controllers/authController.js';
 import { protect } from '../middleware/auth.js';
 import { validate } from '../middleware/validate.js';
 
@@ -18,6 +18,8 @@ router.post('/login', [
   body('password').notEmpty(),
   validate,
 ], login);
+
+router.post('/logout', logout);
 
 router.get('/me',       protect, getMe);
 router.put('/profile',  protect, updateProfile);

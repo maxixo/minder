@@ -22,13 +22,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     (async () => {
       try {
-        if (authService.isAuthenticated()) {
-          setUser(authService.getStoredUser());
-          setIsAuthenticated(true);
-          const res = await authService.getCurrentUser();
-          setUser(res.data);
-        }
-      } catch { logout(); }
+        const res = await authService.getCurrentUser();
+        setUser(res.data);
+        setIsAuthenticated(true);
+      } catch {
+        setUser(null);
+        setIsAuthenticated(false);
+      }
       finally  { setLoading(false); }
     })();
   }, []);
@@ -50,7 +50,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const logout = () => {
-    authService.logout();
+    void authService.logout();
     setUser(null);
     setIsAuthenticated(false);
   };

@@ -25,6 +25,7 @@ export default function App() {
           <Route path="/register" element={<Register />} />
           <Route path="/" element={<ProtectedRoute><Layout /></ProtectedRoute>}>
             <Route index            element={<Home />} />
+            <Route path="dashboard"  element={<Home />} />
             <Route path="reflection" element={<DailyReflection />} />
             <Route path="selfcare"   element={<SelfCare />} />
             <Route path="emotional"  element={<EmotionalGuidance />} />

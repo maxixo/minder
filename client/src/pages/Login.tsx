@@ -1,7 +1,38 @@
-import { Link } from 'react-router-dom';
+import { useEffect, useState, type FormEvent } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { useAuth } from '@/contexts/AuthContext';
 import '@/styles/pages/login.css';
 
 export default function Login() {
+  const navigate = useNavigate();
+  const { login, isAuthenticated } = useAuth();
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      navigate('/dashboard', { replace: true });
+    }
+  }, [isAuthenticated, navigate]);
+
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setError('');
+    setIsSubmitting(true);
+
+    try {
+      await login({ email, password });
+      navigate('/dashboard', { replace: true });
+    } catch (err: any) {
+      setError(err.response?.data?.message || 'Unable to sign in right now.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   return (
     <div className="botanical-pattern min-h-screen w-full overflow-x-hidden bg-gradient-to-br from-sage-50 to-sand-100 font-sans text-[#141514]">
       <div className="relative flex min-h-screen w-full flex-col">
@@ -57,7 +88,7 @@ export default function Login() {
                   </h1>
                   <p className="mb-6 text-center text-gray-500 sm:mb-8">Continue your journey to wellness</p>
 
-                  <form className="w-full space-y-6">
+                  <form className="w-full space-y-6" onSubmit={handleSubmit}>
                     <div className="relative">
                       <label className="mb-2 ml-1 block text-xs font-semibold uppercase tracking-wider text-[#5e7860]/70">
                         Email Address
@@ -66,8 +97,12 @@ export default function Login() {
                         <span className="material-symbols-outlined mr-3 text-[#5e7860]/50">mail</span>
                         <input
                           className="w-full border-none bg-transparent py-2.5 text-gray-800 placeholder:text-gray-400 focus:ring-0"
+                          autoComplete="email"
+                          disabled={isSubmitting}
+                          onChange={(event) => setEmail(event.target.value)}
                           placeholder="yourname@email.com"
                           type="email"
+                          value={email}
                         />
                       </div>
                     </div>
@@ -83,14 +118,29 @@ export default function Login() {
                         <span className="material-symbols-outlined mr-3 text-[#5e7860]/50">lock</span>
                         <input
                           className="w-full border-none bg-transparent py-2.5 text-gray-800 placeholder:text-gray-400 focus:ring-0"
+                          autoComplete="current-password"
+                          disabled={isSubmitting}
+                          onChange={(event) => setPassword(event.target.value)}
                           placeholder="••••••••"
-                          type="password"
+                          type={showPassword ? 'text' : 'password'}
+                          value={password}
                         />
-                        <span className="material-symbols-outlined cursor-pointer text-[#5e7860]/50 hover:text-[#5e7860]">
-                          visibility
-                        </span>
+                        <button
+                          aria-label={showPassword ? 'Hide password' : 'Show password'}
+                          className="material-symbols-outlined cursor-pointer text-[#5e7860]/50 hover:text-[#5e7860]"
+                          onClick={() => setShowPassword((current) => !current)}
+                          type="button"
+                        >
+                          {showPassword ? 'visibility_off' : 'visibility'}
+                        </button>
                       </div>
                     </div>
+
+                    {error ? (
+                      <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700">
+                        {error}
+                      </div>
+                    ) : null}
 
                     <div className="flex items-center gap-2 px-1">
                       <input
@@ -104,10 +154,11 @@ export default function Login() {
                     </div>
 
                     <button
-                      className="mt-2 flex w-full items-center justify-center gap-2 rounded-xl bg-[#5e7860] py-3.5 text-base font-bold text-white transition-all hover:bg-sage-600 hover:shadow-lg hover:shadow-[#5e7860]/20 sm:mt-4 sm:py-4 sm:text-lg"
-                      type="button"
+                      className="mt-2 flex w-full items-center justify-center gap-2 rounded-xl bg-[#5e7860] py-3.5 text-base font-bold text-white transition-all hover:bg-sage-600 hover:shadow-lg hover:shadow-[#5e7860]/20 disabled:cursor-not-allowed disabled:opacity-70 sm:mt-4 sm:py-4 sm:text-lg"
+                      disabled={isSubmitting}
+                      type="submit"
                     >
-                      Sign In
+                      {isSubmitting ? 'Signing In...' : 'Sign In'}
                       <span className="material-symbols-outlined text-xl">arrow_forward</span>
                     </button>
                   </form>
@@ -130,6 +181,13 @@ export default function Login() {
               </div>
             </div>
           </main>
+
+          <div className="pointer-events-none fixed bottom-0 left-0 p-10 opacity-20">
+            <span className="material-symbols-outlined text-9xl text-[#5e7860]">eco</span>
+          </div>
+          <div className="pointer-events-none fixed right-0 top-20 p-10 opacity-20">
+            <span className="material-symbols-outlined text-9xl text-[#5e7860]">psychiatry</span>
+          </div>
 
           <footer className="flex w-full justify-center py-4 sm:py-6">
             <div className="flex gap-4 opacity-30 grayscale transition-all hover:grayscale-0">
