@@ -1,8 +1,8 @@
-﻿import { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
+import { createContext, useState, useEffect, type ReactNode } from 'react';
 import authService from '@/services/authService';
 import { toast } from 'sonner';
 
-interface AuthContextValue {
+export interface AuthContextValue {
   user: any;
   loading: boolean;
   isAuthenticated: boolean;
@@ -12,7 +12,7 @@ interface AuthContextValue {
   updateProfile: (data: any) => Promise<any>;
 }
 
-const AuthContext = createContext<AuthContextValue | null>(null);
+export const AuthContext = createContext<AuthContextValue | null>(null);
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user,            setUser]            = useState<any>(null);
@@ -67,10 +67,4 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       {children}
     </AuthContext.Provider>
   );
-};
-
-export const useAuth = () => {
-  const ctx = useContext(AuthContext);
-  if (!ctx) throw new Error('useAuth must be used within AuthProvider');
-  return ctx;
 };
