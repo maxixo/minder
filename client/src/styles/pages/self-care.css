@@ -1,0 +1,11 @@
+.self-care-botanical-watermark {
+  background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuCG39kF78E0DGiyfz7MPMsA7V7635sqmcIbsvptaqg9urweOyX6wnw-Q_IVVn3WSIxjDL9Z6vzjscdxA41B_pVQblrhf2gYeHy2Usnb0-yoB9Y-RTFD1FA-UoVqaldHLZOEOdti61qXCeheAdPL8LN_XJDgWu1iNOlRUAxPy4V5pQjZzAALWQ6dilrnXusYgLNm32nf-wlKy2QccQcdmls_guO_vT5WJuUPMsp0xGwSN5rRkefiJiGfDC4yrAlqPhuEVu7L6x7W-hM4");
+  background-blend-mode: overlay;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: cover;
+}
+
+.self-care-filled-icon {
+  font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+}
