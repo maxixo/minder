@@ -23,10 +23,10 @@ export default function App() {
         <Routes>
           <Route path="/login"    element={<Login />} />
           <Route path="/register" element={<Register />} />
-          <Route path="/reflection" element={<ProtectedRoute><DailyReflection /></ProtectedRoute>} />
           <Route path="/" element={<ProtectedRoute><Layout /></ProtectedRoute>}>
             <Route index            element={<Home />} />
             <Route path="dashboard"  element={<Home />} />
+            <Route path="reflection" element={<DailyReflection />} />
             <Route path="selfcare"   element={<SelfCare />} />
             <Route path="emotional"  element={<EmotionalGuidance />} />
             <Route path="review"     element={<Review />} />

@@ -1,17 +1,8 @@
 import { useState } from 'react';
 import clsx from 'clsx';
-import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/useAuth';
 import '@/styles/pages/daily-reflection.css';
-
-const sidebarLinks = [
-  { label: 'Home', icon: 'dashboard', to: '/dashboard', active: true },
-  { label: 'Reflections', icon: 'auto_stories', to: '/reflection', active: false },
-  { label: 'Wellness', icon: 'spa', to: '/selfcare', active: false },
-  { label: 'Community', icon: 'groups', to: '/review', active: false },
-  { label: 'Settings', icon: 'settings', to: '/settings', active: false },
-];
 
 const weatherOptions = [
   { key: 'sunny', icon: 'wb_sunny', title: 'Sunny' },
@@ -59,100 +50,51 @@ export default function DailyReflection() {
   };
 
   return (
-    <div className="min-h-screen bg-[#f6f8f6] font-sans text-[#3a523e]">
-      <div className="relative flex min-h-screen flex-col lg:flex-row">
-        <aside className="hidden h-auto w-64 shrink-0 flex-col border-r border-[#e8ede8] bg-white lg:flex">
-          <div className="p-6">
-            <div className="flex items-center gap-3 text-[#19e63c]">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#19e63c] p-2 text-white">
-                <span className="material-symbols-outlined">spa</span>
-              </div>
-              <h2 className="text-xl font-bold tracking-tight text-[#3a523e]">MindfulReflect</h2>
+    <div className="daily-reflection-scrollbar flex min-h-full flex-col text-[#3a523e]">
+      <header className="-mx-4 mb-6 border-b border-[#e8ede8] bg-white/80 px-4 py-4 backdrop-blur-md sm:-mx-6 sm:px-6 lg:sticky lg:top-0 lg:z-20 lg:-mx-8 lg:px-8">
+        <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-4">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.28em] text-[#638869]">Reflection Space</p>
+            <h1 className="mt-1 text-2xl font-black text-[#3a523e] sm:text-3xl">Daily Reflection</h1>
+          </div>
+
+          <div className="flex items-center gap-6 rounded-xl border border-[#e8ede8] bg-[#f4f7f4] px-4 py-2">
+            <button className="material-symbols-outlined text-[#638869]" type="button">
+              chevron_left
+            </button>
+            <span className="text-sm font-semibold">Today, Oct 24, 2023</span>
+            <button className="material-symbols-outlined text-[#638869]" type="button">
+              chevron_right
+            </button>
+            <div className="mx-2 h-4 w-px bg-[#d1dbd2]" />
+            <div className="flex gap-3">
+              {weatherOptions.map((option) => (
+                <button key={option.key} onClick={() => setWeather(option.key)} title={option.title} type="button">
+                  <span
+                    className={clsx(
+                      'material-symbols-outlined transition-colors',
+                      weather === option.key ? 'text-[#19e63c]' : 'text-[#638869]/40'
+                    )}
+                  >
+                    {option.icon}
+                  </span>
+                </button>
+              ))}
             </div>
           </div>
 
-          <nav className="flex-1 space-y-1 px-4">
-            {sidebarLinks.map((link) => (
-              <Link
-                key={link.label}
-                className={clsx(
-                  'flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium transition-colors',
-                  link.active
-                    ? 'bg-[#f4f7f4] font-semibold text-[#638869]'
-                    : 'text-slate-600 hover:bg-[#f4f7f4] hover:text-[#19e63c]'
-                )}
-                to={link.to}
-              >
-                <span className="material-symbols-outlined">{link.icon}</span>
-                <span>{link.label}</span>
-              </Link>
-            ))}
-          </nav>
-
-          <div className="border-t border-[#f4f7f4] p-4">
-            <div className="flex items-center gap-3 p-2">
-              <div className="flex h-10 w-10 items-center justify-center rounded-full border-2 border-[#19e63c] bg-[#19e63c]/20 text-[#3a523e]">
-                <span className="material-symbols-outlined">person</span>
-              </div>
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-bold text-slate-900">{user?.name || 'Elena Gilbert'}</p>
-                <p className="truncate text-xs text-slate-500">Premium Member</p>
-              </div>
-            </div>
+          <div className="flex h-10 w-10 items-center justify-center rounded-full border-2 border-[#19e63c] bg-[#19e63c]/20">
+            <span className="material-symbols-outlined text-[#3a523e]">person</span>
           </div>
-        </aside>
+        </div>
+      </header>
 
-        <div className="daily-reflection-scrollbar flex min-h-screen flex-1 flex-col overflow-y-auto">
-          <header className="sticky top-0 z-50 border-b border-[#e8ede8] bg-white/80 px-6 py-4 backdrop-blur-md">
-            <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-4">
-              <div className="flex items-center gap-3 lg:hidden">
-                <div className="rounded-lg bg-[#19e63c] p-2 text-white">
-                  <span className="material-symbols-outlined">spa</span>
-                </div>
-                <h1 className="text-xl font-bold tracking-tight">MindfulReflect</h1>
-              </div>
-
-              <div className="flex items-center gap-6 rounded-xl border border-[#e8ede8] bg-[#f4f7f4] px-4 py-2">
-                <button className="material-symbols-outlined text-[#638869]" type="button">
-                  chevron_left
-                </button>
-                <span className="text-sm font-semibold">Today, Oct 24, 2023</span>
-                <button className="material-symbols-outlined text-[#638869]" type="button">
-                  chevron_right
-                </button>
-                <div className="mx-2 h-4 w-px bg-[#d1dbd2]" />
-                <div className="flex gap-3">
-                  {weatherOptions.map((option) => (
-                    <button key={option.key} onClick={() => setWeather(option.key)} title={option.title} type="button">
-                      <span
-                        className={clsx(
-                          'material-symbols-outlined transition-colors',
-                          weather === option.key ? 'text-[#19e63c]' : 'text-[#638869]/40'
-                        )}
-                      >
-                        {option.icon}
-                      </span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div className="flex gap-3">
-                <button className="rounded-lg p-2 transition-colors hover:bg-[#f4f7f4]" type="button">
-                  <span className="material-symbols-outlined">settings</span>
-                </button>
-                <div className="flex h-10 w-10 items-center justify-center rounded-full border-2 border-[#19e63c] bg-[#19e63c]/20">
-                  <span className="material-symbols-outlined text-[#3a523e]">person</span>
-                </div>
-              </div>
-            </div>
-          </header>
-
-          <main className="w-full max-w-5xl flex-1 space-y-8 px-6 py-6 mx-auto">
-            <div className="mb-8">
-              <h2 className="text-3xl font-black text-[#3a523e]">Daily Reflection</h2>
-              <p className="text-[#638869]">How are you feeling today, {firstName}?</p>
-            </div>
+      <main className="mx-auto w-full max-w-5xl flex-1 space-y-8 py-2">
+        <div className="rounded-xl border border-[#e8ede8] bg-white px-6 py-5 shadow-sm">
+          <p className="text-sm leading-6 text-[#638869]">
+            How are you feeling today, {firstName}? Capture gratitude, intention, and the small signals shaping your energy.
+          </p>
+        </div>
 
             <div className="grid grid-cols-1 gap-8 lg:grid-cols-12">
               <div className="space-y-8 lg:col-span-7">
@@ -391,23 +333,21 @@ export default function DailyReflection() {
             <span>Save Reflection</span>
           </button>
 
-          <footer className="mt-20 border-t border-[#e8ede8] bg-[#f4f7f4] py-10">
-            <div className="mx-auto flex max-w-5xl flex-col items-center justify-between gap-6 px-6 md:flex-row">
-              <div className="flex items-center gap-2">
-                <span className="material-symbols-outlined text-[#638869]">spa</span>
-                <span className="font-bold">MindfulReflect</span>
-              </div>
-              <div className="flex gap-8 text-sm font-medium text-[#638869]">
-                <a className="hover:text-[#19e63c]" href="#">Guide</a>
-                <a className="hover:text-[#19e63c]" href="#">Community</a>
-                <a className="hover:text-[#19e63c]" href="#">Privacy</a>
-                <a className="hover:text-[#19e63c]" href="#">Support</a>
-              </div>
-              <p className="text-xs text-slate-400">© 2023 MindfulReflect. All rights reserved.</p>
-            </div>
-          </footer>
+      <footer className="mt-20 border-t border-[#e8ede8] bg-[#f4f7f4] py-10">
+        <div className="mx-auto flex max-w-5xl flex-col items-center justify-between gap-6 px-6 md:flex-row">
+          <div className="flex items-center gap-2">
+            <span className="material-symbols-outlined text-[#638869]">spa</span>
+            <span className="font-bold">MindfulReflect</span>
+          </div>
+          <div className="flex gap-8 text-sm font-medium text-[#638869]">
+            <a className="hover:text-[#19e63c]" href="#">Guide</a>
+            <a className="hover:text-[#19e63c]" href="#">Community</a>
+            <a className="hover:text-[#19e63c]" href="#">Privacy</a>
+            <a className="hover:text-[#19e63c]" href="#">Support</a>
+          </div>
+          <p className="text-xs text-slate-400">© 2023 MindfulReflect. All rights reserved.</p>
         </div>
-      </div>
+      </footer>
     </div>
   );
 }
