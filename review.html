@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Daily Focus &amp; Review</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&amp;family=Lora:ital,wght@0,400;0,700;1,400&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#19e62b",
+                        "sage": "#638866",
+                        "clay": {
+                            50: "#fbfcfb",
+                            100: "#f0f4f1",
+                            200: "#e1e9e3"
+                        },
+                        "background-light": "#f6f8f6",
+                        "background-dark": "#112112",
+                    },
+                    fontFamily: {
+                        "display": ["Inter", "sans-serif"],
+                        "serif": ["Lora", "serif"]
+                    },
+                    borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
+                },
+            },
+        }
+    </script>
+<style>
+        .dot-grid {
+            background-image: radial-gradient(#638866 0.5px, transparent 0.5px);
+            background-size: 20px 20px;
+        }
+    </style>
+</head>
+<body class="bg-background-light dark:bg-background-dark font-display text-slate-900 dark:text-slate-100 min-h-screen">
+<div class="relative flex h-auto min-h-screen w-full flex-col group/design-root overflow-x-hidden">
+<div class="layout-container flex h-full grow flex-col">
+<!-- Top Navigation -->
+<header class="flex items-center justify-between whitespace-nowrap border-b border-solid border-clay-200 dark:border-white/10 px-6 md:px-10 py-3 bg-white dark:bg-background-dark">
+<div class="flex items-center gap-8">
+<div class="flex items-center gap-3 text-sage">
+<div class="size-6 text-primary">
+<span class="material-symbols-outlined text-3xl">spa</span>
+</div>
+<h2 class="text-[#111812] dark:text-white text-lg font-bold leading-tight tracking-tight">MindfulLife</h2>
+</div>
+<nav class="hidden md:flex items-center gap-9">
+<a class="text-sage dark:text-slate-300 text-sm font-medium hover:text-primary transition-colors" href="#">Daily Focus</a>
+<a class="text-sage dark:text-slate-300 text-sm font-medium hover:text-primary transition-colors" href="#">Reflections</a>
+<a class="text-sage dark:text-slate-300 text-sm font-medium hover:text-primary transition-colors" href="#">Wellness</a>
+<a class="text-sage dark:text-slate-300 text-sm font-medium hover:text-primary transition-colors" href="#">Analytics</a>
+</nav>
+</div>
+<div class="flex flex-1 justify-end gap-6 items-center">
+<label class="hidden sm:flex flex-col min-w-40 !h-10 max-w-64">
+<div class="flex w-full flex-1 items-stretch rounded-lg h-full">
+<div class="text-sage flex border-none bg-clay-100 dark:bg-white/5 items-center justify-center pl-4 rounded-l-lg border-r-0">
+<span class="material-symbols-outlined text-xl">search</span>
+</div>
+<input class="form-input flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-lg text-[#111812] dark:text-white focus:outline-0 focus:ring-0 border-none bg-clay-100 dark:bg-white/5 focus:border-none h-full placeholder:text-sage px-4 rounded-l-none border-l-0 pl-2 text-sm font-normal" placeholder="Search insights..." value=""/>
+</div>
+</label>
+<div class="bg-center bg-no-repeat aspect-square bg-cover rounded-full size-9 border-2 border-primary/20" data-alt="User profile avatar icon" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuBjwqaFYONwrL1Z7nPtwYTZussHgqeyk7StEZAB6BfNpd_wRcclI_JbA8EAVFCBGJoI_azf6-KJ9xVK8VXPFmo9iQwqLFgSU-3UNEXqZQ72YPGgHbeBNxwc1g6mvIMu_-TVDZ1pu9ro9R6q2GgOx6KoGeJKCZsakcTHnGmZe5Gs_xES1NaduY2MBVjSoxRmAfkWsAuLiooWh4O5oHYve5i2D0KZPccB3sv_7TOfa4ofkyMOzC5U2ze7wovyHw5l-wupiJkLQUJo2gCy");'></div>
+</div>
+</header>
+<main class="max-w-[1200px] mx-auto w-full px-6 py-10">
+<!-- Page Header -->
+<div class="mb-10">
+<h1 class="text-[#111812] dark:text-white text-4xl font-black leading-tight tracking-tight">Daily Focus &amp; Review</h1>
+<p class="text-sage dark:text-slate-400 text-lg mt-2 font-medium">Monday, June 12th — Cultivating Inner Peace</p>
+</div>
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+<!-- Left Column: Focus & Priorities -->
+<div class="lg:col-span-7 space-y-8">
+<!-- Main Focus Section (Clay Background, Serif) -->
+<section class="bg-clay-100 dark:bg-white/5 rounded-xl p-8 border-l-4 border-primary">
+<h2 class="text-sage uppercase text-xs font-bold tracking-widest mb-4">Core Intention</h2>
+<blockquote class="font-serif text-3xl md:text-4xl text-[#111812] dark:text-white leading-tight">
+                                "Practice <span class="text-primary italic">mindful presence</span> in every interaction today, listening more than I speak."
+                            </blockquote>
+<div class="mt-6 flex items-center gap-2 text-sage/70 dark:text-slate-500 text-sm">
+<span class="material-symbols-outlined text-sm">lightbulb</span>
+<span>Reflect on this during your evening walk.</span>
+</div>
+</section>
+<!-- Top Priorities (Draggable Style) -->
+<section>
+<div class="flex items-center justify-between mb-4">
+<h2 class="text-xl font-bold text-[#111812] dark:text-white">Top Priorities</h2>
+<span class="text-xs text-sage font-semibold bg-sage/10 px-2 py-1 rounded">Ordered by Impact</span>
+</div>
+<div class="space-y-3">
+<div class="group flex items-center gap-4 bg-white dark:bg-white/5 p-4 rounded-lg border border-clay-200 dark:border-white/10 hover:border-primary/50 transition-all">
+<span class="material-symbols-outlined text-sage/40 cursor-grab group-hover:text-primary transition-colors">drag_indicator</span>
+<span class="flex items-center justify-center size-6 rounded-full bg-primary/20 text-primary font-bold text-xs">1</span>
+<p class="text-[#111812] dark:text-white font-medium">Complete the quarterly impact assessment report</p>
+</div>
+<div class="group flex items-center gap-4 bg-white dark:bg-white/5 p-4 rounded-lg border border-clay-200 dark:border-white/10 hover:border-primary/50 transition-all">
+<span class="material-symbols-outlined text-sage/40 cursor-grab group-hover:text-primary transition-colors">drag_indicator</span>
+<span class="flex items-center justify-center size-6 rounded-full bg-clay-200 dark:bg-white/10 text-sage font-bold text-xs">2</span>
+<p class="text-[#111812] dark:text-white font-medium">Conduct the 1:1 strategy session with design lead</p>
+</div>
+<div class="group flex items-center gap-4 bg-white dark:bg-white/5 p-4 rounded-lg border border-clay-200 dark:border-white/10 hover:border-primary/50 transition-all">
+<span class="material-symbols-outlined text-sage/40 cursor-grab group-hover:text-primary transition-colors">drag_indicator</span>
+<span class="flex items-center justify-center size-6 rounded-full bg-clay-200 dark:bg-white/10 text-sage font-bold text-xs">3</span>
+<p class="text-[#111812] dark:text-white font-medium">Review and finalize the nature-inspired UI components</p>
+</div>
+<div class="group flex items-center gap-4 bg-white dark:bg-white/5 p-4 rounded-lg border border-clay-200 dark:border-white/10 hover:border-primary/50 transition-all">
+<span class="material-symbols-outlined text-sage/40 cursor-grab group-hover:text-primary transition-colors">drag_indicator</span>
+<span class="flex items-center justify-center size-6 rounded-full bg-clay-200 dark:bg-white/10 text-sage font-bold text-xs">4</span>
+<p class="text-[#111812] dark:text-white font-medium">Draft initial thoughts for the wellness workshop</p>
+</div>
+<div class="group flex items-center gap-4 bg-white dark:bg-white/5 p-4 rounded-lg border border-clay-200 dark:border-white/10 hover:border-primary/50 transition-all">
+<span class="material-symbols-outlined text-sage/40 cursor-grab group-hover:text-primary transition-colors">drag_indicator</span>
+<span class="flex items-center justify-center size-6 rounded-full bg-clay-200 dark:bg-white/10 text-sage font-bold text-xs">5</span>
+<p class="text-[#111812] dark:text-white font-medium">Coordinate logistics for the team retreat</p>
+</div>
+</div>
+</section>
+</div>
+<!-- Right Column: Tasks & Notes -->
+<div class="lg:col-span-5 space-y-8">
+<!-- To-Do List -->
+<section class="bg-white dark:bg-white/5 rounded-xl border border-clay-200 dark:border-white/10 p-6">
+<div class="flex items-center justify-between mb-6">
+<h2 class="text-xl font-bold text-[#111812] dark:text-white">Daily Tasks</h2>
+<button class="text-primary hover:text-primary/80">
+<span class="material-symbols-outlined">add_circle</span>
+</button>
+</div>
+<div class="space-y-4">
+<label class="flex items-center gap-3 cursor-pointer group">
+<input checked="" class="rounded-full size-5 border-2 border-primary text-primary focus:ring-primary focus:ring-offset-0 bg-transparent" type="checkbox"/>
+<span class="text-sage/60 line-through decoration-primary/50 decoration-2 transition-all font-medium">Morning 15-min meditation session</span>
+</label>
+<label class="flex items-center gap-3 cursor-pointer group">
+<input checked="" class="rounded-full size-5 border-2 border-primary text-primary focus:ring-primary focus:ring-offset-0 bg-transparent" type="checkbox"/>
+<span class="text-sage/60 line-through decoration-primary/50 decoration-2 transition-all font-medium">Water intake: 1/2 gallon</span>
+</label>
+<label class="flex items-center gap-3 cursor-pointer group">
+<input class="rounded-full size-5 border-2 border-clay-200 dark:border-white/20 text-primary focus:ring-primary focus:ring-offset-0 bg-transparent" type="checkbox"/>
+<span class="text-[#111812] dark:text-white group-hover:text-primary transition-colors">Submit expense reports</span>
+</label>
+<label class="flex items-center gap-3 cursor-pointer group">
+<input class="rounded-full size-5 border-2 border-clay-200 dark:border-white/20 text-primary focus:ring-primary focus:ring-offset-0 bg-transparent" type="checkbox"/>
+<span class="text-[#111812] dark:text-white group-hover:text-primary transition-colors">Call the botanical nursery for stock check</span>
+</label>
+<label class="flex items-center gap-3 cursor-pointer group">
+<input class="rounded-full size-5 border-2 border-clay-200 dark:border-white/20 text-primary focus:ring-primary focus:ring-offset-0 bg-transparent" type="checkbox"/>
+<span class="text-[#111812] dark:text-white group-hover:text-primary transition-colors">Read 20 pages of "The Nature Fix"</span>
+</label>
+<label class="flex items-center gap-3 cursor-pointer group">
+<input class="rounded-full size-5 border-2 border-clay-200 dark:border-white/20 text-primary focus:ring-primary focus:ring-offset-0 bg-transparent" type="checkbox"/>
+<span class="text-[#111812] dark:text-white group-hover:text-primary transition-colors">Stretch for 10 minutes before bed</span>
+</label>
+</div>
+</section>
+<!-- Mindfulness Notes (Dot Grid) -->
+<section class="flex flex-col h-full grow">
+<h2 class="text-xl font-bold text-[#111812] dark:text-white mb-4">Mindfulness Notes &amp; Ideas</h2>
+<div class="dot-grid bg-white dark:bg-white/5 rounded-xl border border-clay-200 dark:border-white/10 p-6 min-h-[300px] flex-1">
+<textarea class="w-full h-full bg-transparent border-none focus:ring-0 text-[#111812] dark:text-white resize-none font-serif text-lg leading-relaxed placeholder:text-sage/30" placeholder="Let your thoughts flow here..."></textarea>
+</div>
+</section>
+</div>
+</div>
+<!-- Footer Stats / Review Action -->
+<div class="mt-12 pt-8 border-t border-clay-200 dark:border-white/10 flex flex-col md:flex-row justify-between items-center gap-6">
+<div class="flex gap-8">
+<div class="text-center">
+<p class="text-2xl font-black text-primary">2</p>
+<p class="text-xs font-bold text-sage uppercase tracking-wider">Completed</p>
+</div>
+<div class="text-center">
+<p class="text-2xl font-black text-sage">4</p>
+<p class="text-xs font-bold text-sage uppercase tracking-wider">Remaining</p>
+</div>
+<div class="text-center">
+<p class="text-2xl font-black text-sage/40 italic">80%</p>
+<p class="text-xs font-bold text-sage uppercase tracking-wider">Energy Level</p>
+</div>
+</div>
+<button class="bg-primary text-white px-8 py-3 rounded-xl font-bold hover:shadow-lg hover:shadow-primary/20 transition-all flex items-center gap-2">
+<span class="material-symbols-outlined">check_circle</span>
+                        Complete Daily Review
+                    </button>
+</div>
+</main>
+</div>
+</div>
+</body></html>
