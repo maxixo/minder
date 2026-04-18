@@ -12,7 +12,7 @@ const entryService = {
   getEntryByDate: async (date: string): Promise<ApiEnvelope<DailyEntry | null>> => (
     await api.get(`/entries/date/${date}`)
   ).data,
-  getTodayEntry: async (): Promise<ApiEnvelope<DailyEntry>> => (
+  getTodayEntry: async (): Promise<ApiEnvelope<DailyEntry | null>> => (
     await api.get('/entries/today')
   ).data,
   getRecentEntries: async (days = 7): Promise<ApiEnvelope<DailyEntry[]>> => (

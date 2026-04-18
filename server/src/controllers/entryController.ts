@@ -63,8 +63,7 @@ export const getEntryByDate = async (req: AuthRequest, res: Response) => {
 export const getTodayEntry = async (req: AuthRequest, res: Response) => {
   try {
     const today = new Date();
-    let entry = await Entry.findOne({ userId: req.user._id, date: { $gte: startOfDay(today), $lte: endOfDay(today) } });
-    if (!entry) entry = await Entry.create({ userId: req.user._id, date: today });
+    const entry = await Entry.findOne({ userId: req.user._id, date: { $gte: startOfDay(today), $lte: endOfDay(today) } });
     res.json({ success: true, data: entry });
   } catch (err: any) {
     res.status(500).json({ success: false, message: err.message });

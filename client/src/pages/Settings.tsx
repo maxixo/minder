@@ -4,6 +4,7 @@ import clsx from 'clsx';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/useAuth';
+import { useTheme, } from '@/contexts/useTheme';
 import authService from '@/services/authService';
 import userService from '@/services/userService';
 
@@ -101,6 +102,7 @@ const ToggleRow = ({
 export default function Settings() {
   const navigate = useNavigate();
   const { logout, updateProfile, user } = useAuth();
+  const { isDarkMode, setThemePreference } = useTheme();
 
   const [name, setName] = useState('');
   const [avatar, setAvatar] = useState('');
@@ -123,6 +125,20 @@ export default function Settings() {
     setName(user.name || '');
     setAvatar(user.avatar || '');
     setPreferences(normalizePreferences(user.preferences));
+
+    let cancelled = false;
+
+    void userService.getPreferences()
+      .then((response) => {
+        if (!cancelled) {
+          setPreferences(normalizePreferences(response.data));
+        }
+      })
+      .catch(() => undefined);
+
+    return () => {
+      cancelled = true;
+    };
   }, [user]);
 
   const firstName = user?.name?.split(' ')[0] || 'Friend';
@@ -178,7 +194,8 @@ export default function Settings() {
     setIsSavingPreferences(true);
 
     try {
-      await updateProfile({ preferences });
+      const response = await userService.updatePreferences(preferences);
+      setPreferences(normalizePreferences(response.data));
       toast.success('Preferences updated');
     } catch (error: any) {
       toast.error(error?.response?.data?.message || 'Unable to update preferences');
@@ -266,20 +283,20 @@ export default function Settings() {
   };
 
   return (
-    <div className="animate-fade-in pb-10">
-      <section className="overflow-hidden rounded-[2rem] border border-sage-200 bg-gradient-to-br from-white via-sage-50 to-sand-50 shadow-soft">
+    <div className="animate-fade-in pb-10 text-slate-900 dark:text-sage-50">
+      <section className="overflow-hidden rounded-[2rem] border border-sage-200 bg-gradient-to-br from-white via-sage-50 to-sand-50 shadow-soft dark:border-white/10 dark:bg-gradient-to-br dark:from-[#18231d] dark:via-[#121b16] dark:to-[#0f1712]">
         <div className="flex flex-col gap-6 px-6 py-8 sm:px-8 lg:flex-row lg:items-end lg:justify-between lg:px-10">
           <div className="max-w-3xl">
-            <p className="text-xs font-semibold uppercase tracking-[0.32em] text-sage-500">Settings</p>
-            <h1 className="mt-3 font-display text-4xl font-semibold text-sage-900 sm:text-5xl">
+            <p className="text-xs font-semibold uppercase tracking-[0.32em] text-sage-500 dark:text-sage-300">Settings</p>
+            <h1 className="mt-3 font-display text-4xl font-semibold text-sage-900 sm:text-5xl dark:text-sage-50">
               A calmer space for your account, {firstName}.
             </h1>
-            <p className="mt-4 max-w-2xl text-base leading-7 text-sage-600 sm:text-lg">
+            <p className="mt-4 max-w-2xl text-base leading-7 text-sage-600 sm:text-lg dark:text-sage-200">
               Shape how MindfulLife feels day to day, protect your privacy, and keep your account details aligned with the rhythm you want.
             </p>
           </div>
 
-          <div className="flex items-center gap-4 rounded-[1.5rem] border border-sage-100 bg-white/80 p-5 shadow-sm backdrop-blur sm:min-w-[300px]">
+          <div className="flex items-center gap-4 rounded-[1.5rem] border border-sage-100 bg-white/80 p-5 shadow-sm backdrop-blur sm:min-w-[300px] dark:border-white/10 dark:bg-white/5">
             {avatar ? (
               <div
                 aria-label="Profile avatar"
@@ -288,16 +305,16 @@ export default function Settings() {
                 style={{ backgroundImage: `url("${avatar}")` }}
               />
             ) : (
-              <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-sage-100 text-lg font-semibold text-sage-700 shadow-sm">
+              <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-sage-100 text-lg font-semibold text-sage-700 shadow-sm dark:bg-white/10 dark:text-sage-100">
                 {initials}
               </div>
             )}
 
             <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-sage-500">Account Snapshot</p>
-              <p className="mt-2 font-display text-2xl font-semibold text-sage-800">{user?.name || 'Mindful member'}</p>
-              <p className="mt-1 text-sm text-sage-600">{user?.email || 'No email available'}</p>
-              <p className="mt-2 text-sm text-sage-500">Member since {memberSince}</p>
+              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-sage-500 dark:text-sage-300">Account Snapshot</p>
+              <p className="mt-2 font-display text-2xl font-semibold text-sage-800 dark:text-sage-50">{user?.name || 'Mindful member'}</p>
+              <p className="mt-1 text-sm text-sage-600 dark:text-sage-200">{user?.email || 'No email available'}</p>
+              <p className="mt-2 text-sm text-sage-500 dark:text-sage-300">Member since {memberSince}</p>
             </div>
           </div>
         </div>
@@ -305,14 +322,14 @@ export default function Settings() {
 
       <div className="mt-8 grid grid-cols-1 gap-8 xl:grid-cols-[minmax(0,1.6fr)_minmax(320px,1fr)]">
         <div className="space-y-8">
-          <section className="rounded-[1.75rem] border border-sage-100 bg-white p-6 shadow-soft sm:p-8">
+          <section className="rounded-[1.75rem] border border-sage-100 bg-white p-6 shadow-soft sm:p-8 dark:border-white/10 dark:bg-white/5">
             <div className="mb-6 flex items-center gap-4">
-              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-sage-100 text-sage-700">
+              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-sage-100 text-sage-700 dark:bg-white/10 dark:text-sage-100">
                 <span className="material-symbols-outlined">badge</span>
               </div>
               <div>
-                <h2 className="font-display text-2xl font-semibold text-sage-900">Profile Details</h2>
-                <p className="text-sm text-sage-500">Update the parts of your account that feel most personal and visible.</p>
+                <h2 className="font-display text-2xl font-semibold text-sage-900 dark:text-sage-50">Profile Details</h2>
+                <p className="text-sm text-sage-500 dark:text-sage-300">Update the parts of your account that feel most personal and visible.</p>
               </div>
             </div>
 
@@ -364,19 +381,25 @@ export default function Settings() {
             </div>
           </section>
 
-          <section className="rounded-[1.75rem] border border-sage-100 bg-white p-6 shadow-soft sm:p-8">
+          <section className="rounded-[1.75rem] border border-sage-100 bg-white p-6 shadow-soft sm:p-8 dark:border-white/10 dark:bg-white/5">
             <div className="mb-6 flex items-center gap-4">
-              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-sage-100 text-sage-700">
+              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-sage-100 text-sage-700 dark:bg-white/10 dark:text-sage-100">
                 <span className="material-symbols-outlined">tune</span>
               </div>
               <div>
-                <h2 className="font-display text-2xl font-semibold text-sage-900">Preferences</h2>
-                <p className="text-sm text-sage-500">Choose the pace, reminders, and privacy settings that best support your routine.</p>
+                <h2 className="font-display text-2xl font-semibold text-sage-900 dark:text-sage-50">Preferences</h2>
+                <p className="text-sm text-sage-500 dark:text-sage-300">Choose the pace, reminders, and privacy settings that best support your routine.</p>
               </div>
             </div>
 
             <div>
-              <p className="text-sm font-semibold uppercase tracking-[0.22em] text-sage-500">Theme</p>
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-sm font-semibold uppercase tracking-[0.22em] text-sage-500 dark:text-sage-300">Theme</p>
+                <span className="inline-flex items-center gap-2 rounded-full bg-sage-100 px-3 py-1 text-xs font-semibold text-sage-700 dark:bg-white/10 dark:text-sage-100">
+                  <span className="material-symbols-outlined text-[16px]">{isDarkMode ? 'dark_mode' : 'light_mode'}</span>
+                  {isDarkMode ? 'Dark active' : 'Light active'}
+                </span>
+              </div>
               <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-3">
                 {themeOptions.map((option) => {
                   const isActive = preferences.theme === option.value;
@@ -387,10 +410,13 @@ export default function Settings() {
                       className={clsx(
                         'flex items-center justify-center gap-2 rounded-[1.25rem] border px-4 py-4 text-sm font-semibold transition-all',
                         isActive
-                          ? 'border-sage-300 bg-sage-100 text-sage-900 shadow-sm'
-                          : 'border-sage-100 bg-white text-sage-600 hover:border-sage-200 hover:bg-sage-50'
+                          ? 'border-sage-300 bg-sage-100 text-sage-900 shadow-sm dark:border-sage-400/50 dark:bg-white/10 dark:text-sage-50'
+                          : 'border-sage-100 bg-white text-sage-600 hover:border-sage-200 hover:bg-sage-50 dark:border-white/10 dark:bg-white/5 dark:text-sage-200 dark:hover:bg-white/10'
                       )}
-                      onClick={() => setPreferences((current) => ({ ...current, theme: option.value }))}
+                      onClick={() => {
+                        setPreferences((current) => ({ ...current, theme: option.value }));
+                        setThemePreference(option.value);
+                      }}
                       type="button"
                     >
                       <span className="material-symbols-outlined text-[18px]">{option.icon}</span>

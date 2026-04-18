@@ -22,6 +22,7 @@ import {
   YAxis,
 } from 'recharts';
 import { useAuth } from '@/contexts/useAuth';
+import { useTheme } from '@/contexts/useTheme';
 import analyticsService from '@/services/analyticsService';
 import '@/styles/pages/analytics.css';
 
@@ -186,6 +187,7 @@ const buildHeatmapColumns = (days: HeatmapDay[]) => {
 
 export default function Analytics() {
   const { user } = useAuth();
+  const { isDarkMode } = useTheme();
   const firstName = user?.name?.split(' ')[0] || 'there';
   const currentYear = new Date().getFullYear();
   const yearOptions = Array.from({ length: 4 }, (_, index) => currentYear - index);
@@ -338,27 +340,27 @@ export default function Analytics() {
   const weeklyNarrative = getWeeklyNarrative(weeklyReport, summary, topEnergyWindow?.hour ?? null);
 
   return (
-    <div className="animate-fade-in pb-10">
-      <section className="overflow-hidden rounded-[2rem] border border-sage-200 bg-gradient-to-br from-white via-sage-50 to-sand-50 shadow-soft">
+    <div className="animate-fade-in pb-10 text-slate-900 dark:text-sage-50">
+      <section className="overflow-hidden rounded-[2rem] border border-sage-200 bg-gradient-to-br from-white via-sage-50 to-sand-50 shadow-soft dark:border-white/10 dark:bg-gradient-to-br dark:from-[#18231d] dark:via-[#121b16] dark:to-[#0f1712]">
         <div className="flex flex-col gap-6 px-6 py-8 sm:px-8 lg:flex-row lg:items-end lg:justify-between lg:px-10">
           <div className="max-w-3xl">
-            <p className="text-xs font-semibold uppercase tracking-[0.32em] text-sage-500">Analytics</p>
-            <h1 className="mt-3 font-display text-4xl font-semibold text-sage-900 sm:text-5xl">
+            <p className="text-xs font-semibold uppercase tracking-[0.32em] text-sage-500 dark:text-sage-300">Analytics</p>
+            <h1 className="mt-3 font-display text-4xl font-semibold text-sage-900 sm:text-5xl dark:text-sage-50">
               Your wellness patterns, {firstName}.
             </h1>
-            <p className="mt-4 max-w-2xl text-base leading-7 text-sage-600 sm:text-lg">
+            <p className="mt-4 max-w-2xl text-base leading-7 text-sage-600 sm:text-lg dark:text-sage-200">
               See how mood, energy, sleep, and consistency move together across your recent practice so your next small step can be more intentional.
             </p>
           </div>
 
-          <div className="flex flex-col gap-3 rounded-[1.5rem] border border-sage-100 bg-white/80 p-5 shadow-sm backdrop-blur sm:min-w-[280px]">
-            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-sage-500">Current Read</p>
-            <p className="font-display text-3xl font-semibold text-sage-800">{summary.completionRate}% complete</p>
-            <p className="text-sm leading-6 text-sage-600">{heroMessage}</p>
+          <div className="flex flex-col gap-3 rounded-[1.5rem] border border-sage-100 bg-white/80 p-5 shadow-sm backdrop-blur sm:min-w-[280px] dark:border-white/10 dark:bg-white/5">
+            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-sage-500 dark:text-sage-300">Current Read</p>
+            <p className="font-display text-3xl font-semibold text-sage-800 dark:text-sage-50">{summary.completionRate}% complete</p>
+            <p className="text-sm leading-6 text-sage-600 dark:text-sage-200">{heroMessage}</p>
           </div>
         </div>
 
-        <div className="border-t border-sage-100/80 px-6 py-4 sm:px-8 lg:px-10">
+        <div className="border-t border-sage-100/80 px-6 py-4 sm:px-8 lg:px-10 dark:border-white/10">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             <div className="flex flex-wrap gap-3">
               {periodOptions.map((option) => {
@@ -370,8 +372,8 @@ export default function Analytics() {
                     className={clsx(
                       'rounded-full px-4 py-2 text-sm font-semibold transition-all',
                       isActive
-                        ? 'bg-sage-700 text-white shadow-soft'
-                        : 'border border-sage-200 bg-white text-sage-700 hover:bg-sage-50'
+                        ? 'bg-sage-700 text-white shadow-soft dark:bg-sage-500 dark:text-slate-950'
+                        : 'border border-sage-200 bg-white text-sage-700 hover:bg-sage-50 dark:border-white/10 dark:bg-white/5 dark:text-sage-100 dark:hover:bg-white/10'
                     )}
                     onClick={() => setPeriod(option.value)}
                     type="button"
@@ -382,7 +384,7 @@ export default function Analytics() {
               })}
             </div>
 
-            <div className="inline-flex items-center gap-2 rounded-full bg-white px-4 py-2 text-sm font-medium text-sage-700 shadow-sm">
+            <div className="inline-flex items-center gap-2 rounded-full bg-white px-4 py-2 text-sm font-medium text-sage-700 shadow-sm dark:bg-white/5 dark:text-sage-100">
               <span className="material-symbols-outlined text-base">insights</span>
               {summary.totalEntries ? `${summary.totalEntries} total reflections logged` : 'Waiting for your first reflections'}
             </div>
@@ -402,25 +404,25 @@ export default function Analytics() {
               <div key={`analytics-skeleton-${index + 1}`} className="skeleton h-36 rounded-[1.75rem]" />
             ))
           : summaryCards.map((card) => (
-              <article key={card.title} className="rounded-[1.75rem] border border-sage-100 bg-white p-6 shadow-soft transition-shadow hover:shadow-lifted">
+              <article key={card.title} className="rounded-[1.75rem] border border-sage-100 bg-white p-6 shadow-soft transition-shadow hover:shadow-lifted dark:border-white/10 dark:bg-white/5">
                 <div className="flex items-start justify-between gap-4">
-                  <p className="text-sm font-semibold uppercase tracking-[0.24em] text-sage-500">{card.title}</p>
+                  <p className="text-sm font-semibold uppercase tracking-[0.24em] text-sage-500 dark:text-sage-300">{card.title}</p>
                   <span className={clsx('material-symbols-outlined text-2xl', card.iconClassName)}>{card.icon}</span>
                 </div>
-                <p className="mt-4 text-3xl font-semibold text-slate-900">{card.value}</p>
-                <p className="mt-3 text-sm leading-6 text-slate-600">{card.detail}</p>
+                <p className="mt-4 text-3xl font-semibold text-slate-900 dark:text-sage-50">{card.value}</p>
+                <p className="mt-3 text-sm leading-6 text-slate-600 dark:text-sage-200">{card.detail}</p>
               </article>
             ))}
       </section>
 
       <div className="mt-8 grid grid-cols-1 gap-8 xl:grid-cols-[minmax(0,1.7fr)_minmax(320px,1fr)]">
-        <section className="rounded-[1.75rem] border border-sage-100 bg-white p-6 shadow-soft sm:p-8">
+        <section className="rounded-[1.75rem] border border-sage-100 bg-white p-6 shadow-soft sm:p-8 dark:border-white/10 dark:bg-white/5">
           <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-sage-500">Mood Trends</p>
-              <h2 className="mt-2 font-display text-3xl font-semibold text-sage-900">Emotional tone over time</h2>
+              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-sage-500 dark:text-sage-300">Mood Trends</p>
+              <h2 className="mt-2 font-display text-3xl font-semibold text-sage-900 dark:text-sage-50">Emotional tone over time</h2>
             </div>
-            <div className="rounded-full bg-sage-50 px-4 py-2 text-xs font-semibold uppercase tracking-[0.22em] text-sage-600">
+            <div className="rounded-full bg-sage-50 px-4 py-2 text-xs font-semibold uppercase tracking-[0.22em] text-sage-600 dark:bg-white/10 dark:text-sage-200">
               {periodOptions.find((option) => option.value === period)?.label}
             </div>
           </div>
@@ -437,17 +439,17 @@ export default function Analytics() {
                       <stop offset="100%" stopColor="#5f7861" stopOpacity="0.03" />
                     </linearGradient>
                   </defs>
-                  <CartesianGrid stroke="#e3e8e3" strokeDasharray="4 4" vertical={false} />
+                  <CartesianGrid stroke={isDarkMode ? '#314238' : '#e3e8e3'} strokeDasharray="4 4" vertical={false} />
                   <XAxis
                     axisLine={false}
                     dataKey="label"
-                    tick={{ fill: '#7d937f', fontSize: 12, fontWeight: 600 }}
+                    tick={{ fill: isDarkMode ? '#b7c6b8' : '#7d937f', fontSize: 12, fontWeight: 600 }}
                     tickLine={false}
                   />
                   <YAxis
                     axisLine={false}
                     domain={[1, 5]}
-                    tick={{ fill: '#7d937f', fontSize: 12, fontWeight: 600 }}
+                    tick={{ fill: isDarkMode ? '#b7c6b8' : '#7d937f', fontSize: 12, fontWeight: 600 }}
                     tickFormatter={(value) => `${value}`}
                     tickLine={false}
                   />
@@ -456,11 +458,11 @@ export default function Analytics() {
                       if (!active || !payload?.length) return null;
 
                       return (
-                        <div className="rounded-2xl border border-sage-100 bg-white px-4 py-3 shadow-soft">
-                          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-sage-500">{label}</p>
-                          <p className="mt-2 text-lg font-semibold text-slate-900">Mood: {payload[0].value} / 5</p>
-                          <p className="mt-1 text-sm text-sage-600">{payload[0].payload.moodLabel}</p>
-                          <p className="mt-1 text-xs text-slate-400">{payload[0].payload.fullDate}</p>
+                        <div className={clsx('rounded-2xl border px-4 py-3 shadow-soft', isDarkMode ? 'border-white/10 bg-[#101915]' : 'border-sage-100 bg-white')}>
+                          <p className={clsx('text-xs font-semibold uppercase tracking-[0.2em]', isDarkMode ? 'text-sage-300' : 'text-sage-500')}>{label}</p>
+                          <p className={clsx('mt-2 text-lg font-semibold', isDarkMode ? 'text-sage-50' : 'text-slate-900')}>Mood: {payload[0].value} / 5</p>
+                          <p className={clsx('mt-1 text-sm', isDarkMode ? 'text-sage-200' : 'text-sage-600')}>{payload[0].payload.moodLabel}</p>
+                          <p className={clsx('mt-1 text-xs', isDarkMode ? 'text-sage-400' : 'text-slate-400')}>{payload[0].payload.fullDate}</p>
                         </div>
                       );
                     }}
@@ -477,23 +479,23 @@ export default function Analytics() {
               </ResponsiveContainer>
             </div>
           ) : (
-            <div className="flex h-80 flex-col items-center justify-center rounded-[1.5rem] border border-dashed border-sage-200 bg-sage-50/70 px-6 text-center">
-              <span className="material-symbols-outlined text-4xl text-sage-400">sentiment_neutral</span>
-              <p className="mt-4 font-display text-2xl font-semibold text-sage-800">No mood trend yet</p>
-              <p className="mt-2 max-w-md text-sm leading-6 text-sage-600">
+            <div className="flex h-80 flex-col items-center justify-center rounded-[1.5rem] border border-dashed border-sage-200 bg-sage-50/70 px-6 text-center dark:border-white/10 dark:bg-[#101915]">
+              <span className="material-symbols-outlined text-4xl text-sage-400 dark:text-sage-300">sentiment_neutral</span>
+              <p className="mt-4 font-display text-2xl font-semibold text-sage-800 dark:text-sage-50">No mood trend yet</p>
+              <p className="mt-2 max-w-md text-sm leading-6 text-sage-600 dark:text-sage-200">
                 Log a few daily reflections and this chart will begin tracing how your emotional weather shifts over time.
               </p>
             </div>
           )}
         </section>
 
-        <aside className="rounded-[1.75rem] border border-sage-100 bg-gradient-to-b from-white to-sage-50/60 p-6 shadow-soft sm:p-8">
+        <aside className="rounded-[1.75rem] border border-sage-100 bg-gradient-to-b from-white to-sage-50/60 p-6 shadow-soft sm:p-8 dark:border-white/10 dark:bg-gradient-to-b dark:from-[#18231d] dark:to-[#101915]">
           <div className="mb-6 flex items-center justify-between gap-4">
             <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-sage-500">Weekly Report</p>
-              <h2 className="mt-2 font-display text-3xl font-semibold text-sage-900">A softer summary</h2>
+              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-sage-500 dark:text-sage-300">Weekly Report</p>
+              <h2 className="mt-2 font-display text-3xl font-semibold text-sage-900 dark:text-sage-50">A softer summary</h2>
             </div>
-            <div className="flex size-12 items-center justify-center rounded-2xl bg-sage-100 text-sage-700">
+            <div className="flex size-12 items-center justify-center rounded-2xl bg-sage-100 text-sage-700 dark:bg-white/10 dark:text-sage-100">
               <span className="material-symbols-outlined">auto_graph</span>
             </div>
           </div>
@@ -505,45 +507,45 @@ export default function Analytics() {
             </div>
           ) : (
             <>
-              <div className="rounded-[1.5rem] border border-sage-100 bg-white/80 p-5 shadow-sm">
-                <p className="text-xs font-semibold uppercase tracking-[0.24em] text-sage-500">This Week</p>
-                <p className="mt-2 font-display text-3xl font-semibold text-sage-800">{weeklyReport.daysLogged}/7 days logged</p>
-                <p className="mt-3 text-sm leading-6 text-sage-600">{weeklyNarrative}</p>
+              <div className="rounded-[1.5rem] border border-sage-100 bg-white/80 p-5 shadow-sm dark:border-white/10 dark:bg-white/5">
+                <p className="text-xs font-semibold uppercase tracking-[0.24em] text-sage-500 dark:text-sage-300">This Week</p>
+                <p className="mt-2 font-display text-3xl font-semibold text-sage-800 dark:text-sage-50">{weeklyReport.daysLogged}/7 days logged</p>
+                <p className="mt-3 text-sm leading-6 text-sage-600 dark:text-sage-200">{weeklyNarrative}</p>
               </div>
 
               <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-3 xl:grid-cols-1">
-                <div className="rounded-[1.5rem] border border-sage-100 bg-white p-4 shadow-sm">
-                  <p className="text-xs font-semibold uppercase tracking-[0.2em] text-sage-500">Mood</p>
-                  <p className="mt-2 text-2xl font-semibold text-slate-900">{weeklyReport.averageMood ? weeklyReport.averageMood.toFixed(1) : '0.0'} / 5</p>
-                  <p className="mt-1 text-sm text-sage-600">{formatMoodLabel(weeklyReport.averageMood)}</p>
+                <div className="rounded-[1.5rem] border border-sage-100 bg-white p-4 shadow-sm dark:border-white/10 dark:bg-white/5">
+                  <p className="text-xs font-semibold uppercase tracking-[0.2em] text-sage-500 dark:text-sage-300">Mood</p>
+                  <p className="mt-2 text-2xl font-semibold text-slate-900 dark:text-sage-50">{weeklyReport.averageMood ? weeklyReport.averageMood.toFixed(1) : '0.0'} / 5</p>
+                  <p className="mt-1 text-sm text-sage-600 dark:text-sage-200">{formatMoodLabel(weeklyReport.averageMood)}</p>
                 </div>
-                <div className="rounded-[1.5rem] border border-sage-100 bg-white p-4 shadow-sm">
-                  <p className="text-xs font-semibold uppercase tracking-[0.2em] text-sage-500">Hydration</p>
-                  <p className="mt-2 text-2xl font-semibold text-slate-900">{weeklyReport.averageWaterIntake.toFixed(1)}</p>
-                  <p className="mt-1 text-sm text-sage-600">glasses per day</p>
+                <div className="rounded-[1.5rem] border border-sage-100 bg-white p-4 shadow-sm dark:border-white/10 dark:bg-white/5">
+                  <p className="text-xs font-semibold uppercase tracking-[0.2em] text-sage-500 dark:text-sage-300">Hydration</p>
+                  <p className="mt-2 text-2xl font-semibold text-slate-900 dark:text-sage-50">{weeklyReport.averageWaterIntake.toFixed(1)}</p>
+                  <p className="mt-1 text-sm text-sage-600 dark:text-sage-200">glasses per day</p>
                 </div>
-                <div className="rounded-[1.5rem] border border-sage-100 bg-white p-4 shadow-sm">
-                  <p className="text-xs font-semibold uppercase tracking-[0.2em] text-sage-500">Sleep</p>
-                  <p className="mt-2 text-2xl font-semibold text-slate-900">{weeklyReport.averageSleepHours.toFixed(1)}</p>
-                  <p className="mt-1 text-sm text-sage-600">hours per night</p>
+                <div className="rounded-[1.5rem] border border-sage-100 bg-white p-4 shadow-sm dark:border-white/10 dark:bg-white/5">
+                  <p className="text-xs font-semibold uppercase tracking-[0.2em] text-sage-500 dark:text-sage-300">Sleep</p>
+                  <p className="mt-2 text-2xl font-semibold text-slate-900 dark:text-sage-50">{weeklyReport.averageSleepHours.toFixed(1)}</p>
+                  <p className="mt-1 text-sm text-sage-600 dark:text-sage-200">hours per night</p>
                 </div>
               </div>
 
-              <div className="mt-6 rounded-[1.5rem] border border-sand-200 bg-sand-100/60 p-5">
-                <p className="text-xs font-semibold uppercase tracking-[0.24em] text-sage-500">Top Feelings</p>
+              <div className="mt-6 rounded-[1.5rem] border border-sand-200 bg-sand-100/60 p-5 dark:border-white/10 dark:bg-[#101915]">
+                <p className="text-xs font-semibold uppercase tracking-[0.24em] text-sage-500 dark:text-sage-300">Top Feelings</p>
                 <div className="mt-4 flex flex-wrap gap-2">
                   {weeklyReport.topFeelings.length ? (
                     weeklyReport.topFeelings.map((item) => (
                       <span
                         key={item.feeling}
-                        className="inline-flex items-center gap-2 rounded-full border border-white/80 bg-white/80 px-4 py-2 text-sm font-medium text-sage-700"
+                        className="inline-flex items-center gap-2 rounded-full border border-white/80 bg-white/80 px-4 py-2 text-sm font-medium text-sage-700 dark:border-white/10 dark:bg-white/10 dark:text-sage-100"
                       >
                         <span>{formatFeelingLabel(item.feeling)}</span>
-                        <span className="rounded-full bg-sage-100 px-2 py-0.5 text-xs font-semibold text-sage-700">{item.count}</span>
+                        <span className="rounded-full bg-sage-100 px-2 py-0.5 text-xs font-semibold text-sage-700 dark:bg-white/10 dark:text-sage-100">{item.count}</span>
                       </span>
                     ))
                   ) : (
-                    <p className="text-sm leading-6 text-sage-600">As you complete more check-ins, the feelings you return to most often will appear here.</p>
+                    <p className="text-sm leading-6 text-sage-600 dark:text-sage-200">As you complete more check-ins, the feelings you return to most often will appear here.</p>
                   )}
                 </div>
               </div>
@@ -553,13 +555,13 @@ export default function Analytics() {
       </div>
 
       <div className="mt-8 grid grid-cols-1 gap-8 xl:grid-cols-[minmax(320px,1fr)_minmax(0,1.6fr)]">
-        <section className="rounded-[1.75rem] border border-sage-100 bg-white p-6 shadow-soft sm:p-8">
+        <section className="rounded-[1.75rem] border border-sage-100 bg-white p-6 shadow-soft sm:p-8 dark:border-white/10 dark:bg-white/5">
           <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-sage-500">Energy Pattern</p>
-              <h2 className="mt-2 font-display text-3xl font-semibold text-sage-900">When your energy rises</h2>
+              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-sage-500 dark:text-sage-300">Energy Pattern</p>
+              <h2 className="mt-2 font-display text-3xl font-semibold text-sage-900 dark:text-sage-50">When your energy rises</h2>
             </div>
-            <div className="rounded-full bg-sage-50 px-4 py-2 text-xs font-semibold uppercase tracking-[0.22em] text-sage-600">
+            <div className="rounded-full bg-sage-50 px-4 py-2 text-xs font-semibold uppercase tracking-[0.22em] text-sage-600 dark:bg-white/10 dark:text-sage-200">
               {topEnergyWindow ? `Peak around ${formatHourLabel(topEnergyWindow.hour)}` : 'Awaiting energy data'}
             </div>
           </div>
@@ -570,17 +572,17 @@ export default function Analytics() {
             <div className="h-72 w-full">
               <ResponsiveContainer>
                 <LineChart data={energyChartData} margin={{ top: 12, right: 16, bottom: 4, left: -16 }}>
-                  <CartesianGrid stroke="#e3e8e3" strokeDasharray="4 4" vertical={false} />
+                  <CartesianGrid stroke={isDarkMode ? '#314238' : '#e3e8e3'} strokeDasharray="4 4" vertical={false} />
                   <XAxis
                     axisLine={false}
                     dataKey="label"
-                    tick={{ fill: '#7d937f', fontSize: 12, fontWeight: 600 }}
+                    tick={{ fill: isDarkMode ? '#b7c6b8' : '#7d937f', fontSize: 12, fontWeight: 600 }}
                     tickLine={false}
                   />
                   <YAxis
                     axisLine={false}
                     domain={[0, 10]}
-                    tick={{ fill: '#7d937f', fontSize: 12, fontWeight: 600 }}
+                    tick={{ fill: isDarkMode ? '#b7c6b8' : '#7d937f', fontSize: 12, fontWeight: 600 }}
                     tickLine={false}
                   />
                   <Tooltip
@@ -588,10 +590,10 @@ export default function Analytics() {
                       if (!active || !payload?.length) return null;
 
                       return (
-                        <div className="rounded-2xl border border-sage-100 bg-white px-4 py-3 shadow-soft">
-                          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-sage-500">{label}</p>
-                          <p className="mt-2 text-lg font-semibold text-slate-900">Energy: {payload[0].value} / 10</p>
-                          <p className="mt-1 text-sm text-sage-600">Average reported energy at this time</p>
+                        <div className={clsx('rounded-2xl border px-4 py-3 shadow-soft', isDarkMode ? 'border-white/10 bg-[#101915]' : 'border-sage-100 bg-white')}>
+                          <p className={clsx('text-xs font-semibold uppercase tracking-[0.2em]', isDarkMode ? 'text-sage-300' : 'text-sage-500')}>{label}</p>
+                          <p className={clsx('mt-2 text-lg font-semibold', isDarkMode ? 'text-sage-50' : 'text-slate-900')}>Energy: {payload[0].value} / 10</p>
+                          <p className={clsx('mt-1 text-sm', isDarkMode ? 'text-sage-200' : 'text-sage-600')}>Average reported energy at this time</p>
                         </div>
                       );
                     }}
@@ -609,27 +611,27 @@ export default function Analytics() {
               </ResponsiveContainer>
             </div>
           ) : (
-            <div className="flex h-72 flex-col items-center justify-center rounded-[1.5rem] border border-dashed border-sage-200 bg-sage-50/70 px-6 text-center">
-              <span className="material-symbols-outlined text-4xl text-sage-400">battery_horiz_075</span>
-              <p className="mt-4 font-display text-2xl font-semibold text-sage-800">No energy pattern yet</p>
-              <p className="mt-2 max-w-md text-sm leading-6 text-sage-600">
+            <div className="flex h-72 flex-col items-center justify-center rounded-[1.5rem] border border-dashed border-sage-200 bg-sage-50/70 px-6 text-center dark:border-white/10 dark:bg-[#101915]">
+              <span className="material-symbols-outlined text-4xl text-sage-400 dark:text-sage-300">battery_horiz_075</span>
+              <p className="mt-4 font-display text-2xl font-semibold text-sage-800 dark:text-sage-50">No energy pattern yet</p>
+              <p className="mt-2 max-w-md text-sm leading-6 text-sage-600 dark:text-sage-200">
                 Once energy checkpoints are logged in your reflections, this chart will highlight where your most restorative hours tend to land.
               </p>
             </div>
           )}
         </section>
 
-        <section className="rounded-[1.75rem] border border-sage-100 bg-white p-6 shadow-soft sm:p-8">
+        <section className="rounded-[1.75rem] border border-sage-100 bg-white p-6 shadow-soft sm:p-8 dark:border-white/10 dark:bg-white/5">
           <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
             <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-sage-500">Activity Heatmap</p>
-              <h2 className="mt-2 font-display text-3xl font-semibold text-sage-900">Consistency across {year}</h2>
-              <p className="mt-2 max-w-2xl text-sm leading-6 text-sage-600">
+              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-sage-500 dark:text-sage-300">Activity Heatmap</p>
+              <h2 className="mt-2 font-display text-3xl font-semibold text-sage-900 dark:text-sage-50">Consistency across {year}</h2>
+              <p className="mt-2 max-w-2xl text-sm leading-6 text-sage-600 dark:text-sage-200">
                 Each square reflects how complete that day&apos;s reflection was, so dense clusters show where your routine felt easiest to sustain.
               </p>
             </div>
 
-            <label className="flex items-center gap-3 rounded-full border border-sage-200 bg-sage-50 px-4 py-2 text-sm font-medium text-sage-700">
+            <label className="flex items-center gap-3 rounded-full border border-sage-200 bg-sage-50 px-4 py-2 text-sm font-medium text-sage-700 dark:border-white/10 dark:bg-white/10 dark:text-sage-100">
               <span>Year</span>
               <select
                 className="bg-transparent font-semibold outline-none"
@@ -648,9 +650,9 @@ export default function Analytics() {
           {isLoading ? (
             <div className="skeleton h-64 rounded-[1.5rem]" />
           ) : heatmap.weeks.length ? (
-            <div className="overflow-hidden rounded-[1.5rem] border border-sage-100 bg-sage-50/60 p-4">
+            <div className="overflow-hidden rounded-[1.5rem] border border-sage-100 bg-sage-50/60 p-4 dark:border-white/10 dark:bg-[#101915]">
               <div className="flex gap-3">
-                <div className="mt-8 grid grid-rows-7 gap-1.5 text-[10px] font-semibold uppercase tracking-[0.18em] text-sage-500">
+                <div className="mt-8 grid grid-rows-7 gap-1.5 text-[10px] font-semibold uppercase tracking-[0.18em] text-sage-500 dark:text-sage-300">
                   {weekdayLabels.map((label) => (
                     <span key={label} className="analytics-heatmap-label">
                       {label.slice(0, 1)}
@@ -661,7 +663,7 @@ export default function Analytics() {
                 <div className="min-w-0 flex-1">
                   <div className="analytics-heatmap-scroll overflow-x-auto pb-3">
                     <div className="inline-flex min-w-full flex-col gap-2">
-                      <div className="flex gap-1.5 pl-0.5 text-[10px] font-semibold uppercase tracking-[0.2em] text-sage-500">
+                      <div className="flex gap-1.5 pl-0.5 text-[10px] font-semibold uppercase tracking-[0.2em] text-sage-500 dark:text-sage-300">
                         {heatmap.weeks.map((_, index) => (
                           <div key={`month-${index}`} className="analytics-heatmap-week justify-start overflow-visible text-left">
                             {heatmap.monthLabels[index] || ''}
@@ -685,8 +687,8 @@ export default function Analytics() {
                     </div>
                   </div>
 
-                  <div className="mt-4 flex flex-wrap items-center gap-3 text-xs text-sage-600">
-                    <span className="font-semibold uppercase tracking-[0.18em] text-sage-500">Less</span>
+                  <div className="mt-4 flex flex-wrap items-center gap-3 text-xs text-sage-600 dark:text-sage-200">
+                    <span className="font-semibold uppercase tracking-[0.18em] text-sage-500 dark:text-sage-300">Less</span>
                     {[0, 25, 50, 75, 100].map((level) => (
                       <span
                         key={level}
@@ -694,16 +696,16 @@ export default function Analytics() {
                         title={`${level}% completion level`}
                       />
                     ))}
-                    <span className="font-semibold uppercase tracking-[0.18em] text-sage-500">More</span>
+                    <span className="font-semibold uppercase tracking-[0.18em] text-sage-500 dark:text-sage-300">More</span>
                   </div>
                 </div>
               </div>
             </div>
           ) : (
-            <div className="flex h-64 flex-col items-center justify-center rounded-[1.5rem] border border-dashed border-sage-200 bg-sage-50/70 px-6 text-center">
-              <span className="material-symbols-outlined text-4xl text-sage-400">calendar_month</span>
-              <p className="mt-4 font-display text-2xl font-semibold text-sage-800">No activity map yet</p>
-              <p className="mt-2 max-w-md text-sm leading-6 text-sage-600">
+            <div className="flex h-64 flex-col items-center justify-center rounded-[1.5rem] border border-dashed border-sage-200 bg-sage-50/70 px-6 text-center dark:border-white/10 dark:bg-[#101915]">
+              <span className="material-symbols-outlined text-4xl text-sage-400 dark:text-sage-300">calendar_month</span>
+              <p className="mt-4 font-display text-2xl font-semibold text-sage-800 dark:text-sage-50">No activity map yet</p>
+              <p className="mt-2 max-w-md text-sm leading-6 text-sage-600 dark:text-sage-200">
                 Daily completion blocks will appear here once reflections are saved through the year.
               </p>
             </div>
@@ -711,12 +713,12 @@ export default function Analytics() {
         </section>
       </div>
 
-      <section className="mt-8 rounded-[1.75rem] border border-sand-200 bg-sand-100/70 p-6 shadow-soft sm:p-8">
+      <section className="mt-8 rounded-[1.75rem] border border-sand-200 bg-sand-100/70 p-6 shadow-soft sm:p-8 dark:border-white/10 dark:bg-[#18231d]">
         <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
           <div className="max-w-3xl">
-            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-sage-500">Gentle Read</p>
-            <h2 className="mt-2 font-display text-3xl font-semibold text-sage-900">What your data is quietly saying</h2>
-            <p className="mt-3 text-sm leading-7 text-sage-700">
+            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-sage-500 dark:text-sage-300">Gentle Read</p>
+            <h2 className="mt-2 font-display text-3xl font-semibold text-sage-900 dark:text-sage-50">What your data is quietly saying</h2>
+            <p className="mt-3 text-sm leading-7 text-sage-700 dark:text-sage-200">
               {summary.totalEntries
                 ? `${heroMessage} ${topEnergyWindow ? `Your strongest energy shows up near ${formatHourLabel(topEnergyWindow.hour)}.` : ''}`
                 : 'This page is ready. A few reflections, self-care entries, and review check-ins will turn it into a clear picture of your habits.'}
@@ -725,14 +727,14 @@ export default function Analytics() {
 
           <div className="flex flex-col gap-3 sm:flex-row">
             <Link
-              className="inline-flex items-center justify-center gap-2 rounded-full bg-sage-700 px-6 py-3 text-sm font-semibold text-white transition-all hover:bg-sage-800 hover:shadow-lifted"
+              className="inline-flex items-center justify-center gap-2 rounded-full bg-sage-700 px-6 py-3 text-sm font-semibold text-white transition-all hover:bg-sage-800 hover:shadow-lifted dark:bg-sage-500 dark:text-slate-950 dark:hover:bg-sage-400"
               to="/reflection"
             >
               <span className="material-symbols-outlined text-[18px]">edit_note</span>
               Add Reflection
             </Link>
             <Link
-              className="inline-flex items-center justify-center gap-2 rounded-full border border-sage-200 bg-white px-6 py-3 text-sm font-semibold text-sage-700 transition-all hover:bg-sage-50"
+              className="inline-flex items-center justify-center gap-2 rounded-full border border-sage-200 bg-white px-6 py-3 text-sm font-semibold text-sage-700 transition-all hover:bg-sage-50 dark:border-white/10 dark:bg-white/5 dark:text-sage-100 dark:hover:bg-white/10"
               to="/review"
             >
               <span className="material-symbols-outlined text-[18px]">menu_book</span>

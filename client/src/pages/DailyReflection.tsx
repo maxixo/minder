@@ -1,7 +1,10 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { format } from 'date-fns';
 import clsx from 'clsx';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/useAuth';
+import { useDailyEntry } from '@/hooks/useDailyEntry';
+import type { DailyEntryPatch, EntryWeather } from '@/types/entry';
 import '@/styles/pages/daily-reflection.css';
 
 const weatherOptions = [
@@ -24,18 +27,72 @@ const mealOptions = [
   { key: 'dinner', icon: 'dinner_dining', label: 'DINNER' },
 ];
 
+type ReflectionWeather = (typeof weatherOptions)[number]['key'];
+type ReflectionMood = (typeof moodOptions)[number]['key'];
+type ReflectionMealKey = (typeof mealOptions)[number]['key'];
+
+const moodValueMap: Record<ReflectionMood, number> = {
+  sad: 1,
+  low: 2,
+  neutral: 3,
+  good: 4,
+  great: 5,
+};
+
+const valueMoodMap: Record<number, ReflectionMood> = {
+  1: 'sad',
+  2: 'low',
+  3: 'neutral',
+  4: 'good',
+  5: 'great',
+};
+
+const reflectionWeatherOptions = new Set<ReflectionWeather>(weatherOptions.map((option) => option.key));
+
+const normalizeList = (items: string[], size: number) => {
+  const trimmed = items.slice(0, size);
+  return [...trimmed, ...Array.from({ length: Math.max(0, size - trimmed.length) }, () => '')];
+};
+
+const sanitizeList = (items: string[]) => items.map((item) => item.trim()).filter(Boolean);
+
+const toReflectionWeather = (weather: EntryWeather): ReflectionWeather => (
+  weather && reflectionWeatherOptions.has(weather as ReflectionWeather) ? weather as ReflectionWeather : 'sunny'
+);
+
+const toReflectionMood = (mood: number | null): ReflectionMood => (mood != null ? valueMoodMap[mood] || 'neutral' : 'neutral');
+
 export default function DailyReflection() {
   const { user } = useAuth();
+  const { entry, error, loading, saveEntryPatch, saving } = useDailyEntry();
   const [gratitude, setGratitude] = useState(['', '', '']);
   const [intention, setIntention] = useState('');
   const [quickWins, setQuickWins] = useState(['', '']);
-  const [weather, setWeather] = useState('sunny');
-  const [mood, setMood] = useState('neutral');
-  const [hydration, setHydration] = useState(5);
-  const [sleep, setSleep] = useState(7.5);
-  const [meals, setMeals] = useState({ breakfast: true, lunch: false, dinner: false });
+  const [weather, setWeather] = useState<ReflectionWeather>('sunny');
+  const [mood, setMood] = useState<ReflectionMood>('neutral');
+  const [hydration, setHydration] = useState(0);
+  const [sleep, setSleep] = useState(0);
+  const [meals, setMeals] = useState<Record<ReflectionMealKey, boolean>>({ breakfast: false, lunch: false, dinner: false });
 
   const firstName = user?.name?.split(' ')[0] || 'Sarah';
+  const entryDateLabel = useMemo(() => format(new Date(entry?.date || new Date()), "'Today,' MMM d, yyyy"), [entry?.date]);
+
+  useEffect(() => {
+    if (!entry) return;
+
+    setGratitude(normalizeList(entry.gratitude || [], 3));
+    setIntention(entry.expectations || '');
+    setQuickWins(normalizeList(entry.positiveNotes || [], 2));
+    setWeather(toReflectionWeather(entry.weather));
+    setMood(toReflectionMood(entry.mood));
+    setHydration(Math.max(0, Math.min(8, entry.waterIntake || 0)));
+    setSleep(Math.max(0, Math.min(12, entry.sleepHours || 0)));
+    setMeals({
+      breakfast: Boolean(entry.meals?.breakfast),
+      lunch: Boolean(entry.meals?.lunch),
+      dinner: Boolean(entry.meals?.dinner),
+    });
+  }, [entry]);
 
   const updateGratitude = (index: number, value: string) => {
     setGratitude((current) => current.map((item, itemIndex) => (itemIndex === index ? value : item)));
@@ -45,25 +102,45 @@ export default function DailyReflection() {
     setQuickWins((current) => current.map((item, itemIndex) => (itemIndex === index ? value : item)));
   };
 
-  const handleSave = () => {
-    toast.success('Reflection saved');
+  const handleSave = async () => {
+    const patch: DailyEntryPatch = {
+      gratitude: sanitizeList(gratitude),
+      expectations: intention.trim(),
+      positiveNotes: sanitizeList(quickWins),
+      weather,
+      mood: moodValueMap[mood],
+      waterIntake: hydration,
+      sleepHours: sleep,
+      meals: {
+        breakfast: meals.breakfast,
+        lunch: meals.lunch,
+        dinner: meals.dinner,
+      },
+    };
+
+    try {
+      await saveEntryPatch(patch, 'reflection');
+      toast.success('Reflection saved');
+    } catch (saveError: any) {
+      toast.error(saveError?.response?.data?.message || 'Unable to save reflection');
+    }
   };
 
   return (
-    <div className="daily-reflection-scrollbar flex min-h-full flex-col text-[#3a523e]">
-      <header className="-mx-4 mb-6 border-b border-[#e8ede8] bg-white/80 px-4 py-4 backdrop-blur-md sm:-mx-6 sm:px-6 lg:sticky lg:top-0 lg:z-20 lg:-mx-8 lg:px-8">
+    <div className="daily-reflection-scrollbar flex min-h-full flex-col text-[#3a523e] dark:text-sage-50">
+      <header className="-mx-4 mb-6 border-b border-[#e8ede8] bg-white/80 px-4 py-4 backdrop-blur-md sm:-mx-6 sm:px-6 lg:sticky lg:top-0 lg:z-20 lg:-mx-8 lg:px-8 dark:border-white/10 dark:bg-[#15201a]/90">
         <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-4">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.28em] text-[#638869]">Reflection Space</p>
-            <h1 className="mt-1 text-2xl font-black text-[#3a523e] sm:text-3xl">Daily Reflection</h1>
+            <p className="text-xs font-semibold uppercase tracking-[0.28em] text-[#638869] dark:text-sage-300">Reflection Space</p>
+            <h1 className="mt-1 text-2xl font-black text-[#3a523e] sm:text-3xl dark:text-sage-50">Daily Reflection</h1>
           </div>
 
-          <div className="flex items-center gap-6 rounded-xl border border-[#e8ede8] bg-[#f4f7f4] px-4 py-2">
-            <button className="material-symbols-outlined text-[#638869]" type="button">
+          <div className="flex items-center gap-6 rounded-xl border border-[#e8ede8] bg-[#f4f7f4] px-4 py-2 dark:border-white/10 dark:bg-white/5 dark:text-sage-100">
+            <button className="material-symbols-outlined text-[#638869]/40" disabled type="button">
               chevron_left
             </button>
-            <span className="text-sm font-semibold">Today, Oct 24, 2023</span>
-            <button className="material-symbols-outlined text-[#638869]" type="button">
+            <span className="text-sm font-semibold">{entryDateLabel}</span>
+            <button className="material-symbols-outlined text-[#638869]/40" disabled type="button">
               chevron_right
             </button>
             <div className="mx-2 h-4 w-px bg-[#d1dbd2]" />
@@ -84,36 +161,48 @@ export default function DailyReflection() {
           </div>
 
           <div className="flex h-10 w-10 items-center justify-center rounded-full border-2 border-[#19e63c] bg-[#19e63c]/20">
-            <span className="material-symbols-outlined text-[#3a523e]">person</span>
+            <span className="material-symbols-outlined text-[#3a523e] dark:text-sage-50">person</span>
           </div>
         </div>
       </header>
 
       <main className="mx-auto w-full max-w-5xl flex-1 space-y-8 py-2">
-        <div className="rounded-xl border border-[#e8ede8] bg-white px-6 py-5 shadow-sm">
-          <p className="text-sm leading-6 text-[#638869]">
+        <div className="rounded-xl border border-[#e8ede8] bg-white px-6 py-5 shadow-sm dark:border-white/10 dark:bg-white/5">
+          <p className="text-sm leading-6 text-[#638869] dark:text-sage-200">
             How are you feeling today, {firstName}? Capture gratitude, intention, and the small signals shaping your energy.
           </p>
         </div>
 
+        {loading ? (
+          <div className="rounded-xl border border-[#e8ede8] bg-[#f4f7f4] px-6 py-4 text-sm font-medium text-[#638869] shadow-sm dark:border-white/10 dark:bg-white/5 dark:text-sage-200">
+            Loading today&apos;s reflection...
+          </div>
+        ) : null}
+
+        {error ? (
+          <div className="rounded-xl border border-amber-200 bg-amber-50 px-6 py-4 text-sm leading-6 text-amber-800 shadow-sm">
+            {error}
+          </div>
+        ) : null}
+
             <div className="grid grid-cols-1 gap-8 lg:grid-cols-12">
               <div className="space-y-8 lg:col-span-7">
-                <section className="rounded-xl border border-[#e8ede8] bg-white p-8 shadow-sm">
+                <section className="rounded-xl border border-[#e8ede8] bg-white p-8 shadow-sm dark:border-white/10 dark:bg-white/5">
                   <div className="mb-6 flex items-center gap-3">
                     <span className="material-symbols-outlined text-red-400">favorite</span>
                     <h3 className="text-xl font-bold">1. Gratitude Practice</h3>
                   </div>
-                  <p className="mb-6 text-sm italic text-[#638869]">List three things you are grateful for today...</p>
+                  <p className="mb-6 text-sm italic text-[#638869] dark:text-sage-300">List three things you are grateful for today...</p>
 
                   <div className="space-y-4">
                     {gratitude.map((item, index) => (
                       <div
                         key={`gratitude-${index + 1}`}
-                        className="flex items-center gap-4 rounded-xl border border-[#e8ede8] bg-[#f4f7f4] p-4"
+                        className="flex items-center gap-4 rounded-xl border border-[#e8ede8] bg-[#f4f7f4] p-4 dark:border-white/10 dark:bg-[#101915]"
                       >
                         <span className="font-bold text-[#19e63c]">{String(index + 1).padStart(2, '0')}</span>
                         <input
-                          className="w-full border-none bg-transparent text-[#3a523e] outline-none placeholder:text-[#638869]"
+                          className="w-full border-none bg-transparent text-[#3a523e] outline-none placeholder:text-[#638869] dark:text-sage-50 dark:placeholder:text-sage-500"
                           onChange={(event) => updateGratitude(index, event.target.value)}
                           placeholder="I am grateful for..."
                           type="text"
@@ -124,7 +213,7 @@ export default function DailyReflection() {
                   </div>
                 </section>
 
-                <section className="rounded-xl border border-[#e8ede8] bg-white p-8 shadow-sm">
+                <section className="rounded-xl border border-[#e8ede8] bg-white p-8 shadow-sm dark:border-white/10 dark:bg-white/5">
                   <div className="mb-6 flex items-center gap-3">
                     <span className="material-symbols-outlined text-amber-500">target</span>
                     <h3 className="text-xl font-bold">2. Expectations &amp; Goals</h3>
@@ -132,9 +221,9 @@ export default function DailyReflection() {
 
                   <div className="space-y-6">
                     <div>
-                      <label className="mb-2 block text-sm font-semibold">What is your main intention for today?</label>
+                      <label className="mb-2 block text-sm font-semibold dark:text-sage-200">What is your main intention for today?</label>
                       <textarea
-                        className="w-full rounded-xl border border-[#e8ede8] bg-[#f4f7f4] px-4 py-3 text-[#3a523e] outline-none placeholder:text-[#638869] focus:border-[#19e63c]"
+                        className="w-full rounded-xl border border-[#e8ede8] bg-[#f4f7f4] px-4 py-3 text-[#3a523e] outline-none placeholder:text-[#638869] focus:border-[#19e63c] dark:border-white/10 dark:bg-[#101915] dark:text-sage-50 dark:placeholder:text-sage-500"
                         onChange={(event) => setIntention(event.target.value)}
                         placeholder="Focus on mindfulness during meetings..."
                         rows={3}
@@ -143,13 +232,13 @@ export default function DailyReflection() {
                     </div>
 
                     <div>
-                      <label className="mb-2 block text-sm font-semibold">Quick Wins (Bullet Points)</label>
+                      <label className="mb-2 block text-sm font-semibold dark:text-sage-200">Quick Wins (Bullet Points)</label>
                       <div className="space-y-2">
                         {quickWins.map((item, index) => (
                           <div key={`quick-win-${index + 1}`} className="flex items-center gap-3">
                             <span className="material-symbols-outlined text-sm text-[#19e63c]">circle</span>
                             <input
-                              className="flex-1 border-b border-[#e8ede8] bg-transparent py-1 outline-none placeholder:text-[#638869] focus:border-[#19e63c]"
+                              className="flex-1 border-b border-[#e8ede8] bg-transparent py-1 outline-none placeholder:text-[#638869] focus:border-[#19e63c] dark:border-white/10 dark:text-sage-50 dark:placeholder:text-sage-500"
                               onChange={(event) => updateQuickWin(index, event.target.value)}
                               placeholder={`Task ${index + 1}`}
                               type="text"
@@ -164,7 +253,7 @@ export default function DailyReflection() {
               </div>
 
               <div className="space-y-8 lg:col-span-5">
-                <section className="rounded-xl border border-[#e8ede8] bg-white p-8 shadow-sm">
+                <section className="rounded-xl border border-[#e8ede8] bg-white p-8 shadow-sm dark:border-white/10 dark:bg-white/5">
                   <div className="mb-8 flex items-center gap-3">
                     <span className="material-symbols-outlined text-blue-400">monitoring</span>
                     <h3 className="text-xl font-bold">3. Vitality Trackers</h3>
@@ -195,9 +284,9 @@ export default function DailyReflection() {
                         })}
                       </div>
                       <div className="mt-2 flex justify-between px-1">
-                        <span className="material-symbols-outlined text-xl text-slate-400">sentiment_very_dissatisfied</span>
-                        <span className="material-symbols-outlined text-xl text-slate-400">sentiment_neutral</span>
-                        <span className="material-symbols-outlined text-xl text-slate-400">sentiment_very_satisfied</span>
+                        <span className="material-symbols-outlined text-xl text-slate-400 dark:text-sage-400">sentiment_very_dissatisfied</span>
+                        <span className="material-symbols-outlined text-xl text-slate-400 dark:text-sage-400">sentiment_neutral</span>
+                        <span className="material-symbols-outlined text-xl text-slate-400 dark:text-sage-400">sentiment_very_satisfied</span>
                       </div>
                     </div>
 
@@ -235,7 +324,7 @@ export default function DailyReflection() {
                         type="range"
                         value={sleep}
                       />
-                      <div className="mt-2 flex justify-between text-[10px] font-bold text-slate-400">
+                      <div className="mt-2 flex justify-between text-[10px] font-bold text-slate-400 dark:text-sage-400">
                         <span>0h</span>
                         <span>6h</span>
                         <span>12h</span>
@@ -248,7 +337,7 @@ export default function DailyReflection() {
                         {mealOptions.map((option) => (
                           <label
                             key={option.key}
-                            className="cursor-pointer rounded-xl border border-[#e8ede8] bg-[#f4f7f4] p-3 transition-colors hover:border-[#19e63c]"
+                            className="cursor-pointer rounded-xl border border-[#e8ede8] bg-[#f4f7f4] p-3 transition-colors hover:border-[#19e63c] dark:border-white/10 dark:bg-[#101915]"
                           >
                             <input
                               checked={meals[option.key as keyof typeof meals]}
@@ -262,8 +351,8 @@ export default function DailyReflection() {
                               type="checkbox"
                             />
                             <span className="flex flex-col items-center gap-2">
-                              <span className="material-symbols-outlined text-slate-400 peer-checked:text-[#19e63c]">{option.icon}</span>
-                              <span className="text-[10px] font-bold peer-checked:text-[#19e63c]">{option.label}</span>
+                              <span className="material-symbols-outlined text-slate-400 peer-checked:text-[#19e63c] dark:text-sage-400">{option.icon}</span>
+                              <span className="text-[10px] font-bold peer-checked:text-[#19e63c] dark:text-sage-200">{option.label}</span>
                             </span>
                           </label>
                         ))}
@@ -274,20 +363,20 @@ export default function DailyReflection() {
               </div>
             </div>
 
-            <section className="w-full rounded-xl border border-[#e8ede8] bg-white p-8 shadow-sm">
+            <section className="w-full rounded-xl border border-[#e8ede8] bg-white p-8 shadow-sm dark:border-white/10 dark:bg-white/5">
               <div className="mb-8 flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <span className="material-symbols-outlined text-[#19e63c]">bolt</span>
                   <h3 className="text-xl font-bold">4. Energy Graph</h3>
                 </div>
-                <div className="flex gap-4 text-xs font-bold text-slate-400">
+                <div className="flex gap-4 text-xs font-bold text-slate-400 dark:text-sage-400">
                   <div className="flex items-center gap-1">
                     <div className="h-3 w-3 rounded-full bg-[#19e63c]" /> Energy Level
                   </div>
                 </div>
               </div>
 
-              <div className="relative h-48 w-full border-b border-l border-[#e8ede8]">
+              <div className="relative h-48 w-full border-b border-l border-[#e8ede8] dark:border-white/10">
                 <div className="absolute inset-0 flex items-end">
                   <svg className="h-full w-full" preserveAspectRatio="none" viewBox="0 0 1000 100">
                     <defs>
@@ -305,7 +394,7 @@ export default function DailyReflection() {
                   </svg>
                 </div>
 
-                <div className="absolute -bottom-6 left-0 right-0 flex justify-between px-2 text-[10px] font-bold text-slate-400">
+                <div className="absolute -bottom-6 left-0 right-0 flex justify-between px-2 text-[10px] font-bold text-slate-400 dark:text-sage-400">
                   <span>6 AM</span>
                   <span>9 AM</span>
                   <span>12 PM</span>
@@ -315,7 +404,7 @@ export default function DailyReflection() {
                   <span>12 AM</span>
                 </div>
 
-                <div className="absolute -left-10 top-0 bottom-0 flex flex-col justify-between text-[10px] font-bold text-slate-400">
+                <div className="absolute -left-10 top-0 bottom-0 flex flex-col justify-between text-[10px] font-bold text-slate-400 dark:text-sage-400">
                   <span>High</span>
                   <span>Mid</span>
                   <span>Low</span>
@@ -325,27 +414,28 @@ export default function DailyReflection() {
           </main>
 
           <button
-            className="fixed bottom-8 right-8 z-50 flex items-center gap-2 rounded-full bg-[#19e63c] px-8 py-4 font-bold text-[#3a523e] shadow-lg shadow-[#19e63c]/30 transition-transform hover:scale-105 active:scale-95"
+            className="fixed bottom-8 right-8 z-50 flex items-center gap-2 rounded-full bg-[#19e63c] px-8 py-4 font-bold text-[#3a523e] shadow-lg shadow-[#19e63c]/30 transition-transform hover:scale-105 active:scale-95 disabled:cursor-not-allowed disabled:opacity-70 disabled:hover:scale-100"
+            disabled={loading || saving}
             onClick={handleSave}
             type="button"
           >
             <span className="material-symbols-outlined">save</span>
-            <span>Save Reflection</span>
+            <span>{saving ? 'Saving...' : 'Save Reflection'}</span>
           </button>
 
-      <footer className="mt-20 border-t border-[#e8ede8] bg-[#f4f7f4] py-10">
+      <footer className="mt-20 border-t border-[#e8ede8] bg-[#f4f7f4] py-10 dark:border-white/10 dark:bg-[#15201a]">
         <div className="mx-auto flex max-w-5xl flex-col items-center justify-between gap-6 px-6 md:flex-row">
           <div className="flex items-center gap-2">
-            <span className="material-symbols-outlined text-[#638869]">spa</span>
+            <span className="material-symbols-outlined text-[#638869] dark:text-sage-300">spa</span>
             <span className="font-bold">MindfulReflect</span>
           </div>
-          <div className="flex gap-8 text-sm font-medium text-[#638869]">
+          <div className="flex gap-8 text-sm font-medium text-[#638869] dark:text-sage-300">
             <a className="hover:text-[#19e63c]" href="#">Guide</a>
             <a className="hover:text-[#19e63c]" href="#">Community</a>
             <a className="hover:text-[#19e63c]" href="#">Privacy</a>
             <a className="hover:text-[#19e63c]" href="#">Support</a>
           </div>
-          <p className="text-xs text-slate-400">© 2023 MindfulReflect. All rights reserved.</p>
+          <p className="text-xs text-slate-400 dark:text-sage-400">© 2023 MindfulReflect. All rights reserved.</p>
         </div>
       </footer>
     </div>

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import entryService from '@/services/entryService';
 import {
+  createEmptyDailyEntry,
   mergeEntryPatch,
   normalizeDailyEntry,
   toDailyEntryRequest,
@@ -29,7 +30,7 @@ export const useDailyEntry = () => {
 
     try {
       const response = await entryService.getTodayEntry();
-      setEntry(normalizeDailyEntry(response.data));
+      setEntry(response.data ? normalizeDailyEntry(response.data) : createEmptyDailyEntry());
     } catch (err: any) {
       setError(getErrorMessage(err));
       throw err;
@@ -43,10 +44,10 @@ export const useDailyEntry = () => {
   }, [loadEntry]);
 
   const resolveEntry = useCallback(async () => {
-    if (entry?._id) return entry;
+    if (entry) return entry;
 
     const response = await entryService.getTodayEntry();
-    const normalized = normalizeDailyEntry(response.data);
+    const normalized = response.data ? normalizeDailyEntry(response.data) : createEmptyDailyEntry();
     setEntry(normalized);
     return normalized;
   }, [entry]);
@@ -63,9 +64,11 @@ export const useDailyEntry = () => {
       });
       const payload = toDailyEntryRequest(nextEntry);
 
-      const response = options.autoSave
-        ? await entryService.autoSaveEntry(currentEntry._id, payload)
-        : await entryService.updateEntry(currentEntry._id, payload);
+      const response = currentEntry._id
+        ? options.autoSave
+          ? await entryService.autoSaveEntry(currentEntry._id, payload)
+          : await entryService.updateEntry(currentEntry._id, payload)
+        : await entryService.createEntry(payload);
 
       const normalized = normalizeDailyEntry(response.data);
       setEntry(normalized);
