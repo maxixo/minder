@@ -1,50 +1,80 @@
-import { useEffect, useMemo, useState } from 'react';
-import { format } from 'date-fns';
+import { useEffect, useMemo, useRef, useState, type ChangeEvent, type PointerEvent as ReactPointerEvent } from 'react';
+import { format, isToday } from 'date-fns';
 import clsx from 'clsx';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/useAuth';
 import { useDailyEntry } from '@/hooks/useDailyEntry';
-import type { DailyEntryPatch, EntryWeather } from '@/types/entry';
+import ProfileMenu from '@/components/common/ProfileMenu';
+import type { DailyEntryPatch, EntryEnergyPoint, EntryWeather } from '@/types/entry';
 import '@/styles/pages/daily-reflection.css';
+
+const ENERGY_MIN_TIME = 6;
+const ENERGY_MAX_TIME = 24;
+const ENERGY_MIN_LEVEL = 0;
+const ENERGY_MAX_LEVEL = 10;
+const ENERGY_CHART_WIDTH = 1000;
+const ENERGY_CHART_HEIGHT = 100;
 
 const weatherOptions = [
   { key: 'sunny', icon: 'wb_sunny', title: 'Sunny' },
   { key: 'cloudy', icon: 'cloud', title: 'Cloudy' },
   { key: 'rainy', icon: 'umbrella', title: 'Rainy' },
-];
+] as const;
 
 const moodOptions = [
-  { key: 'sad', label: '😢' },
-  { key: 'low', label: '😕' },
-  { key: 'neutral', label: 'neutral' },
-  { key: 'good', label: '😊' },
-  { key: 'great', label: '🤩' },
-];
+  { key: 'veryLow', emoji: '😭', text: 'Very low' },
+  { key: 'low', emoji: '😞', text: 'Low' },
+  { key: 'slightlyLow', emoji: '😕', text: 'Slightly low' },
+  { key: 'neutral', emoji: '😐', text: 'Neutral' },
+  { key: 'slightlyGood', emoji: '🙂', text: 'Slightly good' },
+  { key: 'good', emoji: '😄', text: 'Good' },
+  { key: 'great', emoji: '🤩', text: 'Great' },
+] as const;
 
 const mealOptions = [
   { key: 'breakfast', icon: 'breakfast_dining', label: 'BREAKFAST' },
   { key: 'lunch', icon: 'lunch_dining', label: 'LUNCH' },
   { key: 'dinner', icon: 'dinner_dining', label: 'DINNER' },
-];
+] as const;
+
+const defaultMealsState = {
+  breakfast: false,
+  lunch: false,
+  dinner: false,
+} as const;
 
 type ReflectionWeather = (typeof weatherOptions)[number]['key'];
 type ReflectionMood = (typeof moodOptions)[number]['key'];
 type ReflectionMealKey = (typeof mealOptions)[number]['key'];
 
+interface ReflectionEnergyPoint {
+  id: string;
+  time: number;
+  energy: number;
+}
+
+interface ChartPoint {
+  id: string;
+  x: number;
+  y: number;
+}
+
 const moodValueMap: Record<ReflectionMood, number> = {
-  sad: 1,
+  veryLow: 1,
   low: 2,
+  slightlyLow: 3,
   neutral: 3,
-  good: 4,
+  slightlyGood: 4,
+  good: 5,
   great: 5,
 };
 
 const valueMoodMap: Record<number, ReflectionMood> = {
-  1: 'sad',
+  1: 'veryLow',
   2: 'low',
   3: 'neutral',
-  4: 'good',
-  5: 'great',
+  4: 'slightlyGood',
+  5: 'good',
 };
 
 const reflectionWeatherOptions = new Set<ReflectionWeather>(weatherOptions.map((option) => option.key));
@@ -55,6 +85,47 @@ const normalizeList = (items: string[], size: number) => {
 };
 
 const sanitizeList = (items: string[]) => items.map((item) => item.trim()).filter(Boolean);
+const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
+const snapToHour = (value: number) => clamp(Math.round(value), ENERGY_MIN_TIME, ENERGY_MAX_TIME);
+const roundEnergy = (value: number) => Math.round(clamp(value, ENERGY_MIN_LEVEL, ENERGY_MAX_LEVEL) * 10) / 10;
+
+const createEnergyPointId = () => `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+const sortByTime = (levels: ReflectionEnergyPoint[]) => [...levels].sort((left, right) => left.time - right.time);
+
+const dedupeEnergyByTime = (levels: ReflectionEnergyPoint[]) => {
+  const byTime = new Map<number, ReflectionEnergyPoint>();
+  levels.forEach((point) => byTime.set(point.time, point));
+  return sortByTime(Array.from(byTime.values()));
+};
+
+const timeToChartX = (time: number) => (
+  ((time - ENERGY_MIN_TIME) / (ENERGY_MAX_TIME - ENERGY_MIN_TIME)) * ENERGY_CHART_WIDTH
+);
+
+const energyToChartY = (energy: number) => (
+  ENERGY_CHART_HEIGHT - ((energy - ENERGY_MIN_LEVEL) / (ENERGY_MAX_LEVEL - ENERGY_MIN_LEVEL)) * ENERGY_CHART_HEIGHT
+);
+
+const buildSmoothPath = (points: ChartPoint[]) => {
+  if (points.length < 2) return '';
+
+  let path = `M ${points[0].x.toFixed(2)} ${points[0].y.toFixed(2)}`;
+  for (let index = 0; index < points.length - 1; index += 1) {
+    const p0 = index > 0 ? points[index - 1] : points[index];
+    const p1 = points[index];
+    const p2 = points[index + 1];
+    const p3 = index + 2 < points.length ? points[index + 2] : p2;
+
+    const cp1x = p1.x + (p2.x - p0.x) / 6;
+    const cp1y = p1.y + (p2.y - p0.y) / 6;
+    const cp2x = p2.x - (p3.x - p1.x) / 6;
+    const cp2y = p2.y - (p3.y - p1.y) / 6;
+
+    path += ` C ${cp1x.toFixed(2)} ${cp1y.toFixed(2)} ${cp2x.toFixed(2)} ${cp2y.toFixed(2)} ${p2.x.toFixed(2)} ${p2.y.toFixed(2)}`;
+  }
+
+  return path;
+};
 
 const toReflectionWeather = (weather: EntryWeather): ReflectionWeather => (
   weather && reflectionWeatherOptions.has(weather as ReflectionWeather) ? weather as ReflectionWeather : 'sunny'
@@ -62,9 +133,51 @@ const toReflectionWeather = (weather: EntryWeather): ReflectionWeather => (
 
 const toReflectionMood = (mood: number | null): ReflectionMood => (mood != null ? valueMoodMap[mood] || 'neutral' : 'neutral');
 
+const normalizeEnergyLevels = (levels: EntryEnergyPoint[] | undefined): ReflectionEnergyPoint[] => {
+  if (!levels?.length) return [];
+
+  return dedupeEnergyByTime(levels
+    .filter((point) => Number.isFinite(point.time) && Number.isFinite(point.energy))
+    .map((point) => ({
+      id: createEnergyPointId(),
+      time: snapToHour(point.time),
+      energy: roundEnergy(point.energy),
+    })));
+};
+
+const validateEnergyLevels = (levels: ReflectionEnergyPoint[]) => {
+  const invalidPoint = levels.find((point) => (
+    !Number.isFinite(point.time)
+    || !Number.isInteger(point.time)
+    || !Number.isFinite(point.energy)
+    || point.time < ENERGY_MIN_TIME
+    || point.time > ENERGY_MAX_TIME
+    || point.energy < ENERGY_MIN_LEVEL
+    || point.energy > ENERGY_MAX_LEVEL
+  ));
+
+  if (invalidPoint) {
+    return 'Energy points must use whole hours between 6 and 24, and energy between 0 and 10.';
+  }
+
+  return '';
+};
+
 export default function DailyReflection() {
   const { user } = useAuth();
-  const { entry, error, loading, saveEntryPatch, saving } = useDailyEntry();
+  const {
+    entry,
+    error,
+    loading,
+    saveEntryPatch,
+    saving,
+    selectedDate,
+    canGoNext,
+    loadEntryByDate,
+    goToPreviousDate,
+    goToNextDate,
+  } = useDailyEntry();
+  const chartRef = useRef<SVGSVGElement | null>(null);
   const [gratitude, setGratitude] = useState(['', '', '']);
   const [intention, setIntention] = useState('');
   const [quickWins, setQuickWins] = useState(['', '']);
@@ -72,10 +185,43 @@ export default function DailyReflection() {
   const [mood, setMood] = useState<ReflectionMood>('neutral');
   const [hydration, setHydration] = useState(0);
   const [sleep, setSleep] = useState(0);
-  const [meals, setMeals] = useState<Record<ReflectionMealKey, boolean>>({ breakfast: false, lunch: false, dinner: false });
+  const [meals, setMeals] = useState<Record<ReflectionMealKey, boolean>>(defaultMealsState);
+  const [energyLevels, setEnergyLevels] = useState<ReflectionEnergyPoint[]>([]);
+  const [selectedEnergyPointId, setSelectedEnergyPointId] = useState<string | null>(null);
+  const [draggingEnergyPointId, setDraggingEnergyPointId] = useState<string | null>(null);
+  const [energyError, setEnergyError] = useState('');
 
   const firstName = user?.name?.split(' ')[0] || 'Sarah';
-  const entryDateLabel = useMemo(() => format(new Date(entry?.date || new Date()), "'Today,' MMM d, yyyy"), [entry?.date]);
+  const entryDateLabel = useMemo(
+    () => (isToday(selectedDate) ? `Today, ${format(selectedDate, 'MMM d, yyyy')}` : format(selectedDate, 'EEE, MMM d, yyyy')),
+    [selectedDate]
+  );
+  const selectedDateInputValue = useMemo(() => format(selectedDate, 'yyyy-MM-dd'), [selectedDate]);
+  const todayInputMax = format(new Date(), 'yyyy-MM-dd');
+  const controlsDisabled = loading || saving;
+
+  const handleDateChange = (event: ChangeEvent<HTMLInputElement>) => {
+    const [year, month, day] = event.target.value.split('-').map((part) => Number(part));
+    if (!year || !month || !day) return;
+    const nextDate = new Date(year, month - 1, day);
+    void loadEntryByDate(nextDate).catch((loadError: any) => {
+      toast.error(loadError?.response?.data?.message || 'Unable to load reflection for this date.');
+    });
+  };
+
+  const handlePreviousDate = () => {
+    if (controlsDisabled) return;
+    void goToPreviousDate().catch((loadError: any) => {
+      toast.error(loadError?.response?.data?.message || 'Unable to load previous reflection.');
+    });
+  };
+
+  const handleNextDate = () => {
+    if (controlsDisabled || !canGoNext) return;
+    void goToNextDate().catch((loadError: any) => {
+      toast.error(loadError?.response?.data?.message || 'Unable to load next reflection.');
+    });
+  };
 
   useEffect(() => {
     if (!entry) return;
@@ -92,7 +238,45 @@ export default function DailyReflection() {
       lunch: Boolean(entry.meals?.lunch),
       dinner: Boolean(entry.meals?.dinner),
     });
+    setEnergyLevels(normalizeEnergyLevels(entry.energyLevels));
+    setSelectedEnergyPointId(null);
+    setDraggingEnergyPointId(null);
+    setEnergyError('');
   }, [entry]);
+
+  useEffect(() => {
+    setMeals(defaultMealsState);
+  }, [selectedDate]);
+
+  const sortedEnergyLevels = useMemo(() => sortByTime(energyLevels), [energyLevels]);
+  const selectedEnergyPoint = useMemo(
+    () => sortedEnergyLevels.find((point) => point.id === selectedEnergyPointId) || null,
+    [selectedEnergyPointId, sortedEnergyLevels]
+  );
+
+  const chartData = useMemo(() => {
+    const points: ChartPoint[] = sortedEnergyLevels.map((point) => ({
+      id: point.id,
+      x: timeToChartX(point.time),
+      y: energyToChartY(point.energy),
+    }));
+
+    if (points.length < 2) {
+      return { points, linePath: '', areaPath: '', isRenderable: false };
+    }
+
+    const linePath = buildSmoothPath(points);
+    const firstPoint = points[0];
+    const lastPoint = points[points.length - 1];
+    const areaPath = `${linePath} L ${lastPoint.x.toFixed(2)} ${ENERGY_CHART_HEIGHT} L ${firstPoint.x.toFixed(2)} ${ENERGY_CHART_HEIGHT} Z`;
+
+    return {
+      points,
+      linePath,
+      areaPath,
+      isRenderable: true,
+    };
+  }, [sortedEnergyLevels]);
 
   const updateGratitude = (index: number, value: string) => {
     setGratitude((current) => current.map((item, itemIndex) => (itemIndex === index ? value : item)));
@@ -102,7 +286,106 @@ export default function DailyReflection() {
     setQuickWins((current) => current.map((item, itemIndex) => (itemIndex === index ? value : item)));
   };
 
+  const toggleMeal = (mealKey: ReflectionMealKey) => {
+    setMeals((current) => ({
+      ...current,
+      [mealKey]: !current[mealKey],
+    }));
+  };
+
+  const parsePointerPosition = (event: ReactPointerEvent<SVGSVGElement>) => {
+    const svg = chartRef.current;
+    if (!svg) return null;
+
+    const bounds = svg.getBoundingClientRect();
+    if (!bounds.width || !bounds.height) return null;
+
+    const ratioX = clamp((event.clientX - bounds.left) / bounds.width, 0, 1);
+    const ratioY = clamp((event.clientY - bounds.top) / bounds.height, 0, 1);
+
+    const time = snapToHour(ENERGY_MIN_TIME + ratioX * (ENERGY_MAX_TIME - ENERGY_MIN_TIME));
+    const energy = roundEnergy(ENERGY_MAX_LEVEL - ratioY * (ENERGY_MAX_LEVEL - ENERGY_MIN_LEVEL));
+
+    return { time, energy };
+  };
+
+  const upsertEnergyPoint = (id: string, time: number, energy: number) => {
+    const nextPoint: ReflectionEnergyPoint = {
+      id,
+      time: snapToHour(time),
+      energy: roundEnergy(energy),
+    };
+
+    setEnergyLevels((current) => {
+      const withUpdate = current.some((point) => point.id === id)
+        ? current.map((point) => (point.id === id ? nextPoint : point))
+        : [...current, nextPoint];
+
+      const withoutDuplicateHour = withUpdate.filter((point) => point.id === id || point.time !== nextPoint.time);
+      return sortByTime(withoutDuplicateHour);
+    });
+  };
+
+  const removeEnergyPoint = (id: string) => {
+    setEnergyLevels((current) => current.filter((point) => point.id !== id));
+    setSelectedEnergyPointId((current) => (current === id ? null : current));
+    setDraggingEnergyPointId((current) => (current === id ? null : current));
+  };
+
+  const handleEnergyChartPointerDown = (event: ReactPointerEvent<SVGSVGElement>) => {
+    const location = parsePointerPosition(event);
+    if (!location) return;
+
+    const clickedPointId = (event.target as HTMLElement).dataset.energyPointId || null;
+    const pointId = clickedPointId || (sortedEnergyLevels.find((point) => point.time === location.time)?.id ?? createEnergyPointId());
+
+    upsertEnergyPoint(pointId, location.time, location.energy);
+    setSelectedEnergyPointId(pointId);
+    setDraggingEnergyPointId(pointId);
+    setEnergyError('');
+
+    if (!event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.setPointerCapture(event.pointerId);
+    }
+  };
+
+  const handleEnergyChartPointerMove = (event: ReactPointerEvent<SVGSVGElement>) => {
+    if (!draggingEnergyPointId) return;
+
+    const location = parsePointerPosition(event);
+    if (!location) return;
+
+    upsertEnergyPoint(draggingEnergyPointId, location.time, location.energy);
+    setEnergyError('');
+  };
+
+  const stopEnergyDrag = (event: ReactPointerEvent<SVGSVGElement>) => {
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+    setDraggingEnergyPointId(null);
+  };
+
+  const removeSelectedEnergyPoint = () => {
+    if (!selectedEnergyPointId) return;
+    removeEnergyPoint(selectedEnergyPointId);
+  };
+
   const handleSave = async () => {
+    const validationMessage = validateEnergyLevels(energyLevels);
+    if (validationMessage) {
+      setEnergyError(validationMessage);
+      toast.error(validationMessage);
+      return;
+    }
+
+    const normalizedEnergyLevels = dedupeEnergyByTime(energyLevels)
+      .map((point) => ({
+        time: snapToHour(point.time),
+        energy: roundEnergy(point.energy),
+      }))
+      .sort((left, right) => left.time - right.time);
+
     const patch: DailyEntryPatch = {
       gratitude: sanitizeList(gratitude),
       expectations: intention.trim(),
@@ -116,10 +399,12 @@ export default function DailyReflection() {
         lunch: meals.lunch,
         dinner: meals.dinner,
       },
+      energyLevels: normalizedEnergyLevels,
     };
 
     try {
       await saveEntryPatch(patch, 'reflection');
+      setEnergyError('');
       toast.success('Reflection saved');
     } catch (saveError: any) {
       toast.error(saveError?.response?.data?.message || 'Unable to save reflection');
@@ -127,23 +412,49 @@ export default function DailyReflection() {
   };
 
   return (
-    <div className="daily-reflection-scrollbar flex min-h-full flex-col text-[#3a523e] dark:text-sage-50">
-      <header className="-mx-4 mb-6 border-b border-[#e8ede8] bg-white/80 px-4 py-4 backdrop-blur-md sm:-mx-6 sm:px-6 lg:sticky lg:top-0 lg:z-20 lg:-mx-8 lg:px-8 dark:border-white/10 dark:bg-[#15201a]/90">
-        <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-4">
+    <div className="daily-reflection-scrollbar animate-fade-in pb-10 transition-colors text-[#3a523e] dark:text-sage-50">
+      <header className="mb-6 border-b border-[#e8ede8] bg-white/80 px-4 py-4 backdrop-blur-md lg:sticky lg:top-0 lg:z-20 dark:border-white/10 dark:bg-[#15201a]/90">
+        <div className="flex w-full flex-wrap items-center justify-between gap-4">
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.28em] text-[#638869] dark:text-sage-300">Reflection Space</p>
             <h1 className="mt-1 text-2xl font-black text-[#3a523e] sm:text-3xl dark:text-sage-50">Daily Reflection</h1>
           </div>
 
-          <div className="flex items-center gap-6 rounded-xl border border-[#e8ede8] bg-[#f4f7f4] px-4 py-2 dark:border-white/10 dark:bg-white/5 dark:text-sage-100">
-            <button className="material-symbols-outlined text-[#638869]/40" disabled type="button">
+          <div className="flex items-center gap-4 rounded-xl border border-[#e8ede8] bg-[#f4f7f4] px-4 py-2 dark:border-white/10 dark:bg-white/5 dark:text-sage-100">
+            <button
+              className={clsx(
+                'material-symbols-outlined transition-colors',
+                controlsDisabled ? 'cursor-not-allowed text-[#638869]/30' : 'text-[#638869] hover:text-[#3a523e]'
+              )}
+              disabled={controlsDisabled}
+              onClick={handlePreviousDate}
+              type="button"
+            >
               chevron_left
             </button>
-            <span className="text-sm font-semibold">{entryDateLabel}</span>
-            <button className="material-symbols-outlined text-[#638869]/40" disabled type="button">
+            <span className="min-w-[160px] text-center text-sm font-semibold">{entryDateLabel}</span>
+            <button
+              className={clsx(
+                'material-symbols-outlined transition-colors',
+                controlsDisabled || !canGoNext
+                  ? 'cursor-not-allowed text-[#638869]/30'
+                  : 'text-[#638869] hover:text-[#3a523e]'
+              )}
+              disabled={controlsDisabled || !canGoNext}
+              onClick={handleNextDate}
+              type="button"
+            >
               chevron_right
             </button>
             <div className="mx-2 h-4 w-px bg-[#d1dbd2]" />
+            <input
+              className="rounded-md border border-[#d1dbd2] bg-white px-2 py-1 text-xs font-semibold text-[#3a523e] outline-none focus:border-[#19e63c] dark:border-white/20 dark:bg-[#15201a] dark:text-sage-50"
+              disabled={controlsDisabled}
+              max={todayInputMax}
+              onChange={handleDateChange}
+              type="date"
+              value={selectedDateInputValue}
+            />
             <div className="flex gap-3">
               {weatherOptions.map((option) => (
                 <button key={option.key} onClick={() => setWeather(option.key)} title={option.title} type="button">
@@ -160,13 +471,11 @@ export default function DailyReflection() {
             </div>
           </div>
 
-          <div className="flex h-10 w-10 items-center justify-center rounded-full border-2 border-[#19e63c] bg-[#19e63c]/20">
-            <span className="material-symbols-outlined text-[#3a523e] dark:text-sage-50">person</span>
-          </div>
+          <ProfileMenu />
         </div>
       </header>
 
-      <main className="mx-auto w-full max-w-5xl flex-1 space-y-8 py-2">
+      <main className="w-full flex-1 space-y-8 py-2">
         <div className="rounded-xl border border-[#e8ede8] bg-white px-6 py-5 shadow-sm dark:border-white/10 dark:bg-white/5">
           <p className="text-sm leading-6 text-[#638869] dark:text-sage-200">
             How are you feeling today, {firstName}? Capture gratitude, intention, and the small signals shaping your energy.
@@ -175,7 +484,7 @@ export default function DailyReflection() {
 
         {loading ? (
           <div className="rounded-xl border border-[#e8ede8] bg-[#f4f7f4] px-6 py-4 text-sm font-medium text-[#638869] shadow-sm dark:border-white/10 dark:bg-white/5 dark:text-sage-200">
-            Loading today&apos;s reflection...
+            Loading reflection...
           </div>
         ) : null}
 
@@ -260,35 +569,32 @@ export default function DailyReflection() {
                   </div>
 
                   <div className="space-y-8">
-                    <div>
-                      <p className="mb-4 text-sm font-semibold">Mood Check-in</p>
-                      <div className="flex justify-between px-2">
-                        {moodOptions.map((option) => {
-                          const isActive = mood === option.key;
+                <div>
+                  <p className="mb-4 text-sm font-semibold">Mood Check-in</p>
+                  <div className="grid grid-cols-7 gap-2">
+                    {moodOptions.map((option) => {
+                      const isActive = mood === option.key;
 
-                          return (
-                            <button
-                              key={option.key}
-                              className={clsx(
-                                'text-3xl transition-transform',
-                                isActive
-                                  ? 'scale-125 rounded-full p-1 ring-2 ring-[#19e63c]/20'
-                                  : 'opacity-50 grayscale hover:scale-110 hover:opacity-100 hover:grayscale-0'
-                              )}
-                              onClick={() => setMood(option.key)}
-                              type="button"
-                            >
-                              {option.label}
-                            </button>
-                          );
-                        })}
-                      </div>
-                      <div className="mt-2 flex justify-between px-1">
-                        <span className="material-symbols-outlined text-xl text-slate-400 dark:text-sage-400">sentiment_very_dissatisfied</span>
-                        <span className="material-symbols-outlined text-xl text-slate-400 dark:text-sage-400">sentiment_neutral</span>
-                        <span className="material-symbols-outlined text-xl text-slate-400 dark:text-sage-400">sentiment_very_satisfied</span>
-                      </div>
-                    </div>
+                      return (
+                        <button
+                          key={option.key}
+                          className={clsx(
+                            'rounded-xl px-1 py-2 text-center transition-transform',
+                            isActive
+                              ? 'scale-105 bg-[#19e63c]/10 ring-2 ring-[#19e63c]/30'
+                              : 'opacity-60 grayscale hover:scale-105 hover:opacity-100 hover:grayscale-0'
+                          )}
+                          onClick={() => setMood(option.key)}
+                          title={option.text}
+                          type="button"
+                        >
+                          <span className="block text-2xl">{option.emoji}</span>
+                          <span className="mt-1 block text-[10px] font-semibold text-slate-500 dark:text-sage-300">{option.text}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
 
                     <div>
                       <div className="mb-4 flex items-center justify-between">
@@ -331,31 +637,32 @@ export default function DailyReflection() {
                       </div>
                     </div>
 
-                    <div>
-                      <p className="mb-4 text-sm font-semibold">Nourishment</p>
+                <div>
+                  <p className="mb-4 text-sm font-semibold">Nourishment</p>
                       <div className="grid grid-cols-3 gap-3">
-                        {mealOptions.map((option) => (
-                          <label
-                            key={option.key}
-                            className="cursor-pointer rounded-xl border border-[#e8ede8] bg-[#f4f7f4] p-3 transition-colors hover:border-[#19e63c] dark:border-white/10 dark:bg-[#101915]"
-                          >
-                            <input
-                              checked={meals[option.key as keyof typeof meals]}
-                              className="peer hidden"
-                              onChange={() =>
-                                setMeals((current) => ({
-                                  ...current,
-                                  [option.key]: !current[option.key as keyof typeof current],
-                                }))
-                              }
-                              type="checkbox"
-                            />
-                            <span className="flex flex-col items-center gap-2">
-                              <span className="material-symbols-outlined text-slate-400 peer-checked:text-[#19e63c] dark:text-sage-400">{option.icon}</span>
-                              <span className="text-[10px] font-bold peer-checked:text-[#19e63c] dark:text-sage-200">{option.label}</span>
-                            </span>
-                          </label>
-                        ))}
+                        {mealOptions.map((option) => {
+                          const isSelected = meals[option.key];
+                          return (
+                            <button
+                              key={option.key}
+                              aria-pressed={isSelected}
+                              className={clsx(
+                                'rounded-xl border p-3 transition-colors',
+                                isSelected
+                                  ? 'border-[#19e63c] bg-[#19e63c]/10'
+                                  : 'border-[#e8ede8] bg-[#f4f7f4] hover:border-[#19e63c]',
+                                'dark:border-white/10 dark:bg-[#101915]'
+                              )}
+                              onClick={() => toggleMeal(option.key)}
+                              type="button"
+                            >
+                              <span className="flex flex-col items-center gap-2">
+                                <span className={clsx('material-symbols-outlined', isSelected ? 'text-[#19e63c]' : 'text-slate-400 dark:text-sage-400')}>{option.icon}</span>
+                                <span className={clsx('text-[10px] font-bold', isSelected ? 'text-[#19e63c]' : 'text-slate-500 dark:text-sage-200')}>{option.label}</span>
+                              </span>
+                            </button>
+                          );
+                        })}
                       </div>
                     </div>
                   </div>
@@ -364,52 +671,125 @@ export default function DailyReflection() {
             </div>
 
             <section className="w-full rounded-xl border border-[#e8ede8] bg-white p-8 shadow-sm dark:border-white/10 dark:bg-white/5">
-              <div className="mb-8 flex items-center justify-between">
+              <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
                 <div className="flex items-center gap-3">
                   <span className="material-symbols-outlined text-[#19e63c]">bolt</span>
                   <h3 className="text-xl font-bold">4. Energy Graph</h3>
                 </div>
-                <div className="flex gap-4 text-xs font-bold text-slate-400 dark:text-sage-400">
-                  <div className="flex items-center gap-1">
-                    <div className="h-3 w-3 rounded-full bg-[#19e63c]" /> Energy Level
-                  </div>
+                <div className="flex flex-wrap items-center gap-3">
+                  {selectedEnergyPoint ? (
+                    <button
+                      className="shrink-0 whitespace-nowrap rounded-lg border border-rose-300 bg-rose-50 px-3 py-1 text-xs font-bold !text-black hover:bg-rose-100 dark:border-rose-300/60 dark:bg-rose-100 dark:!text-black"
+                      onClick={removeSelectedEnergyPoint}
+                      style={{ color: '#000000' }}
+                      type="button"
+                    >
+                      Undo
+                    </button>
+                  ) : null}
+                  <p className="text-xs font-semibold text-slate-500 dark:text-sage-300">Tap chart to add or edit. Drag points to refine.</p>
                 </div>
               </div>
 
-              <div className="relative h-48 w-full border-b border-l border-[#e8ede8] dark:border-white/10">
-                <div className="absolute inset-0 flex items-end">
-                  <svg className="h-full w-full" preserveAspectRatio="none" viewBox="0 0 1000 100">
-                    <defs>
-                      <linearGradient id="energy-gradient" x1="0" x2="0" y1="0" y2="1">
-                        <stop offset="0%" stopColor="#19e63c" stopOpacity="0.3" />
-                        <stop offset="100%" stopColor="#19e63c" stopOpacity="0" />
-                      </linearGradient>
-                    </defs>
-                    <path
-                      d="M0 80 C 100 70, 200 20, 300 30 S 500 90, 600 80 S 800 10, 1000 40 V 100 H 0 Z"
-                      fill="url(#energy-gradient)"
-                      stroke="#19e63c"
-                      strokeWidth="2"
-                    />
+              <div className="relative h-72 w-full border border-[#e8ede8] bg-[#f9fcf9] dark:border-white/10 dark:bg-[#0f1712]">
+                <svg
+                  ref={chartRef}
+                  className="h-full w-full touch-none"
+                  onPointerCancel={stopEnergyDrag}
+                  onPointerDown={handleEnergyChartPointerDown}
+                  onPointerMove={handleEnergyChartPointerMove}
+                  onPointerUp={stopEnergyDrag}
+                  preserveAspectRatio="none"
+                  viewBox={`0 0 ${ENERGY_CHART_WIDTH} ${ENERGY_CHART_HEIGHT}`}
+                >
+                  <defs>
+                    <linearGradient id="energy-gradient" x1="0" x2="0" y1="0" y2="1">
+                      <stop offset="0%" stopColor="#19e63c" stopOpacity="0.34" />
+                      <stop offset="100%" stopColor="#19e63c" stopOpacity="0" />
+                    </linearGradient>
+                  </defs>
+
+                  <rect fill="#d7f8dc" height="30" width={ENERGY_CHART_WIDTH} x="0" y="0" />
+                  <rect fill="#e9f7ec" height="40" width={ENERGY_CHART_WIDTH} x="0" y="30" />
+                  <rect fill="#f4faf5" height="30" width={ENERGY_CHART_WIDTH} x="0" y="70" />
+
+                  {Array.from({ length: 7 }, (_, index) => {
+                    const x = (index / 6) * ENERGY_CHART_WIDTH;
+                    return <line key={`grid-x-${index + 1}`} stroke="#d8e4d9" strokeWidth="1" x1={x} x2={x} y1="0" y2={ENERGY_CHART_HEIGHT} />;
+                  })}
+
+                  <line stroke="#c2d2c4" strokeDasharray="6 4" strokeWidth="1" x1="0" x2={ENERGY_CHART_WIDTH} y1="30" y2="30" />
+                  <line stroke="#c2d2c4" strokeDasharray="6 4" strokeWidth="1" x1="0" x2={ENERGY_CHART_WIDTH} y1="70" y2="70" />
+
+                  {chartData.isRenderable ? (
+                    <>
+                      <path d={chartData.areaPath} fill="url(#energy-gradient)" stroke="none" />
+                      <path d={chartData.linePath} fill="none" stroke="#19e63c" strokeWidth="2.5" />
+                    </>
+                  ) : null}
+
+                  {chartData.points.map((point) => {
+                    const isSelected = point.id === selectedEnergyPointId;
+                    return (
+                      <circle
+                        key={point.id}
+                        cx={point.x}
+                        cy={point.y}
+                        data-energy-point-id={point.id}
+                        fill={isSelected ? '#0ea830' : '#19e63c'}
+                        r={isSelected ? 4.5 : 3.5}
+                        stroke="#ffffff"
+                        strokeWidth="1.4"
+                      />
+                    );
+                  })}
+
+                  {!chartData.isRenderable ? (
+                    <text
+                      dominantBaseline="middle"
+                      fill="#6f8b74"
+                      fontSize="9"
+                      fontWeight="600"
+                      letterSpacing="0.2"
+                      textAnchor="middle"
+                      x={ENERGY_CHART_WIDTH / 2}
+                      y={ENERGY_CHART_HEIGHT / 2}
+                    >
+                      Add at least two checkpoints to render your energy curve.
+                    </text>
+                  ) : null}
+                </svg>
+
+                <div className="pointer-events-none absolute inset-x-0 -bottom-7 h-5 text-slate-400 dark:text-sage-400">
+                  <svg className="h-full w-full overflow-visible" preserveAspectRatio="none" viewBox={`0 0 ${ENERGY_CHART_WIDTH} 20`}>
+                    {['6 AM', '9 AM', '12 PM', '3 PM', '6 PM', '9 PM', '12 AM'].map((label, index) => (
+                      <text
+                        key={label}
+                        fill="currentColor"
+                        fontSize="10"
+                        fontWeight="700"
+                        textAnchor="middle"
+                        x={(index / 6) * ENERGY_CHART_WIDTH}
+                        y="12"
+                      >
+                        {label}
+                      </text>
+                    ))}
                   </svg>
                 </div>
-
-                <div className="absolute -bottom-6 left-0 right-0 flex justify-between px-2 text-[10px] font-bold text-slate-400 dark:text-sage-400">
-                  <span>6 AM</span>
-                  <span>9 AM</span>
-                  <span>12 PM</span>
-                  <span>3 PM</span>
-                  <span>6 PM</span>
-                  <span>9 PM</span>
-                  <span>12 AM</span>
-                </div>
-
-                <div className="absolute -left-10 top-0 bottom-0 flex flex-col justify-between text-[10px] font-bold text-slate-400 dark:text-sage-400">
-                  <span>High</span>
-                  <span>Mid</span>
-                  <span>Low</span>
-                </div>
               </div>
+
+              {selectedEnergyPoint ? (
+                <p className="mt-8 text-sm font-semibold text-[#4f6b55] dark:text-sage-200">
+                  Selected checkpoint: {selectedEnergyPoint.time}:00, energy {selectedEnergyPoint.energy}/10
+                </p>
+              ) : (
+                <p className="mt-8 text-sm text-[#638869] dark:text-sage-300">No checkpoint selected. Tap a point to select and remove it.</p>
+              )}
+
+              {energyError ? (
+                <p className="mt-2 text-sm font-semibold text-rose-600 dark:text-rose-300">{energyError}</p>
+              ) : null}
             </section>
           </main>
 
@@ -424,7 +804,7 @@ export default function DailyReflection() {
           </button>
 
       <footer className="mt-20 border-t border-[#e8ede8] bg-[#f4f7f4] py-10 dark:border-white/10 dark:bg-[#15201a]">
-        <div className="mx-auto flex max-w-5xl flex-col items-center justify-between gap-6 px-6 md:flex-row">
+        <div className="flex w-full flex-col items-center justify-between gap-6 px-6 md:flex-row">
           <div className="flex items-center gap-2">
             <span className="material-symbols-outlined text-[#638869] dark:text-sage-300">spa</span>
             <span className="font-bold">MindfulReflect</span>
@@ -441,3 +821,4 @@ export default function DailyReflection() {
     </div>
   );
 }
+

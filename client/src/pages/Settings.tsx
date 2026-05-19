@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import clsx from 'clsx';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
@@ -59,6 +59,10 @@ const getInitials = (name: string) => name
   .map((part) => part[0]?.toUpperCase())
   .join(' ');
 
+const settingsPanelClassName = 'rounded-[1.75rem] border border-sage-200 bg-gradient-to-br from-sage-50 via-[#f8fcf8] to-sage-100/80 p-6 shadow-soft sm:p-8 dark:border-white/10 dark:bg-gradient-to-br dark:from-[#18231d] dark:via-[#121b16] dark:to-[#0f1712]';
+const settingsInputClassName = 'input rounded-[1.25rem] border-sage-200 bg-sage-100/70 dark:border-white/10 dark:bg-[#101915]';
+const settingsInsetClassName = 'rounded-[1.25rem] border border-sage-200 bg-sage-50/90 p-4 shadow-sm dark:border-white/10 dark:bg-white/5';
+
 const ToggleRow = ({
   checked,
   description,
@@ -76,23 +80,23 @@ const ToggleRow = ({
     className={clsx(
       'flex w-full items-center justify-between gap-4 rounded-[1.25rem] border px-4 py-4 text-left transition-all',
       disabled
-        ? 'cursor-not-allowed border-sage-100 bg-sage-50/70 opacity-60'
-        : 'border-sage-100 bg-white hover:border-sage-200 hover:shadow-sm'
+        ? 'cursor-not-allowed border-sage-200 bg-sage-100/70 opacity-60 dark:border-white/10 dark:bg-white/5'
+        : 'border-sage-200 bg-sage-50/90 hover:border-sage-300 hover:bg-sage-100/80 hover:shadow-sm dark:border-white/10 dark:bg-white/5 dark:hover:bg-white/10'
     )}
     disabled={disabled}
     onClick={onToggle}
     type="button"
   >
     <div>
-      <p className="font-semibold text-slate-900">{label}</p>
-      <p className="mt-1 text-sm leading-6 text-sage-600">{description}</p>
+      <p className="font-semibold text-slate-900 dark:text-sage-50">{label}</p>
+      <p className="mt-1 text-sm leading-6 text-sage-600 dark:text-sage-300">{description}</p>
     </div>
     <span className={clsx(
       'relative inline-flex h-7 w-12 shrink-0 rounded-full transition-colors',
       checked ? 'bg-sage-600' : 'bg-sage-200'
     )}>
       <span className={clsx(
-        'absolute top-1 h-5 w-5 rounded-full bg-white shadow-sm transition-all',
+        'absolute top-1 h-5 w-5 rounded-full bg-white shadow-sm transition-all dark:bg-sage-50',
         checked ? 'left-6' : 'left-1'
       )} />
     </span>
@@ -101,6 +105,7 @@ const ToggleRow = ({
 
 export default function Settings() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { logout, updateProfile, user } = useAuth();
   const { isDarkMode, setThemePreference } = useTheme();
 
@@ -140,6 +145,17 @@ export default function Settings() {
       cancelled = true;
     };
   }, [user]);
+
+  useEffect(() => {
+    if (!location.hash) return;
+
+    const section = document.getElementById(location.hash.slice(1));
+    if (!section) return;
+
+    requestAnimationFrame(() => {
+      section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+  }, [location.hash]);
 
   const firstName = user?.name?.split(' ')[0] || 'Friend';
   const memberSince = user?.createdAt ? format(new Date(user.createdAt), 'MMMM yyyy') : 'recently';
@@ -284,7 +300,7 @@ export default function Settings() {
 
   return (
     <div className="animate-fade-in pb-10 text-slate-900 dark:text-sage-50">
-      <section className="overflow-hidden rounded-[2rem] border border-sage-200 bg-gradient-to-br from-white via-sage-50 to-sand-50 shadow-soft dark:border-white/10 dark:bg-gradient-to-br dark:from-[#18231d] dark:via-[#121b16] dark:to-[#0f1712]">
+      <section className="overflow-hidden rounded-[2rem] border border-sage-200 bg-gradient-to-br from-white via-sage-50 to-sand-50 shadow-soft dark:border-white/10 dark:bg-gradient-to-br dark:from-[#18231d] dark:via-[#121b16] dark:to-[#0f1712]" id="account-overview">
         <div className="flex flex-col gap-6 px-6 py-8 sm:px-8 lg:flex-row lg:items-end lg:justify-between lg:px-10">
           <div className="max-w-3xl">
             <p className="text-xs font-semibold uppercase tracking-[0.32em] text-sage-500 dark:text-sage-300">Settings</p>
@@ -296,7 +312,7 @@ export default function Settings() {
             </p>
           </div>
 
-          <div className="flex items-center gap-4 rounded-[1.5rem] border border-sage-100 bg-white/80 p-5 shadow-sm backdrop-blur sm:min-w-[300px] dark:border-white/10 dark:bg-white/5">
+          <div className="flex items-center gap-4 rounded-[1.5rem] border border-sage-200 bg-sage-100/80 p-5 shadow-sm backdrop-blur sm:min-w-[300px] dark:border-white/10 dark:bg-white/5">
             {avatar ? (
               <div
                 aria-label="Profile avatar"
@@ -322,7 +338,7 @@ export default function Settings() {
 
       <div className="mt-8 grid grid-cols-1 gap-8 xl:grid-cols-[minmax(0,1.6fr)_minmax(320px,1fr)]">
         <div className="space-y-8">
-          <section className="rounded-[1.75rem] border border-sage-100 bg-white p-6 shadow-soft sm:p-8 dark:border-white/10 dark:bg-white/5">
+          <section className={settingsPanelClassName} id="profile-details">
             <div className="mb-6 flex items-center gap-4">
               <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-sage-100 text-sage-700 dark:bg-white/10 dark:text-sage-100">
                 <span className="material-symbols-outlined">badge</span>
@@ -337,7 +353,7 @@ export default function Settings() {
               <div className="md:col-span-2">
                 <label className="label" htmlFor="settings-name">Full Name</label>
                 <input
-                  className="input rounded-[1.25rem] border-sage-200 bg-sage-50/40"
+                  className={settingsInputClassName}
                   id="settings-name"
                   onChange={(event) => setName(event.target.value)}
                   placeholder="Your name"
@@ -349,7 +365,7 @@ export default function Settings() {
               <div className="md:col-span-2">
                 <label className="label" htmlFor="settings-avatar">Avatar URL</label>
                 <input
-                  className="input rounded-[1.25rem] border-sage-200 bg-sage-50/40"
+                  className={settingsInputClassName}
                   id="settings-avatar"
                   onChange={(event) => setAvatar(event.target.value)}
                   placeholder="https://example.com/avatar.jpg"
@@ -361,7 +377,7 @@ export default function Settings() {
               <div className="md:col-span-2">
                 <label className="label" htmlFor="settings-email">Email Address</label>
                 <input
-                  className="input rounded-[1.25rem] border-sage-200 bg-sage-100/70 text-sage-500"
+                  className="input rounded-[1.25rem] border-sage-200 bg-sage-100/80 text-sage-500 dark:border-white/10 dark:bg-white/5 dark:text-sage-300"
                   disabled
                   id="settings-email"
                   type="email"
@@ -381,7 +397,7 @@ export default function Settings() {
             </div>
           </section>
 
-          <section className="rounded-[1.75rem] border border-sage-100 bg-white p-6 shadow-soft sm:p-8 dark:border-white/10 dark:bg-white/5">
+          <section className={settingsPanelClassName}>
             <div className="mb-6 flex items-center gap-4">
               <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-sage-100 text-sage-700 dark:bg-white/10 dark:text-sage-100">
                 <span className="material-symbols-outlined">tune</span>
@@ -411,7 +427,7 @@ export default function Settings() {
                         'flex items-center justify-center gap-2 rounded-[1.25rem] border px-4 py-4 text-sm font-semibold transition-all',
                         isActive
                           ? 'border-sage-300 bg-sage-100 text-sage-900 shadow-sm dark:border-sage-400/50 dark:bg-white/10 dark:text-sage-50'
-                          : 'border-sage-100 bg-white text-sage-600 hover:border-sage-200 hover:bg-sage-50 dark:border-white/10 dark:bg-white/5 dark:text-sage-200 dark:hover:bg-white/10'
+                          : 'border-sage-200 bg-sage-50/90 text-sage-600 hover:border-sage-300 hover:bg-sage-100/80 dark:border-white/10 dark:bg-white/5 dark:text-sage-200 dark:hover:bg-white/10'
                       )}
                       onClick={() => {
                         setPreferences((current) => ({ ...current, theme: option.value }));
@@ -442,12 +458,12 @@ export default function Settings() {
               />
 
               <div className={clsx(
-                'rounded-[1.25rem] border border-sage-100 bg-sage-50/60 p-4 transition-opacity',
+                'rounded-[1.25rem] border border-sage-200 bg-sage-100/70 p-4 transition-opacity dark:border-white/10 dark:bg-white/5',
                 !preferences.notifications.dailyReminder && 'opacity-60'
               )}>
                 <label className="label" htmlFor="settings-reminder-time">Reminder Time</label>
                 <input
-                  className="input rounded-[1rem] border-sage-200 bg-white"
+                  className="input rounded-[1rem] border-sage-200 bg-sage-50 dark:border-white/10 dark:bg-[#101915]"
                   disabled={!preferences.notifications.dailyReminder}
                   id="settings-reminder-time"
                   onChange={(event) => setPreferences((current) => ({
@@ -497,14 +513,14 @@ export default function Settings() {
             </div>
           </section>
 
-          <section className="rounded-[1.75rem] border border-sage-100 bg-white p-6 shadow-soft sm:p-8">
+          <section className={settingsPanelClassName}>
             <div className="mb-6 flex items-center gap-4">
-              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-sage-100 text-sage-700">
+              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-sage-100 text-sage-700 dark:bg-white/10 dark:text-sage-100">
                 <span className="material-symbols-outlined">password</span>
               </div>
               <div>
-                <h2 className="font-display text-2xl font-semibold text-sage-900">Password & Security</h2>
-                <p className="text-sm text-sage-500">Keep your account protected with a fresh password when you need one.</p>
+                <h2 className="font-display text-2xl font-semibold text-sage-900 dark:text-sage-50">Password & Security</h2>
+                <p className="text-sm text-sage-500 dark:text-sage-300">Keep your account protected with a fresh password when you need one.</p>
               </div>
             </div>
 
@@ -512,7 +528,7 @@ export default function Settings() {
               <div className="md:col-span-2">
                 <label className="label" htmlFor="settings-current-password">Current Password</label>
                 <input
-                  className="input rounded-[1.25rem] border-sage-200 bg-sage-50/40"
+                  className={settingsInputClassName}
                   id="settings-current-password"
                   onChange={(event) => setCurrentPassword(event.target.value)}
                   type="password"
@@ -523,7 +539,7 @@ export default function Settings() {
               <div>
                 <label className="label" htmlFor="settings-new-password">New Password</label>
                 <input
-                  className="input rounded-[1.25rem] border-sage-200 bg-sage-50/40"
+                  className={settingsInputClassName}
                   id="settings-new-password"
                   onChange={(event) => setNewPassword(event.target.value)}
                   type="password"
@@ -534,7 +550,7 @@ export default function Settings() {
               <div>
                 <label className="label" htmlFor="settings-confirm-password">Confirm New Password</label>
                 <input
-                  className="input rounded-[1.25rem] border-sage-200 bg-sage-50/40"
+                  className={settingsInputClassName}
                   id="settings-confirm-password"
                   onChange={(event) => setConfirmPassword(event.target.value)}
                   type="password"
@@ -555,23 +571,23 @@ export default function Settings() {
         </div>
 
         <aside className="space-y-8">
-          <section className="rounded-[1.75rem] border border-sage-100 bg-gradient-to-b from-white to-sage-50/70 p-6 shadow-soft sm:p-8">
-            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-sage-500">Account Overview</p>
-            <h2 className="mt-2 font-display text-3xl font-semibold text-sage-900">Your current rhythm</h2>
-            <p className="mt-3 text-sm leading-7 text-sage-600">
+          <section className="rounded-[1.75rem] border border-sage-200 bg-gradient-to-b from-sage-50 via-[#f7fbf7] to-sage-100/80 p-6 shadow-soft sm:p-8 dark:border-white/10 dark:bg-gradient-to-b dark:from-[#18231d] dark:via-[#121b16] dark:to-[#0f1712]">
+            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-sage-500 dark:text-sage-300">Account Overview</p>
+            <h2 className="mt-2 font-display text-3xl font-semibold text-sage-900 dark:text-sage-50">Your current rhythm</h2>
+            <p className="mt-3 text-sm leading-7 text-sage-600 dark:text-sage-200">
               These settings shape how the app feels in your day, from visual tone to when gentle prompts arrive.
             </p>
 
             <div className="mt-6 space-y-3">
               {overviewItems.map((item) => (
-                <div key={item.label} className="rounded-[1.25rem] border border-sage-100 bg-white/80 p-4 shadow-sm">
+                <div key={item.label} className={settingsInsetClassName}>
                   <div className="flex items-center gap-3">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-sage-100 text-sage-700">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-sage-100 text-sage-700 dark:bg-white/10 dark:text-sage-100">
                       <span className="material-symbols-outlined text-[20px]">{item.icon}</span>
                     </div>
                     <div>
-                      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-sage-500">{item.label}</p>
-                      <p className="mt-1 text-sm font-medium leading-6 text-slate-700">{item.value}</p>
+                      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-sage-500 dark:text-sage-300">{item.label}</p>
+                      <p className="mt-1 text-sm font-medium leading-6 text-slate-700 dark:text-sage-100">{item.value}</p>
                     </div>
                   </div>
                 </div>
@@ -579,14 +595,14 @@ export default function Settings() {
             </div>
           </section>
 
-          <section className="rounded-[1.75rem] border border-sage-100 bg-white p-6 shadow-soft sm:p-8">
+          <section className={settingsPanelClassName}>
             <div className="flex items-start gap-4">
-              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-sage-100 text-sage-700">
+              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-sage-100 text-sage-700 dark:bg-white/10 dark:text-sage-100">
                 <span className="material-symbols-outlined">download</span>
               </div>
               <div>
-                <h3 className="font-display text-2xl font-semibold text-sage-900">Export Your Data</h3>
-                <p className="mt-2 text-sm leading-7 text-sage-600">
+                <h3 className="font-display text-2xl font-semibold text-sage-900 dark:text-sage-50">Export Your Data</h3>
+                <p className="mt-2 text-sm leading-7 text-sage-600 dark:text-sage-200">
                   Download a JSON copy of your profile basics and journal entries for personal backup or migration.
                 </p>
               </div>
@@ -598,23 +614,23 @@ export default function Settings() {
             </button>
           </section>
 
-          <section className="rounded-[1.75rem] border border-red-200 bg-red-50/70 p-6 shadow-soft sm:p-8">
+          <section className="rounded-[1.75rem] border border-red-200 bg-gradient-to-b from-red-50/90 to-red-100/70 p-6 shadow-soft sm:p-8 dark:border-red-500/30 dark:bg-gradient-to-b dark:from-red-950/40 dark:to-[#261313]">
             <div className="flex items-start gap-4">
-              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-red-100 text-red-700">
+              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-red-100 text-red-700 dark:bg-red-500/15 dark:text-red-200">
                 <span className="material-symbols-outlined">warning</span>
               </div>
               <div>
-                <h3 className="font-display text-2xl font-semibold text-red-900">Danger Zone</h3>
-                <p className="mt-2 text-sm leading-7 text-red-800/80">
+                <h3 className="font-display text-2xl font-semibold text-red-900 dark:text-red-100">Danger Zone</h3>
+                <p className="mt-2 text-sm leading-7 text-red-800/80 dark:text-red-200/85">
                   Deleting your account permanently removes your profile and all saved journal data. This action cannot be undone.
                 </p>
               </div>
             </div>
 
-            <div className="mt-6 rounded-[1.25rem] border border-red-200 bg-white/80 p-4">
-              <label className="label text-red-900" htmlFor="settings-delete-confirmation">Type DELETE to confirm</label>
+            <div className="mt-6 rounded-[1.25rem] border border-red-200 bg-red-50/85 p-4 dark:border-red-500/30 dark:bg-red-950/20">
+              <label className="label text-red-900 dark:text-red-100" htmlFor="settings-delete-confirmation">Type DELETE to confirm</label>
               <input
-                className="input rounded-[1rem] border-red-200 bg-white focus:border-red-400 focus:ring-red-100"
+                className="input rounded-[1rem] border-red-200 bg-white/80 focus:border-red-400 focus:ring-red-100 dark:border-red-500/30 dark:bg-[#241315] dark:text-red-50 dark:placeholder:text-red-200/40 dark:focus:ring-red-500/10"
                 id="settings-delete-confirmation"
                 onChange={(event) => setDeleteConfirmation(event.target.value)}
                 placeholder="DELETE"

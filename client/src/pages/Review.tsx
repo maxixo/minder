@@ -1,10 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
-import { useAuth } from '@/contexts/useAuth';
 import { useDailyEntry } from '@/hooks/useDailyEntry';
+import ProfileMenu from '@/components/common/ProfileMenu';
 import type { DailyEntryPatch, EntryTodoItem } from '@/types/entry';
-import '@/styles/pages/review.css';
 
 const createEmptyTask = (): EntryTodoItem => ({ text: '', completed: false });
 
@@ -12,24 +11,13 @@ const sanitizePriorities = (priorities: string[]) => priorities.map((item) => it
 const sanitizeTasks = (tasks: EntryTodoItem[]) => tasks.map((task) => ({ ...task, text: task.text.trim() })).filter((task) => task.text);
 
 export default function Review() {
-  const { user } = useAuth();
   const { entry, error, loading, saveEntryPatch, saving } = useDailyEntry();
   const [focus, setFocus] = useState('');
   const [priorities, setPriorities] = useState<string[]>(['']);
   const [tasks, setTasks] = useState<EntryTodoItem[]>([createEmptyTask()]);
   const [mindfulnessNotes, setMindfulnessNotes] = useState('');
 
-  const reviewDateLabel = useMemo(
-    () => format(new Date(entry?.date || new Date()), 'EEEE, MMMM do'),
-    [entry?.date]
-  );
-
-  const initials = useMemo(() => (user?.name || 'Mindful Life')
-    .split(' ')
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((part) => part[0]?.toUpperCase())
-    .join(' '), [user?.name]);
+  const reviewDateLabel = useMemo(() => format(new Date(entry?.date || new Date()), 'EEE, MMM d, yyyy'), [entry?.date]);
 
   useEffect(() => {
     if (!entry) return;
@@ -111,252 +99,197 @@ export default function Review() {
   const energyLevel = entry?.ratings?.energyPoint ? `${entry.ratings.energyPoint * 20}%` : '0%';
 
   return (
-    <div className="-mx-4 min-h-full bg-[#f6f8f6] font-sans text-slate-900 sm:-mx-6 lg:-mx-8 dark:bg-[#112112] dark:text-slate-100">
-      <div className="relative flex min-h-screen w-full flex-col overflow-x-hidden animate-fade-in">
-        <div className="flex h-full grow flex-col">
-          <header className="flex items-center justify-between whitespace-nowrap border-b border-solid border-[#e1e9e3] bg-white px-6 py-3 sm:px-8 dark:border-white/10 dark:bg-[#112112]">
-            <div className="flex items-center gap-8">
-              <div className="flex items-center gap-3 text-[#638866]">
-                <div className="size-6 text-[#19e62b]">
-                  <span className="material-symbols-outlined text-3xl">spa</span>
-                </div>
-                <h2 className="text-lg font-bold leading-tight tracking-tight text-[#111812] dark:text-white">MindfulLife</h2>
-              </div>
-              <nav className="hidden items-center gap-9 md:flex">
-                <a className="text-sm font-medium text-[#638866] transition-colors hover:text-[#19e62b] dark:text-slate-300" href="#">
-                  Daily Focus
-                </a>
-                <a className="text-sm font-medium text-[#638866] transition-colors hover:text-[#19e62b] dark:text-slate-300" href="#">
-                  Reflections
-                </a>
-                <a className="text-sm font-medium text-[#638866] transition-colors hover:text-[#19e62b] dark:text-slate-300" href="#">
-                  Wellness
-                </a>
-                <a className="text-sm font-medium text-[#638866] transition-colors hover:text-[#19e62b] dark:text-slate-300" href="#">
-                  Analytics
-                </a>
-              </nav>
-            </div>
+    <div className="daily-reflection-scrollbar animate-fade-in pb-10 transition-colors text-[#3a523e] dark:text-sage-50">
+      <header className="mb-6 border-b border-[#e8ede8] bg-white/80 px-4 py-4 backdrop-blur-md lg:sticky lg:top-0 lg:z-20 dark:border-white/10 dark:bg-[#15201a]/90">
+        <div className="flex w-full flex-wrap items-center justify-between gap-4">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.28em] text-[#638869] dark:text-sage-300">Review Space</p>
+            <h1 className="mt-1 text-2xl font-black text-[#3a523e] sm:text-3xl dark:text-sage-50">Journal Review</h1>
+          </div>
 
-            <div className="flex flex-1 items-center justify-end gap-6">
-              <label className="hidden min-w-40 max-w-64 flex-col sm:flex">
-                <div className="flex h-10 w-full flex-1 items-stretch rounded-lg">
-                  <div className="flex items-center justify-center rounded-l-lg bg-[#f0f4f1] pl-4 text-[#638866] dark:bg-white/5">
-                    <span className="material-symbols-outlined text-xl">search</span>
+          <div className="rounded-xl border border-[#e8ede8] bg-[#f4f7f4] px-4 py-2 text-sm font-semibold text-[#3a523e] dark:border-white/10 dark:bg-white/5 dark:text-sage-100">
+            {reviewDateLabel}
+          </div>
+
+          <ProfileMenu />
+        </div>
+      </header>
+
+      <main className="w-full flex-1 space-y-8 py-2">
+        <section className="rounded-xl border border-[#e8ede8] bg-white px-6 py-5 shadow-sm dark:border-white/10 dark:bg-white/5">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <h2 className="text-xl font-black text-[#3a523e] dark:text-sage-50">Daily Focus &amp; Review</h2>
+              <p className="mt-1 text-sm text-[#638869] dark:text-sage-200">A more intentional close to the day.</p>
+            </div>
+            <button
+              className="flex items-center gap-2 rounded-full bg-[#19e63c] px-6 py-3 text-sm font-bold text-[#3a523e] shadow-lg shadow-[#19e63c]/20 transition-transform hover:scale-[1.02] active:scale-95 disabled:cursor-not-allowed disabled:opacity-70"
+              disabled={loading || saving}
+              onClick={handleSave}
+              type="button"
+            >
+              <span className="material-symbols-outlined">check_circle</span>
+              {saving ? 'Saving Review...' : 'Save Review'}
+            </button>
+          </div>
+        </section>
+
+        {loading ? (
+          <div className="rounded-xl border border-[#e8ede8] bg-[#f4f7f4] px-6 py-4 text-sm font-medium text-[#638869] shadow-sm dark:border-white/10 dark:bg-white/5 dark:text-sage-200">
+            Loading review...
+          </div>
+        ) : null}
+
+        {error ? (
+          <div className="rounded-xl border border-amber-200 bg-amber-50 px-6 py-4 text-sm leading-6 text-amber-800 shadow-sm">
+            {error}
+          </div>
+        ) : null}
+
+        <div className="grid grid-cols-1 gap-8 lg:grid-cols-12">
+          <div className="space-y-8 lg:col-span-7">
+            <section className="rounded-xl border border-[#e8ede8] bg-white p-8 shadow-sm dark:border-white/10 dark:bg-white/5">
+              <div className="mb-4 flex items-center gap-3">
+                <span className="material-symbols-outlined text-amber-500">center_focus_strong</span>
+                <h3 className="text-xl font-bold">Core Intention</h3>
+              </div>
+              <textarea
+                className="min-h-[140px] w-full resize-none rounded-xl border border-[#e8ede8] bg-[#f4f7f4] px-4 py-3 text-xl leading-tight text-[#3a523e] outline-none placeholder:text-[#638869]/60 focus:border-[#19e63c] dark:border-white/10 dark:bg-[#101915] dark:text-sage-50 dark:placeholder:text-sage-500"
+                onChange={(event) => setFocus(event.target.value)}
+                placeholder="Write the one thought you want to carry through the day..."
+                value={focus}
+              />
+              <p className="mt-4 text-sm text-[#638869] dark:text-sage-300">Keep this short enough to revisit when the day gets noisy.</p>
+            </section>
+
+            <section className="rounded-xl border border-[#e8ede8] bg-white p-8 shadow-sm dark:border-white/10 dark:bg-white/5">
+              <div className="mb-4 flex items-center justify-between gap-3">
+                <h3 className="text-xl font-bold">Top Priorities</h3>
+                <button className="text-[#19e63c] hover:text-[#15c733]" onClick={addPriority} type="button">
+                  <span className="material-symbols-outlined">add_circle</span>
+                </button>
+              </div>
+
+              <div className="space-y-3">
+                {priorities.map((priority, index) => (
+                  <div
+                    key={`priority-${index + 1}`}
+                    className="group flex items-center gap-3 rounded-xl border border-[#e8ede8] bg-[#f4f7f4] p-4 dark:border-white/10 dark:bg-[#101915]"
+                  >
+                    <div className="flex flex-col gap-1 text-[#638869]/70">
+                      <button className="leading-none hover:text-[#19e63c]" onClick={() => movePriority(index, -1)} type="button">
+                        <span className="material-symbols-outlined text-base">keyboard_arrow_up</span>
+                      </button>
+                      <button className="leading-none hover:text-[#19e63c]" onClick={() => movePriority(index, 1)} type="button">
+                        <span className="material-symbols-outlined text-base">keyboard_arrow_down</span>
+                      </button>
+                    </div>
+                    <span className="flex size-6 items-center justify-center rounded-full bg-[#19e63c]/20 text-xs font-bold text-[#1a7f2e]">{index + 1}</span>
+                    <input
+                      className="flex-1 border-none bg-transparent text-[#3a523e] outline-none placeholder:text-[#638869]/50 dark:text-sage-50"
+                      onChange={(event) => updatePriority(index, event.target.value)}
+                      placeholder={`Priority ${index + 1}`}
+                      type="text"
+                      value={priority}
+                    />
+                    <button className="text-[#638869]/70 transition-colors hover:text-rose-500" onClick={() => removePriority(index)} type="button">
+                      <span className="material-symbols-outlined text-[20px]">close</span>
+                    </button>
                   </div>
-                  <input
-                    className="h-full w-full min-w-0 flex-1 resize-none overflow-hidden rounded-lg rounded-l-none border-none bg-[#f0f4f1] px-4 pl-2 text-sm font-normal text-[#111812] placeholder:text-[#638866] focus:border-none focus:outline-0 focus:ring-0 dark:bg-white/5 dark:text-white"
-                    placeholder="Search insights..."
-                    type="text"
-                  />
-                </div>
-              </label>
+                ))}
+              </div>
+            </section>
+          </div>
 
-              {user?.avatar ? (
-                <div
-                  aria-label="User profile avatar"
-                  className="review-image-blend size-9 rounded-full border-2 border-[#19e62b]/20 bg-cover bg-center bg-no-repeat"
-                  role="img"
-                  style={{ backgroundImage: `url("${user.avatar}")` }}
-                />
-              ) : (
-                <div className="flex size-9 items-center justify-center rounded-full border-2 border-[#19e62b]/20 bg-[#19e62b]/10 text-[10px] font-semibold text-[#111812] dark:text-white">
-                  {initials}
-                </div>
-              )}
-            </div>
-          </header>
-
-          <main className="mx-auto w-full max-w-[1200px] px-6 py-10">
-            <div className="mb-10 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-              <div>
-                <h1 className="text-4xl font-black leading-tight tracking-tight text-[#111812] dark:text-white">Daily Focus &amp; Review</h1>
-                <p className="mt-2 text-lg font-medium text-[#638866] dark:text-slate-400">{reviewDateLabel} - A more intentional close to the day</p>
+          <div className="space-y-8 lg:col-span-5">
+            <section className="rounded-xl border border-[#e8ede8] bg-white p-8 shadow-sm dark:border-white/10 dark:bg-white/5">
+              <div className="mb-4 flex items-center justify-between gap-3">
+                <h3 className="text-xl font-bold">Daily Tasks</h3>
+                <button className="text-[#19e63c] hover:text-[#15c733]" onClick={addTask} type="button">
+                  <span className="material-symbols-outlined">add_circle</span>
+                </button>
               </div>
 
-              <button
-                className="flex items-center gap-2 rounded-xl bg-[#19e62b] px-8 py-3 font-bold text-white transition-all hover:shadow-lg hover:shadow-[#19e62b]/20 disabled:cursor-not-allowed disabled:opacity-70"
-                disabled={loading || saving}
-                onClick={handleSave}
-                type="button"
-              >
-                <span className="material-symbols-outlined">check_circle</span>
-                {saving ? 'Saving Review...' : 'Complete Daily Review'}
-              </button>
-            </div>
-
-            {loading ? (
-              <div className="mb-6 rounded-xl border border-[#e1e9e3] bg-white px-5 py-4 text-sm font-medium text-[#638866] shadow-sm dark:border-white/10 dark:bg-white/5 dark:text-slate-300">
-                Loading today&apos;s review...
-              </div>
-            ) : null}
-
-            {error ? (
-              <div className="mb-6 rounded-xl border border-amber-200 bg-amber-50 px-5 py-4 text-sm leading-6 text-amber-800 shadow-sm">
-                {error}
-              </div>
-            ) : null}
-
-            <div className="grid grid-cols-1 gap-8 lg:grid-cols-12">
-              <div className="space-y-8 lg:col-span-7">
-                <section className="rounded-xl border-l-4 border-[#19e62b] bg-[#f0f4f1] p-8 dark:bg-white/5">
-                  <h2 className="mb-4 text-xs font-bold uppercase tracking-widest text-[#638866]">Core Intention</h2>
-                  <textarea
-                    className="min-h-[140px] w-full resize-none border-none bg-transparent font-['Lora',serif] text-3xl leading-tight text-[#111812] placeholder:text-[#638866]/50 focus:ring-0 md:text-4xl dark:text-white"
-                    onChange={(event) => setFocus(event.target.value)}
-                    placeholder="Write the one thought you want to carry through the day..."
-                    value={focus}
-                  />
-                  <div className="mt-6 flex items-center gap-2 text-sm text-[#638866]/70 dark:text-slate-500">
-                    <span className="material-symbols-outlined text-sm">lightbulb</span>
-                    <span>Keep this short enough to revisit when the day gets noisy.</span>
-                  </div>
-                </section>
-
-                <section>
-                  <div className="mb-4 flex items-center justify-between">
-                    <h2 className="text-xl font-bold text-[#111812] dark:text-white">Top Priorities</h2>
-                    <div className="flex items-center gap-3">
-                      <span className="rounded bg-[#638866]/10 px-2 py-1 text-xs font-semibold text-[#638866]">Ordered by Impact</span>
-                      <button className="text-[#19e62b] hover:text-[#19e62b]/80" onClick={addPriority} type="button">
-                        <span className="material-symbols-outlined">add_circle</span>
+              <div className="space-y-3">
+                {tasks.map((task, index) => (
+                  <div
+                    key={task._id || `task-${index + 1}`}
+                    className="group flex items-center gap-3 rounded-xl border border-[#e8ede8] bg-[#f4f7f4] p-3 dark:border-white/10 dark:bg-[#101915]"
+                  >
+                    <input
+                      checked={task.completed}
+                      className="size-5 rounded-full border-2 border-[#19e63c] bg-transparent text-[#19e63c] focus:ring-[#19e63c] focus:ring-offset-0"
+                      onChange={(event) => updateTask(index, { completed: event.target.checked })}
+                      type="checkbox"
+                    />
+                    <input
+                      className={`flex-1 border-none bg-transparent outline-none placeholder:text-[#638869]/50 ${
+                        task.completed
+                          ? 'text-[#638869]/70 line-through decoration-2 decoration-[#19e63c]/60'
+                          : 'text-[#3a523e] dark:text-sage-50'
+                      }`}
+                      onChange={(event) => updateTask(index, { text: event.target.value })}
+                      placeholder={`Task ${index + 1}`}
+                      type="text"
+                      value={task.text}
+                    />
+                    <div className="flex items-center gap-1 text-[#638869]/70">
+                      <button className="leading-none hover:text-[#19e63c]" onClick={() => moveTask(index, -1)} type="button">
+                        <span className="material-symbols-outlined text-base">keyboard_arrow_up</span>
+                      </button>
+                      <button className="leading-none hover:text-[#19e63c]" onClick={() => moveTask(index, 1)} type="button">
+                        <span className="material-symbols-outlined text-base">keyboard_arrow_down</span>
+                      </button>
+                      <button className="leading-none hover:text-rose-500" onClick={() => removeTask(index)} type="button">
+                        <span className="material-symbols-outlined text-base">close</span>
                       </button>
                     </div>
                   </div>
-
-                  <div className="space-y-3">
-                    {priorities.map((priority, index) => {
-                      const isPrimary = index === 0;
-
-                      return (
-                        <div
-                          key={`priority-${index + 1}`}
-                          className="group flex items-center gap-4 rounded-lg border border-[#e1e9e3] bg-white p-4 transition-all hover:border-[#19e62b]/50 dark:border-white/10 dark:bg-white/5"
-                        >
-                          <div className="flex flex-col gap-1 text-[#638866]/60">
-                            <button className="leading-none hover:text-[#19e62b]" onClick={() => movePriority(index, -1)} type="button">
-                              <span className="material-symbols-outlined text-base">keyboard_arrow_up</span>
-                            </button>
-                            <button className="leading-none hover:text-[#19e62b]" onClick={() => movePriority(index, 1)} type="button">
-                              <span className="material-symbols-outlined text-base">keyboard_arrow_down</span>
-                            </button>
-                          </div>
-                          <span
-                            className={
-                              isPrimary
-                                ? 'flex size-6 items-center justify-center rounded-full bg-[#19e62b]/20 text-xs font-bold text-[#19e62b]'
-                                : 'flex size-6 items-center justify-center rounded-full bg-[#e1e9e3] text-xs font-bold text-[#638866] dark:bg-white/10'
-                            }
-                          >
-                            {index + 1}
-                          </span>
-                          <input
-                            className="flex-1 border-none bg-transparent font-medium text-[#111812] outline-none placeholder:text-[#638866]/40 dark:text-white"
-                            onChange={(event) => updatePriority(index, event.target.value)}
-                            placeholder={`Priority ${index + 1}`}
-                            type="text"
-                            value={priority}
-                          />
-                          <button className="text-[#638866]/60 transition-colors hover:text-red-500" onClick={() => removePriority(index)} type="button">
-                            <span className="material-symbols-outlined text-[20px]">close</span>
-                          </button>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </section>
+                ))}
               </div>
+            </section>
 
-              <div className="space-y-8 lg:col-span-5">
-                <section className="rounded-xl border border-[#e1e9e3] bg-white p-6 dark:border-white/10 dark:bg-white/5">
-                  <div className="mb-6 flex items-center justify-between">
-                    <h2 className="text-xl font-bold text-[#111812] dark:text-white">Daily Tasks</h2>
-                    <button className="text-[#19e62b] hover:text-[#19e62b]/80" onClick={addTask} type="button">
-                      <span className="material-symbols-outlined">add_circle</span>
-                    </button>
-                  </div>
-
-                  <div className="space-y-4">
-                    {tasks.map((task, index) => {
-                      const textClassName = task.completed
-                        ? 'font-medium text-[#638866]/60 line-through decoration-2 decoration-[#19e62b]/50 transition-all'
-                        : 'text-[#111812] transition-colors group-hover:text-[#19e62b] dark:text-white';
-
-                      return (
-                        <div key={task._id || `task-${index + 1}`} className="group flex items-center gap-3">
-                          <input
-                            checked={task.completed}
-                            className="size-5 rounded-full border-2 border-[#19e62b] bg-transparent text-[#19e62b] focus:ring-[#19e62b] focus:ring-offset-0"
-                            onChange={(event) => updateTask(index, { completed: event.target.checked })}
-                            type="checkbox"
-                          />
-                          <input
-                            className={`flex-1 border-none bg-transparent outline-none placeholder:text-[#638866]/40 ${textClassName}`}
-                            onChange={(event) => updateTask(index, { text: event.target.value })}
-                            placeholder={`Task ${index + 1}`}
-                            type="text"
-                            value={task.text}
-                          />
-                          <div className="flex items-center gap-1 text-[#638866]/60">
-                            <button className="leading-none hover:text-[#19e62b]" onClick={() => moveTask(index, -1)} type="button">
-                              <span className="material-symbols-outlined text-base">keyboard_arrow_up</span>
-                            </button>
-                            <button className="leading-none hover:text-[#19e62b]" onClick={() => moveTask(index, 1)} type="button">
-                              <span className="material-symbols-outlined text-base">keyboard_arrow_down</span>
-                            </button>
-                            <button className="leading-none hover:text-red-500" onClick={() => removeTask(index)} type="button">
-                              <span className="material-symbols-outlined text-base">close</span>
-                            </button>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </section>
-
-                <section className="flex h-full grow flex-col">
-                  <h2 className="mb-4 text-xl font-bold text-[#111812] dark:text-white">Mindfulness Notes &amp; Ideas</h2>
-                  <div className="review-dot-grid min-h-[300px] flex-1 rounded-xl border border-[#e1e9e3] bg-white p-6 dark:border-white/10 dark:bg-white/5">
-                    <textarea
-                      className="h-full w-full resize-none border-none bg-transparent font-['Lora',serif] text-lg leading-relaxed text-[#111812] placeholder:text-[#638866]/30 focus:ring-0 dark:text-white"
-                      onChange={(event) => setMindfulnessNotes(event.target.value)}
-                      placeholder="Let your thoughts flow here..."
-                      value={mindfulnessNotes}
-                    />
-                  </div>
-                </section>
-              </div>
-            </div>
-
-            <div className="mt-12 flex flex-col items-center justify-between gap-6 border-t border-[#e1e9e3] pt-8 md:flex-row dark:border-white/10">
-              <div className="flex gap-8">
-                <div className="text-center">
-                  <p className="text-2xl font-black text-[#19e62b]">{completedTasks}</p>
-                  <p className="text-xs font-bold uppercase tracking-wider text-[#638866]">Completed</p>
-                </div>
-                <div className="text-center">
-                  <p className="text-2xl font-black text-[#638866]">{remainingTasks}</p>
-                  <p className="text-xs font-bold uppercase tracking-wider text-[#638866]">Remaining</p>
-                </div>
-                <div className="text-center">
-                  <p className="text-2xl font-black italic text-[#638866]/60">{energyLevel}</p>
-                  <p className="text-xs font-bold uppercase tracking-wider text-[#638866]">Energy Level</p>
-                </div>
-              </div>
-
-              <button
-                className="flex items-center gap-2 rounded-xl bg-[#19e62b] px-8 py-3 font-bold text-white transition-all hover:shadow-lg hover:shadow-[#19e62b]/20 disabled:cursor-not-allowed disabled:opacity-70"
-                disabled={loading || saving}
-                onClick={handleSave}
-                type="button"
-              >
-                <span className="material-symbols-outlined">check_circle</span>
-                {saving ? 'Saving Review...' : 'Complete Daily Review'}
-              </button>
-            </div>
-          </main>
+            <section className="rounded-xl border border-[#e8ede8] bg-white p-8 shadow-sm dark:border-white/10 dark:bg-white/5">
+              <h3 className="mb-4 text-xl font-bold">Mindfulness Notes &amp; Ideas</h3>
+              <textarea
+                className="min-h-[260px] w-full resize-none rounded-xl border border-[#e8ede8] bg-[#f4f7f4] px-4 py-3 text-[#3a523e] outline-none placeholder:text-[#638869]/60 focus:border-[#19e63c] dark:border-white/10 dark:bg-[#101915] dark:text-sage-50 dark:placeholder:text-sage-500"
+                onChange={(event) => setMindfulnessNotes(event.target.value)}
+                placeholder="Let your thoughts flow here..."
+                value={mindfulnessNotes}
+              />
+            </section>
+          </div>
         </div>
-      </div>
+
+        <section className="rounded-xl border border-[#e8ede8] bg-white p-6 shadow-sm dark:border-white/10 dark:bg-white/5">
+          <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex gap-8">
+              <div className="text-center">
+                <p className="text-2xl font-black text-[#19e63c]">{completedTasks}</p>
+                <p className="text-xs font-bold uppercase tracking-wider text-[#638869]">Completed</p>
+              </div>
+              <div className="text-center">
+                <p className="text-2xl font-black text-[#638869] dark:text-sage-300">{remainingTasks}</p>
+                <p className="text-xs font-bold uppercase tracking-wider text-[#638869]">Remaining</p>
+              </div>
+              <div className="text-center">
+                <p className="text-2xl font-black text-[#638869] dark:text-sage-300">{energyLevel}</p>
+                <p className="text-xs font-bold uppercase tracking-wider text-[#638869]">Energy Level</p>
+              </div>
+            </div>
+
+            <button
+              className="flex items-center gap-2 rounded-full bg-[#19e63c] px-6 py-3 text-sm font-bold text-[#3a523e] shadow-lg shadow-[#19e63c]/20 transition-transform hover:scale-[1.02] active:scale-95 disabled:cursor-not-allowed disabled:opacity-70"
+              disabled={loading || saving}
+              onClick={handleSave}
+              type="button"
+            >
+              <span className="material-symbols-outlined">check_circle</span>
+              {saving ? 'Saving Review...' : 'Save Review'}
+            </button>
+          </div>
+        </section>
+      </main>
     </div>
   );
 }

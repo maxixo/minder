@@ -1,8 +1,8 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import clsx from 'clsx';
 import { toast } from 'sonner';
-import { useAuth } from '@/contexts/useAuth';
 import { useDailyEntry } from '@/hooks/useDailyEntry';
+import ProfileMenu from '@/components/common/ProfileMenu';
 import type { DailyEntryPatch, EntryFeeling } from '@/types/entry';
 import '@/styles/pages/self-care.css';
 
@@ -68,7 +68,6 @@ const emptyChecklist = (): Record<ChecklistKey, boolean> => ({
 });
 
 export default function SelfCare() {
-  const { user } = useAuth();
   const { entry, error, loading, saveEntryPatch, saving } = useDailyEntry();
   const [selectedMood, setSelectedMood] = useState<MoodKey | null>(null);
   const [thoughts, setThoughts] = useState('');
@@ -83,13 +82,6 @@ export default function SelfCare() {
     overallDay: 0,
   });
   const [checklist, setChecklist] = useState<Record<ChecklistKey, boolean>>(emptyChecklist);
-
-  const initials = useMemo(() => (user?.name || 'Mindful Life')
-    .split(' ')
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((part) => part[0]?.toUpperCase())
-    .join(' '), [user?.name]);
 
   const checkedCount = Object.values(checklist).filter(Boolean).length;
   const completionRate = Math.round((checkedCount / checklistConfig.length) * 100);
@@ -168,8 +160,8 @@ export default function SelfCare() {
   };
 
   return (
-    <div className="-mx-4 min-h-full bg-[#f6f8f6] px-4 font-sans text-slate-900 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8 dark:bg-[#0f1712] dark:text-sage-50">
-      <div className="relative mx-auto flex min-h-full w-full max-w-[1200px] flex-col animate-fade-in">
+    <div className="animate-fade-in pb-10 transition-colors">
+      <div className="relative flex min-h-full w-full flex-col">
         <header className="sticky top-4 z-20 flex items-center justify-between whitespace-nowrap border-b border-solid border-sage-100 bg-white px-6 py-3 shadow-sm sm:px-8 dark:border-white/10 dark:bg-[#15201a]/90">
           <div className="flex items-center gap-4 text-sage-600 dark:text-sage-100">
             <div className="flex size-8 items-center justify-center rounded-lg bg-[#13ec25]/20 dark:bg-[#13ec25]/15">
@@ -198,23 +190,12 @@ export default function SelfCare() {
               <span className="material-symbols-outlined">notifications</span>
             </button>
 
-            {user?.avatar ? (
-              <div
-                aria-label="Profile picture"
-                className="size-10 rounded-full border-2 border-[#13ec25] bg-cover bg-center bg-no-repeat"
-                role="img"
-                style={{ backgroundImage: `url("${user.avatar}")` }}
-              />
-            ) : (
-              <div className="flex size-10 items-center justify-center rounded-full border-2 border-[#13ec25] bg-[#13ec25]/10 text-xs font-semibold text-sage-700 dark:text-sage-100">
-                {initials}
-              </div>
-            )}
+            <ProfileMenu />
           </div>
         </header>
 
-        <main className="flex flex-1 justify-center px-0 py-8 sm:px-0">
-          <div className="flex w-full max-w-[1200px] flex-1 flex-col">
+        <main className="flex flex-1 px-0 py-8 sm:px-0">
+          <div className="flex w-full flex-1 flex-col">
             <div className="mb-8 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
               <div className="flex flex-col gap-2">
                 <h1 className="text-4xl font-black leading-tight tracking-[-0.033em] text-sage-900 dark:text-sage-50">Daily Activity Hub</h1>

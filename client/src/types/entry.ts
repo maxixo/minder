@@ -21,6 +21,13 @@ export interface EntryEnergyPoint {
   energy: number;
 }
 
+export interface EntryNutrition {
+  calories: number | null;
+  protein: number | null;
+  carbs: number | null;
+  fat: number | null;
+}
+
 export interface EntryTodoItem {
   _id?: string;
   text: string;
@@ -48,6 +55,7 @@ export interface DailyEntry {
     dinner: boolean;
     snack: boolean;
   };
+  nutrition: EntryNutrition;
   energyLevels: EntryEnergyPoint[];
   tomorrowPlan: {
     howToMakeBetter: string;
@@ -146,6 +154,12 @@ export const createEmptyDailyEntry = (date = nowIso()): DailyEntry => ({
     lunch: false,
     dinner: false,
     snack: false,
+  },
+  nutrition: {
+    calories: null,
+    protein: null,
+    carbs: null,
+    fat: null,
   },
   energyLevels: [],
   tomorrowPlan: {

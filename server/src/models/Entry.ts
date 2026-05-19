@@ -34,6 +34,12 @@ const entrySchema = new mongoose.Schema({
     dinner:    { type: Boolean, default: false },
     snack:     { type: Boolean, default: false },
   },
+  nutrition: {
+    calories: { type: Number, min: 0, default: null },
+    protein:  { type: Number, min: 0, default: null },
+    carbs:    { type: Number, min: 0, default: null },
+    fat:      { type: Number, min: 0, default: null },
+  },
   energyLevels:      [energyPointSchema],
 
   //  Tomorrow's Plan 

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import clsx from 'clsx';
 import { format, parseISO } from 'date-fns';
 import { Link } from 'react-router-dom';
+import { toast } from 'sonner';
 import {
   Area,
   AreaChart,
@@ -13,6 +14,7 @@ import {
 } from 'recharts';
 import { useAuth } from '@/contexts/useAuth';
 import { useTheme } from '@/contexts/useTheme';
+import { dashboardQuotes } from '@/constants/dashboardQuotes';
 import analyticsService from '@/services/analyticsService';
 import entryService from '@/services/entryService';
 import type { DailyEntry } from '@/types/entry';
@@ -62,6 +64,9 @@ const periodOptions: Array<{ value: DashboardPeriod; label: string }> = [
   { value: '30days', label: 'Last 30 Days' },
 ];
 
+const QUOTE_AUTO_ADVANCE_MS = 6000;
+const QUOTE_TRANSITION_MS = 500;
+
 const unwrapEnvelope = <T,>(response: { data: T }) => response.data;
 
 const formatMoodLabel = (score: number) => {
@@ -110,6 +115,7 @@ export default function WellnessOverview() {
   const { user } = useAuth();
   const { isDarkMode, toggleTheme } = useTheme();
   const firstName = user?.name?.split(' ')[0] || 'there';
+  const hasMultipleQuotes = dashboardQuotes.length > 1;
 
   const [period, setPeriod] = useState<DashboardPeriod>('7days');
   const [summary, setSummary] = useState<SummaryData>(emptySummary);
@@ -117,6 +123,11 @@ export default function WellnessOverview() {
   const [recentEntries, setRecentEntries] = useState<DailyEntry[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
+  const [trackIndex, setTrackIndex] = useState(hasMultipleQuotes ? 1 : 0);
+  const [isQuoteHovered, setIsQuoteHovered] = useState(false);
+  const [favoriteQuoteIds, setFavoriteQuoteIds] = useState<string[]>([]);
+  const [isTransitionEnabled, setIsTransitionEnabled] = useState(hasMultipleQuotes);
+  const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -171,6 +182,82 @@ export default function WellnessOverview() {
     };
   }, [period]);
 
+  useEffect(() => {
+    if (typeof window === 'undefined') return undefined;
+
+    const mediaQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
+    const handleMotionChange = () => {
+      setPrefersReducedMotion(mediaQuery.matches);
+    };
+
+    handleMotionChange();
+    mediaQuery.addEventListener('change', handleMotionChange);
+
+    return () => {
+      mediaQuery.removeEventListener('change', handleMotionChange);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!hasMultipleQuotes) {
+      setTrackIndex(0);
+      setIsTransitionEnabled(false);
+      return;
+    }
+
+    setTrackIndex(1);
+    setIsTransitionEnabled(!prefersReducedMotion);
+  }, [hasMultipleQuotes, prefersReducedMotion]);
+
+  useEffect(() => {
+    if (!hasMultipleQuotes || prefersReducedMotion || isQuoteHovered) return undefined;
+
+    const intervalId = window.setInterval(() => {
+      setIsTransitionEnabled(true);
+      setTrackIndex((current) => current + 1);
+    }, QUOTE_AUTO_ADVANCE_MS);
+
+    return () => {
+      window.clearInterval(intervalId);
+    };
+  }, [hasMultipleQuotes, isQuoteHovered, prefersReducedMotion, trackIndex]);
+
+  useEffect(() => {
+    if (!hasMultipleQuotes) return undefined;
+
+    if (prefersReducedMotion) {
+      if (trackIndex === 0) {
+        setTrackIndex(dashboardQuotes.length);
+      } else if (trackIndex === dashboardQuotes.length + 1) {
+        setTrackIndex(1);
+      }
+      return undefined;
+    }
+
+    if (trackIndex !== 0 && trackIndex !== dashboardQuotes.length + 1) return undefined;
+
+    const timeoutId = window.setTimeout(() => {
+      setIsTransitionEnabled(false);
+      setTrackIndex(trackIndex === 0 ? dashboardQuotes.length : 1);
+    }, QUOTE_TRANSITION_MS);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, [hasMultipleQuotes, prefersReducedMotion, trackIndex]);
+
+  useEffect(() => {
+    if (prefersReducedMotion || !hasMultipleQuotes || isTransitionEnabled) return undefined;
+
+    const timeoutId = window.setTimeout(() => {
+      setIsTransitionEnabled(true);
+    }, 40);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, [hasMultipleQuotes, isTransitionEnabled, prefersReducedMotion]);
+
   const statCards = useMemo(() => [
     {
       title: 'Current Streak',
@@ -208,19 +295,90 @@ export default function WellnessOverview() {
     fullDate: format(parseISO(point.date), 'MMM d'),
   })), [moodTrends]);
 
+  const quoteSlides = useMemo(() => {
+    if (!dashboardQuotes.length) return [];
+    if (!hasMultipleQuotes) return dashboardQuotes;
+    return [dashboardQuotes[dashboardQuotes.length - 1], ...dashboardQuotes, dashboardQuotes[0]];
+  }, [hasMultipleQuotes]);
+
+  const activeQuoteIndex = useMemo(() => {
+    if (!dashboardQuotes.length) return -1;
+    if (!hasMultipleQuotes) return 0;
+    if (trackIndex === 0) return dashboardQuotes.length - 1;
+    if (trackIndex === dashboardQuotes.length + 1) return 0;
+    return trackIndex - 1;
+  }, [hasMultipleQuotes, trackIndex]);
+
+  const activeQuote = activeQuoteIndex >= 0 ? dashboardQuotes[activeQuoteIndex] : null;
+  const isFavoriteQuote = activeQuote ? favoriteQuoteIds.includes(activeQuote.id) : false;
+
+  const goToNextQuote = () => {
+    if (!hasMultipleQuotes) return;
+    setIsTransitionEnabled(!prefersReducedMotion);
+    setTrackIndex((current) => current + 1);
+  };
+
+  const goToPreviousQuote = () => {
+    if (!hasMultipleQuotes) return;
+    setIsTransitionEnabled(!prefersReducedMotion);
+    setTrackIndex((current) => current - 1);
+  };
+
+  const goToQuote = (index: number) => {
+    if (!hasMultipleQuotes) return;
+    setIsTransitionEnabled(!prefersReducedMotion);
+    setTrackIndex(index + 1);
+  };
+
+  const toggleFavoriteQuote = () => {
+    if (!activeQuote) return;
+
+    const isFavorite = favoriteQuoteIds.includes(activeQuote.id);
+
+    setFavoriteQuoteIds((current) => (
+      isFavorite ? current.filter((quoteId) => quoteId !== activeQuote.id) : [...current, activeQuote.id]
+    ));
+    toast.success(isFavorite ? 'Quote removed from favorites' : 'Quote saved to favorites');
+  };
+
+  const shareQuote = async () => {
+    if (!activeQuote) return;
+
+    const shareText = `"${activeQuote.text}" - ${activeQuote.author}`;
+
+    try {
+      if (navigator.share) {
+        await navigator.share({ text: shareText, title: 'MindfulLife Quote' });
+        toast.success('Quote shared');
+        return;
+      }
+
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(shareText);
+        toast.success('Quote copied to clipboard');
+        return;
+      }
+
+      throw new Error('Sharing is not supported');
+    } catch (shareError: any) {
+      if (shareError?.name === 'AbortError') return;
+      toast.error('Unable to share quote');
+    }
+  };
+
   return (
     <div className={clsx('animate-fade-in pb-10 transition-colors', isDarkMode && 'dark')}>
       <div className="mb-8 flex flex-col gap-3 rounded-[2rem] border border-sage-200/80 bg-white/80 px-6 py-5 shadow-soft backdrop-blur-sm transition-colors sm:px-8 dark:border-white/10 dark:bg-[#15201a]/90">
         <div className="flex items-center justify-between gap-4">
           <p className="text-xs font-semibold uppercase tracking-[0.28em] text-sage-500 dark:text-sage-300">Wellness Dashboard</p>
           <button
-            aria-label={`Switch dashboard to ${isDarkMode ? 'light' : 'dark'} mode`}
+            aria-label={`Current dashboard theme: ${isDarkMode ? 'dark' : 'light'} mode. Switch to ${isDarkMode ? 'light' : 'dark'} mode`}
             className="inline-flex items-center gap-3 rounded-full border border-sage-200 bg-sage-50 px-3 py-2 text-sm font-semibold text-sage-700 transition-all hover:border-sage-300 hover:bg-white dark:border-white/10 dark:bg-white/5 dark:text-sage-100 dark:hover:bg-white/10"
             onClick={toggleTheme}
             type="button"
           >
-            <span className="material-symbols-outlined text-[18px]">{isDarkMode ? 'light_mode' : 'dark_mode'}</span>
-            <span>{isDarkMode ? 'Light mode' : 'Dark mode'}</span>
+            <span className="material-symbols-outlined text-[18px]">{isDarkMode ? 'dark_mode' : 'light_mode'}</span>
+            <span>{isDarkMode ? 'Dark mode' : 'Light mode'}</span>
             <span className={clsx(
               'relative inline-flex h-6 w-11 rounded-full transition-colors',
               isDarkMode ? 'bg-sage-500' : 'bg-sage-300'
@@ -247,7 +405,15 @@ export default function WellnessOverview() {
       </div>
 
       <section className="mb-10 overflow-hidden rounded-[2rem] border border-sage-200 bg-gradient-to-br from-sage-100 via-sage-50 to-white p-6 shadow-soft transition-colors sm:p-8 lg:p-10 dark:border-white/10 dark:bg-gradient-to-br dark:from-[#1a261f] dark:via-[#121b16] dark:to-[#0e1511]">
-        <div className="relative overflow-hidden rounded-[1.75rem] border border-sage-200/80 bg-sage-600/10 px-6 py-12 text-center sm:px-10 dark:border-white/10 dark:bg-white/5">
+        <div
+          aria-label="Inspirational quote carousel"
+          aria-roledescription="carousel"
+          className="relative overflow-hidden rounded-[1.75rem] border border-sage-200/80 bg-sage-600/10 px-6 py-12 text-center sm:px-10 dark:border-white/10 dark:bg-white/5"
+          onBlurCapture={() => setIsQuoteHovered(false)}
+          onFocusCapture={() => setIsQuoteHovered(true)}
+          onMouseEnter={() => setIsQuoteHovered(true)}
+          onMouseLeave={() => setIsQuoteHovered(false)}
+        >
           <div
             aria-hidden="true"
             className="pointer-events-none absolute inset-0 opacity-20"
@@ -259,21 +425,105 @@ export default function WellnessOverview() {
 
           <div className="relative z-10 mx-auto flex max-w-3xl flex-col items-center">
             <span className="material-symbols-outlined mb-4 text-4xl text-sage-600/70 dark:text-sage-200/70">format_quote</span>
-            <h2 className="font-display text-3xl italic leading-tight text-sage-900 sm:text-4xl lg:text-5xl dark:text-sage-50">
-              &quot;Nature does not hurry, yet everything is accomplished.&quot;
-            </h2>
-            <p className="mt-5 text-base font-semibold tracking-[0.24em] text-sage-700 dark:text-sage-200">LAO TZU</p>
+
+            {quoteSlides.length ? (
+              <div className="w-full">
+                <div className="overflow-hidden">
+                  <div
+                    aria-atomic="true"
+                    aria-live={prefersReducedMotion ? 'off' : 'polite'}
+                    className="flex"
+                    style={{
+                      transform: `translateX(-${trackIndex * 100}%)`,
+                      transitionDuration: prefersReducedMotion || !isTransitionEnabled ? '0ms' : `${QUOTE_TRANSITION_MS}ms`,
+                      transitionProperty: 'transform',
+                      transitionTimingFunction: 'ease-in-out',
+                    }}
+                  >
+                    {quoteSlides.map((quote, index) => (
+                      <div className="w-full shrink-0" key={`${quote.id}-${index + 1}`}>
+                        <div className="mx-auto flex min-h-[180px] max-w-3xl flex-col items-center justify-center">
+                          <h2 className="font-display text-3xl italic leading-tight text-sage-900 sm:text-4xl lg:text-5xl dark:text-sage-50">
+                            &quot;{quote.text}&quot;
+                          </h2>
+                          <p className="mt-5 text-base font-semibold tracking-[0.24em] text-sage-700 dark:text-sage-200">
+                            {quote.author.toUpperCase()}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {hasMultipleQuotes ? (
+                  <div className="mt-8 flex items-center justify-center gap-3">
+                    <button
+                      aria-label="Show previous quote"
+                      className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-sage-200 bg-white/80 text-sage-700 transition-all hover:border-sage-300 hover:bg-white dark:border-white/10 dark:bg-white/5 dark:text-sage-100 dark:hover:bg-white/10"
+                      onClick={goToPreviousQuote}
+                      type="button"
+                    >
+                      <span className="material-symbols-outlined">arrow_back</span>
+                    </button>
+
+                    <div className="flex items-center gap-2">
+                      {dashboardQuotes.map((quote, index) => {
+                        const isActive = index === activeQuoteIndex;
+                        return (
+                          <button
+                            aria-label={`Show quote ${index + 1} by ${quote.author}`}
+                            aria-pressed={isActive}
+                            className={clsx(
+                              'h-2.5 rounded-full transition-all',
+                              isActive
+                                ? 'w-8 bg-sage-700 dark:bg-sage-100'
+                                : 'w-2.5 bg-sage-300 hover:bg-sage-400 dark:bg-sage-500/50 dark:hover:bg-sage-300'
+                            )}
+                            key={quote.id}
+                            onClick={() => goToQuote(index)}
+                            type="button"
+                          />
+                        );
+                      })}
+                    </div>
+
+                    <button
+                      aria-label="Show next quote"
+                      className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-sage-200 bg-white/80 text-sage-700 transition-all hover:border-sage-300 hover:bg-white dark:border-white/10 dark:bg-white/5 dark:text-sage-100 dark:hover:bg-white/10"
+                      onClick={goToNextQuote}
+                      type="button"
+                    >
+                      <span className="material-symbols-outlined">arrow_forward</span>
+                    </button>
+                  </div>
+                ) : null}
+              </div>
+            ) : (
+              <>
+                <h2 className="font-display text-3xl italic leading-tight text-sage-900 sm:text-4xl lg:text-5xl dark:text-sage-50">
+                  &quot;Nature does not hurry, yet everything is accomplished.&quot;
+                </h2>
+                <p className="mt-5 text-base font-semibold tracking-[0.24em] text-sage-700 dark:text-sage-200">LAO TZU</p>
+              </>
+            )}
 
             <div className="mt-8 flex flex-col gap-3 sm:flex-row">
               <button
-                className="inline-flex items-center justify-center gap-2 rounded-full bg-sage-600 px-6 py-3 text-sm font-bold text-white transition-all hover:-translate-y-0.5 hover:bg-sage-700 hover:shadow-lifted"
+                className={clsx(
+                  'inline-flex items-center justify-center gap-2 rounded-full px-6 py-3 text-sm font-bold transition-all',
+                  isFavoriteQuote
+                    ? 'bg-rose-100 text-rose-700 hover:-translate-y-0.5 hover:bg-rose-200 hover:shadow-lifted dark:bg-rose-500/15 dark:text-rose-100 dark:hover:bg-rose-500/25'
+                    : 'bg-sage-600 text-white hover:-translate-y-0.5 hover:bg-sage-700 hover:shadow-lifted'
+                )}
+                onClick={toggleFavoriteQuote}
                 type="button"
               >
-                <span className="material-symbols-outlined text-lg">favorite</span>
-                Save to Favorites
+                <span className="material-symbols-outlined text-lg">{isFavoriteQuote ? 'favorite' : 'favorite_border'}</span>
+                {isFavoriteQuote ? 'Saved to Favorites' : 'Save to Favorites'}
               </button>
               <button
-                className="inline-flex items-center justify-center gap-2 rounded-full border border-sage-200 bg-white px-6 py-3 text-sm font-bold text-sage-700 transition-all hover:bg-sage-50"
+                className="inline-flex items-center justify-center gap-2 rounded-full border border-sage-200 bg-white px-6 py-3 text-sm font-bold text-sage-700 transition-all hover:bg-sage-50 dark:border-white/10 dark:bg-white/5 dark:text-sage-100 dark:hover:bg-white/10"
+                onClick={shareQuote}
                 type="button"
               >
                 <span className="material-symbols-outlined text-lg">share</span>

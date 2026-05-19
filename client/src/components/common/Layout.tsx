@@ -3,10 +3,12 @@ import Sidebar from './Sidebar';
 
 export default function Layout() {
   return (
-    <div className="flex min-h-screen bg-sage-50 transition-colors dark:bg-[#0f1712]">
+    <div className="min-h-screen bg-sage-50 transition-colors dark:bg-[#0f1712]">
       <Sidebar />
-      <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-6 sm:px-6 lg:ml-64 lg:px-8 lg:py-8">
-        <Outlet />
+      <main className="w-full px-4 py-6 sm:px-6 lg:pl-80 lg:pr-8 lg:py-8">
+        <div className="mx-auto w-full max-w-7xl">
+          <Outlet />
+        </div>
       </main>
     </div>
   );
