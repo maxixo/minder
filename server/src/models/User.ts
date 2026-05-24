@@ -1,6 +1,16 @@
 ﻿import mongoose from 'mongoose';
 import bcrypt from 'bcryptjs';
 
+const pushSubscriptionSchema = new mongoose.Schema({
+  endpoint: { type: String, required: true },
+  expirationTime: { type: Number, default: null },
+  keys: {
+    p256dh: { type: String, required: true },
+    auth: { type: String, required: true },
+  },
+  userAgent: { type: String, default: null },
+}, { _id: false, timestamps: true });
+
 const userSchema = new mongoose.Schema({
   name: { type: String, required: [true, 'Name is required'], trim: true, maxlength: 50 },
   email: { type: String, required: [true, 'Email is required'], unique: true, lowercase: true, trim: true, match: [/^\S+@\S+\.\S+$/, 'Invalid email'] },
@@ -12,9 +22,12 @@ const userSchema = new mongoose.Schema({
       dailyReminder: { type: Boolean, default: true },
       reminderTime: { type: String, default: '20:00' },
       weeklyReport: { type: Boolean, default: true },
+      timezone: { type: String, default: 'UTC' },
+      lastReminderSentAt: { type: Date, default: null },
     },
     privacy: { shareStats: { type: Boolean, default: false } },
   },
+  pushSubscriptions: { type: [pushSubscriptionSchema], default: [] },
 }, { timestamps: true });
 
 userSchema.pre('save', async function (next) {

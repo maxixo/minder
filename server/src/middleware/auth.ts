@@ -8,6 +8,19 @@ interface AuthRequest extends Request {
 
 export const SESSION_COOKIE_NAME = 'mindful_session';
 
+const getCookieSecure = () => {
+  if (process.env.COOKIE_SECURE) return process.env.COOKIE_SECURE === 'true';
+  return process.env.NODE_ENV === 'production';
+};
+
+const getCookieSameSite = (): CookieOptions['sameSite'] => {
+  const configured = process.env.COOKIE_SAME_SITE?.toLowerCase();
+  if (configured === 'lax' || configured === 'strict' || configured === 'none') {
+    return configured;
+  }
+  return 'strict';
+};
+
 const parseCookieMaxAge = () => {
   const expiresIn = process.env.JWT_EXPIRES_IN || '7d';
 
@@ -32,8 +45,8 @@ const parseCookieMaxAge = () => {
 
 const getSessionCookieOptions = (): CookieOptions => ({
   httpOnly: true,
-  secure: process.env.NODE_ENV === 'production',
-  sameSite: 'strict',
+  secure: getCookieSecure(),
+  sameSite: getCookieSameSite(),
   path: '/',
   maxAge: parseCookieMaxAge(),
 });

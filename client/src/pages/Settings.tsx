@@ -5,7 +5,18 @@ import { format } from 'date-fns';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/useAuth';
 import { useTheme, } from '@/contexts/useTheme';
+import { usePwaInstall } from '@/hooks/usePwaInstall';
 import authService from '@/services/authService';
+import {
+  getBrowserTimeZone,
+  getExistingPushSubscription,
+  getNotificationPermissionStatus,
+  isPushSupported,
+  requestNotificationPermission,
+  subscribeToPush,
+  unsubscribeFromPush,
+  type NotificationPermissionStatus,
+} from '@/services/pushService';
 import userService from '@/services/userService';
 
 type ThemePreference = 'light' | 'dark' | 'auto';
@@ -16,6 +27,7 @@ interface PreferencesState {
     dailyReminder: boolean;
     reminderTime: string;
     weeklyReport: boolean;
+    timezone: string;
   };
   privacy: {
     shareStats: boolean;
@@ -34,6 +46,7 @@ const defaultPreferences: PreferencesState = {
     dailyReminder: true,
     reminderTime: '20:00',
     weeklyReport: true,
+    timezone: 'UTC',
   },
   privacy: {
     shareStats: false,
@@ -46,6 +59,7 @@ const normalizePreferences = (preferences: any): PreferencesState => ({
     dailyReminder: preferences?.notifications?.dailyReminder ?? true,
     reminderTime: preferences?.notifications?.reminderTime || '20:00',
     weeklyReport: preferences?.notifications?.weeklyReport ?? true,
+    timezone: preferences?.notifications?.timezone || 'UTC',
   },
   privacy: {
     shareStats: preferences?.privacy?.shareStats ?? false,
@@ -108,6 +122,7 @@ export default function Settings() {
   const location = useLocation();
   const { logout, updateProfile, user } = useAuth();
   const { isDarkMode, setThemePreference } = useTheme();
+  const { canInstall, install, isInstalled, isIosLikeBrowser } = usePwaInstall();
 
   const [name, setName] = useState('');
   const [avatar, setAvatar] = useState('');
@@ -123,6 +138,12 @@ export default function Settings() {
   const [isSavingPassword, setIsSavingPassword] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [notificationPermission, setNotificationPermission] = useState<NotificationPermissionStatus>('unsupported');
+  const [pushSupported, setPushSupported] = useState(false);
+  const [isPushSubscribed, setIsPushSubscribed] = useState(false);
+  const [subscriptionCount, setSubscriptionCount] = useState(0);
+  const [isUpdatingPush, setIsUpdatingPush] = useState(false);
+  const [isSendingTestPush, setIsSendingTestPush] = useState(false);
 
   useEffect(() => {
     if (!user) return;
@@ -145,6 +166,41 @@ export default function Settings() {
       cancelled = true;
     };
   }, [user]);
+
+  useEffect(() => {
+    const detectedPushSupport = isPushSupported();
+    setPushSupported(detectedPushSupport);
+    setNotificationPermission(getNotificationPermissionStatus());
+
+    if (!detectedPushSupport) return;
+
+    let cancelled = false;
+
+    void Promise.all([
+      getExistingPushSubscription(),
+      userService.getPushSubscriptionStatus().catch(() => null),
+    ]).then(([browserSubscription, statusResponse]) => {
+      if (cancelled) return;
+
+      setIsPushSubscribed(Boolean(browserSubscription) || Boolean(statusResponse?.data?.subscribed));
+      setSubscriptionCount(statusResponse?.data?.subscriptionCount || 0);
+
+      const serverTimezone = statusResponse?.data?.timezone;
+      if (serverTimezone) {
+        setPreferences((current) => ({
+          ...current,
+          notifications: {
+            ...current.notifications,
+            timezone: serverTimezone,
+          },
+        }));
+      }
+    }).catch(() => undefined);
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     if (!location.hash) return;
@@ -170,7 +226,9 @@ export default function Settings() {
       },
       {
         label: 'Daily Reminder',
-        value: preferences.notifications.dailyReminder ? `Enabled at ${preferences.notifications.reminderTime}` : 'Currently paused',
+        value: preferences.notifications.dailyReminder
+          ? `Enabled at ${preferences.notifications.reminderTime} (${preferences.notifications.timezone})`
+          : 'Currently paused',
         icon: 'notifications_active',
       },
       {
@@ -208,15 +266,112 @@ export default function Settings() {
 
   const handlePreferencesSave = async () => {
     setIsSavingPreferences(true);
+    const timezone = preferences.notifications.timezone || getBrowserTimeZone();
 
     try {
-      const response = await userService.updatePreferences(preferences);
+      const response = await userService.updatePreferences({
+        ...preferences,
+        notifications: {
+          ...preferences.notifications,
+          timezone,
+        },
+      });
       setPreferences(normalizePreferences(response.data));
       toast.success('Preferences updated');
     } catch (error: any) {
       toast.error(error?.response?.data?.message || 'Unable to update preferences');
     } finally {
       setIsSavingPreferences(false);
+    }
+  };
+
+  const handleInstallApp = async () => {
+    try {
+      const result = await install();
+      if (result?.outcome === 'accepted') {
+        toast.success('MindfulLife is ready to use from your home screen.');
+      }
+    } catch {
+      toast.error('Unable to start the install flow.');
+    }
+  };
+
+  const handleEnableNotifications = async () => {
+    if (!pushSupported) {
+      toast.error('Push notifications are not supported in this browser.');
+      return;
+    }
+
+    setIsUpdatingPush(true);
+
+    try {
+      const permission = await requestNotificationPermission();
+      setNotificationPermission(permission);
+
+      if (permission !== 'granted') {
+        toast.error('Notification permission is required for daily reminders.');
+        return;
+      }
+
+      const timezone = preferences.notifications.timezone || getBrowserTimeZone();
+      const subscription = await subscribeToPush();
+
+      await userService.savePushSubscription({
+        subscription,
+        timezone,
+      });
+
+      setPreferences((current) => ({
+        ...current,
+        notifications: {
+          ...current.notifications,
+          timezone,
+        },
+      }));
+      setIsPushSubscribed(true);
+      setSubscriptionCount((current) => Math.max(1, current));
+      toast.success('Daily reminder notifications enabled.');
+    } catch (error: any) {
+      toast.error(error?.message || 'Unable to enable notifications.');
+    } finally {
+      setIsUpdatingPush(false);
+    }
+  };
+
+  const handleDisableNotifications = async () => {
+    setIsUpdatingPush(true);
+
+    try {
+      const existingSubscription = await getExistingPushSubscription();
+      const endpoint = existingSubscription?.endpoint || undefined;
+
+      if (existingSubscription) {
+        await existingSubscription.unsubscribe();
+      } else {
+        await unsubscribeFromPush();
+      }
+
+      await userService.deletePushSubscription(endpoint ? { endpoint } : undefined);
+      setIsPushSubscribed(false);
+      setSubscriptionCount(0);
+      toast.success('Daily reminder notifications disabled.');
+    } catch (error: any) {
+      toast.error(error?.message || 'Unable to disable notifications.');
+    } finally {
+      setIsUpdatingPush(false);
+    }
+  };
+
+  const handleSendTestNotification = async () => {
+    setIsSendingTestPush(true);
+
+    try {
+      const response = await userService.sendTestPushNotification();
+      toast.success(response.message || 'Test notification sent');
+    } catch (error: any) {
+      toast.error(error?.response?.data?.message || 'Unable to send test notification');
+    } finally {
+      setIsSendingTestPush(false);
     }
   };
 
@@ -478,6 +633,29 @@ export default function Settings() {
                 />
               </div>
 
+              <div className={clsx(
+                'rounded-[1.25rem] border border-sage-200 bg-sage-100/70 p-4 transition-opacity dark:border-white/10 dark:bg-white/5',
+                !preferences.notifications.dailyReminder && 'opacity-60'
+              )}>
+                <label className="label" htmlFor="settings-reminder-timezone">Reminder Timezone</label>
+                <input
+                  className="input rounded-[1rem] border-sage-200 bg-sage-50 dark:border-white/10 dark:bg-[#101915]"
+                  disabled={!preferences.notifications.dailyReminder}
+                  id="settings-reminder-timezone"
+                  onChange={(event) => setPreferences((current) => ({
+                    ...current,
+                    notifications: {
+                      ...current.notifications,
+                      timezone: event.target.value,
+                    },
+                  }))}
+                  placeholder="America/New_York"
+                  type="text"
+                  value={preferences.notifications.timezone}
+                />
+                <p className="helper-text">Use an IANA timezone like `America/New_York` so reminders arrive at the right local hour.</p>
+              </div>
+
               <ToggleRow
                 checked={preferences.notifications.weeklyReport}
                 description="Keep weekly summary reminders turned on so your broader patterns stay visible."
@@ -592,6 +770,85 @@ export default function Settings() {
                   </div>
                 </div>
               ))}
+            </div>
+          </section>
+
+          <section className={settingsPanelClassName}>
+            <div className="flex items-start gap-4">
+              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-sage-100 text-sage-700 dark:bg-white/10 dark:text-sage-100">
+                <span className="material-symbols-outlined">install_mobile</span>
+              </div>
+              <div className="flex-1">
+                <h3 className="font-display text-2xl font-semibold text-sage-900 dark:text-sage-50">App Install & Notifications</h3>
+                <p className="mt-2 text-sm leading-7 text-sage-600 dark:text-sage-200">
+                  Install MindfulLife like an app and keep daily reflection reminders connected to this device.
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-6 space-y-4">
+              <div className={settingsInsetClassName}>
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-sage-500 dark:text-sage-300">Install Status</p>
+                <p className="mt-2 text-sm font-medium text-slate-700 dark:text-sage-100">
+                  {isInstalled ? 'MindfulLife is already installed on this device.' : canInstall ? 'This browser can install MindfulLife right now.' : 'Install prompt is not currently available in this browser session.'}
+                </p>
+                {isIosLikeBrowser && !isInstalled ? (
+                  <p className="mt-2 text-sm text-sage-600 dark:text-sage-300">
+                    On iPhone or iPad, use Safari&apos;s Share menu and choose Add to Home Screen.
+                  </p>
+                ) : null}
+              </div>
+
+              <div className={settingsInsetClassName}>
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-sage-500 dark:text-sage-300">Notification Status</p>
+                <p className="mt-2 text-sm font-medium text-slate-700 dark:text-sage-100">
+                  Permission: {notificationPermission}. Device subscription: {isPushSubscribed ? 'active' : 'inactive'}.
+                </p>
+                <p className="mt-1 text-sm text-sage-600 dark:text-sage-300">
+                  Server subscriptions linked to your account: {subscriptionCount}.
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-6 flex flex-col gap-3">
+              {canInstall ? (
+                <button className="btn btn-primary rounded-full" onClick={handleInstallApp} type="button">
+                  <span className="material-symbols-outlined text-[18px]">download_for_offline</span>
+                  Install MindfulLife
+                </button>
+              ) : null}
+
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <button
+                  className="btn btn-secondary rounded-full"
+                  disabled={!pushSupported || isUpdatingPush}
+                  onClick={handleEnableNotifications}
+                  type="button"
+                >
+                  <span className="material-symbols-outlined text-[18px]">notifications_active</span>
+                  {isUpdatingPush ? 'Connecting...' : 'Enable Notifications'}
+                </button>
+
+                <button
+                  className="btn btn-ghost rounded-full border border-sage-200 dark:border-white/10"
+                  disabled={!isPushSubscribed || isUpdatingPush}
+                  onClick={handleDisableNotifications}
+                  type="button"
+                >
+                  <span className="material-symbols-outlined text-[18px]">notifications_off</span>
+                  Disable Notifications
+                </button>
+              </div>
+
+              <button
+                className="btn btn-secondary rounded-full"
+                disabled={!isPushSubscribed || isSendingTestPush}
+                onClick={handleSendTestNotification}
+                type="button"
+              >
+                <span className="material-symbols-outlined text-[18px]">send</span>
+                {isSendingTestPush ? 'Sending Test...' : 'Send Test Notification'}
+              </button>
             </div>
           </section>
 
