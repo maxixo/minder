@@ -1,10 +1,8 @@
-﻿import type { Request, Response, NextFunction, CookieOptions } from 'express';
+import type { Response, NextFunction, CookieOptions } from 'express';
 import jwt, { type JwtPayload, type SignOptions } from 'jsonwebtoken';
-import User from '../models/User.js';
-
-interface AuthRequest extends Request {
-  user?: any;
-}
+import prisma from '../lib/prisma.js';
+import { serializeUser } from '../lib/serializers.js';
+import type { AuthRequest } from '../types/auth.js';
 
 export const SESSION_COOKIE_NAME = 'mindful_session';
 
@@ -66,16 +64,20 @@ const getTokenFromCookieHeader = (cookieHeader?: string) => {
 
 export const protect = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
-    const cookieToken = getTokenFromCookieHeader(req.headers.cookie);
-    const token = cookieToken;
+    const token = getTokenFromCookieHeader(req.headers.cookie);
 
     if (!token) {
       return res.status(401).json({ success: false, message: 'Not authorized' });
     }
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET as string) as JwtPayload & { id: string };
-    req.user = await User.findById(decoded.id).select('-password');
-    if (!req.user) return res.status(401).json({ success: false, message: 'User not found' });
+    const user = await prisma.user.findUnique({ where: { id: decoded.id } });
+
+    if (!user) {
+      return res.status(401).json({ success: false, message: 'User not found' });
+    }
+
+    req.user = serializeUser(user);
     next();
   } catch {
     return res.status(401).json({ success: false, message: 'Not authorized' });

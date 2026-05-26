@@ -6,6 +6,9 @@ import './index.css';
 
 registerSW({
   immediate: true,
+  onRegisterError(error) {
+    console.error('Service worker registration failed:', error);
+  },
 });
 
 if ('serviceWorker' in navigator) {

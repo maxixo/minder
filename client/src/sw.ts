@@ -1,19 +1,27 @@
 /// <reference lib="webworker" />
 import { clientsClaim } from 'workbox-core';
-import { cleanupOutdatedCaches, precacheAndRoute, createHandlerBoundToURL } from 'workbox-precaching';
-import { NavigationRoute, registerRoute } from 'workbox-routing';
+import { cleanupOutdatedCaches, precacheAndRoute } from 'workbox-precaching';
+import { registerRoute } from 'workbox-routing';
 import { NetworkOnly } from 'workbox-strategies';
 
 declare let self: ServiceWorkerGlobalScope;
 
+self.skipWaiting();
 clientsClaim();
 cleanupOutdatedCaches();
 precacheAndRoute(self.__WB_MANIFEST);
 
-const navigationHandler = createHandlerBoundToURL('/index.html');
-registerRoute(new NavigationRoute(navigationHandler, {
-  denylist: [/^\/api\//],
-}));
+registerRoute(
+  ({ request, url }) => request.mode === 'navigate' && !url.pathname.startsWith('/api/'),
+  async ({ event }) => {
+    try {
+      return await fetch(event.request);
+    } catch {
+      const cachedAppShell = await caches.match('/index.html', { ignoreSearch: true });
+      return cachedAppShell || Response.error();
+    }
+  }
+);
 
 registerRoute(({ url }) => url.pathname.startsWith('/api/'), new NetworkOnly(), 'GET');
 

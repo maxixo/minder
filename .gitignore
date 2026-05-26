@@ -1,4 +1,6 @@
 node_modules/
+*.tsbuildinfo
+server/package-lock.json
 /*.md
 launch.md
 runbook.md

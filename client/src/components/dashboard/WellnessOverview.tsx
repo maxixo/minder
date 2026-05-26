@@ -661,7 +661,7 @@ export default function WellnessOverview() {
 
                       return (
                         <article
-                          key={entry._id}
+                          key={entry.id}
                           className="group flex flex-col justify-between gap-4 rounded-[1.75rem] border border-sage-100 bg-white p-5 shadow-soft transition-all hover:border-sage-300 hover:shadow-lifted sm:flex-row sm:items-center dark:border-white/10 dark:bg-white/5 dark:hover:border-sage-400/40"
                         >
                           <div className="flex items-center gap-4">

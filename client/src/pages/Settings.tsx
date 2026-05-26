@@ -141,6 +141,7 @@ export default function Settings() {
   const [notificationPermission, setNotificationPermission] = useState<NotificationPermissionStatus>('unsupported');
   const [pushSupported, setPushSupported] = useState(false);
   const [isPushSubscribed, setIsPushSubscribed] = useState(false);
+  const [isPushServerConfigured, setIsPushServerConfigured] = useState(false);
   const [subscriptionCount, setSubscriptionCount] = useState(0);
   const [isUpdatingPush, setIsUpdatingPush] = useState(false);
   const [isSendingTestPush, setIsSendingTestPush] = useState(false);
@@ -182,7 +183,8 @@ export default function Settings() {
     ]).then(([browserSubscription, statusResponse]) => {
       if (cancelled) return;
 
-      setIsPushSubscribed(Boolean(browserSubscription) || Boolean(statusResponse?.data?.subscribed));
+      setIsPushSubscribed(Boolean(browserSubscription));
+      setIsPushServerConfigured(Boolean(statusResponse?.data?.configured));
       setSubscriptionCount(statusResponse?.data?.subscriptionCount || 0);
 
       const serverTimezone = statusResponse?.data?.timezone;
@@ -239,6 +241,35 @@ export default function Settings() {
     ],
     [preferences]
   );
+
+  const installStatusMessage = useMemo(() => {
+    if (isInstalled) return 'MindfulLife is already installed on this device.';
+    if (canInstall) return 'This browser can install MindfulLife right now.';
+    if (typeof window !== 'undefined' && !window.isSecureContext) {
+      return 'Chrome only shows the install flow in a secure context like HTTPS or localhost.';
+    }
+    if (import.meta.env.DEV) {
+      return 'Chrome has not exposed the install prompt yet. In local development, refresh once after the service worker registers, then try again.';
+    }
+    return 'Chrome has not exposed the install prompt in this session yet. Refresh once, then check DevTools > Application > Manifest if install still does not appear.';
+  }, [canInstall, isInstalled]);
+
+  const notificationStatusDetail = useMemo(() => {
+    if (!pushSupported) return 'This browser does not support service worker push notifications.';
+    if (!isPushServerConfigured) {
+      return 'The server is not configured to send web push yet. Add VAPID keys on the backend before testing delivery.';
+    }
+    if (notificationPermission === 'denied') {
+      return 'Chrome is blocking notifications for this site. Open the padlock in the address bar, set Notifications to Allow, then reload the page.';
+    }
+    if (notificationPermission === 'default') {
+      return 'Notifications have not been approved for this site yet.';
+    }
+    if (!isPushSubscribed) {
+      return 'Permission is granted, but this device is not subscribed yet. Use Enable Notifications to create a push subscription.';
+    }
+    return 'This device is ready to receive push reminders.';
+  }, [isPushServerConfigured, isPushSubscribed, notificationPermission, pushSupported]);
 
   const handleProfileSave = async () => {
     const trimmedName = name.trim();
@@ -309,7 +340,11 @@ export default function Settings() {
       setNotificationPermission(permission);
 
       if (permission !== 'granted') {
-        toast.error('Notification permission is required for daily reminders.');
+        toast.error(
+          permission === 'denied'
+            ? 'Chrome is blocking notifications for this site. Change the site permission to Allow and reload the page.'
+            : 'Notification permission is required for daily reminders.'
+        );
         return;
       }
 
@@ -329,6 +364,7 @@ export default function Settings() {
         },
       }));
       setIsPushSubscribed(true);
+      setIsPushServerConfigured(true);
       setSubscriptionCount((current) => Math.max(1, current));
       toast.success('Daily reminder notifications enabled.');
     } catch (error: any) {
@@ -790,7 +826,7 @@ export default function Settings() {
               <div className={settingsInsetClassName}>
                 <p className="text-xs font-semibold uppercase tracking-[0.18em] text-sage-500 dark:text-sage-300">Install Status</p>
                 <p className="mt-2 text-sm font-medium text-slate-700 dark:text-sage-100">
-                  {isInstalled ? 'MindfulLife is already installed on this device.' : canInstall ? 'This browser can install MindfulLife right now.' : 'Install prompt is not currently available in this browser session.'}
+                  {installStatusMessage}
                 </p>
                 {isIosLikeBrowser && !isInstalled ? (
                   <p className="mt-2 text-sm text-sage-600 dark:text-sage-300">
@@ -803,6 +839,9 @@ export default function Settings() {
                 <p className="text-xs font-semibold uppercase tracking-[0.18em] text-sage-500 dark:text-sage-300">Notification Status</p>
                 <p className="mt-2 text-sm font-medium text-slate-700 dark:text-sage-100">
                   Permission: {notificationPermission}. Device subscription: {isPushSubscribed ? 'active' : 'inactive'}.
+                </p>
+                <p className="mt-1 text-sm text-sage-600 dark:text-sage-300">
+                  {notificationStatusDetail}
                 </p>
                 <p className="mt-1 text-sm text-sage-600 dark:text-sage-300">
                   Server subscriptions linked to your account: {subscriptionCount}.

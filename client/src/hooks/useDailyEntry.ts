@@ -95,10 +95,10 @@ export const useDailyEntry = () => {
       });
       const payload = toDailyEntryRequest(nextEntry);
 
-      const response = currentEntry._id
+      const response = currentEntry.id
         ? options.autoSave
-          ? await entryService.autoSaveEntry(currentEntry._id, payload)
-          : await entryService.updateEntry(currentEntry._id, payload)
+          ? await entryService.autoSaveEntry(currentEntry.id, payload)
+          : await entryService.updateEntry(currentEntry.id, payload)
         : await entryService.createEntry(payload);
 
       const normalized = normalizeDailyEntry(response.data);
@@ -129,7 +129,7 @@ export const useDailyEntry = () => {
 
   return {
     entry,
-    entryId: entry?._id || null,
+    entryId: entry?.id || null,
     loading,
     saving,
     error,

@@ -5,6 +5,34 @@ const urlBase64ToUint8Array = (base64String: string) => {
   return Uint8Array.from(rawData, (character) => character.charCodeAt(0));
 };
 
+const SERVICE_WORKER_READY_TIMEOUT_MS = 10_000;
+
+const getServiceWorkerRegistration = async () => {
+  if (!('serviceWorker' in navigator)) {
+    throw new Error('Service workers are not supported in this browser.');
+  }
+
+  const existingRegistration = await navigator.serviceWorker.getRegistration();
+  if (existingRegistration?.active) {
+    return existingRegistration;
+  }
+
+  const readyRegistration = await Promise.race([
+    navigator.serviceWorker.ready,
+    new Promise<never>((_, reject) => {
+      window.setTimeout(() => {
+        reject(new Error('Service worker did not become ready. Refresh the page and try again.'));
+      }, SERVICE_WORKER_READY_TIMEOUT_MS);
+    }),
+  ]);
+
+  if (!readyRegistration?.active) {
+    throw new Error('Service worker is registered but not active yet. Refresh the page and try again.');
+  }
+
+  return readyRegistration;
+};
+
 export type NotificationPermissionStatus = NotificationPermission | 'unsupported';
 
 export const getNotificationPermissionStatus = (): NotificationPermissionStatus => {
@@ -32,7 +60,7 @@ export const subscribeToPush = async () => {
     throw new Error('VITE_VAPID_PUBLIC_KEY is missing.');
   }
 
-  const registration = await navigator.serviceWorker.ready;
+  const registration = await getServiceWorkerRegistration();
   const existingSubscription = await registration.pushManager.getSubscription();
   if (existingSubscription) return existingSubscription.toJSON();
 
@@ -46,13 +74,13 @@ export const subscribeToPush = async () => {
 
 export const getExistingPushSubscription = async () => {
   if (!isPushSupported()) return null;
-  const registration = await navigator.serviceWorker.ready;
+  const registration = await getServiceWorkerRegistration();
   return registration.pushManager.getSubscription();
 };
 
 export const unsubscribeFromPush = async () => {
   if (!isPushSupported()) return false;
-  const registration = await navigator.serviceWorker.ready;
+  const registration = await getServiceWorkerRegistration();
   const subscription = await registration.pushManager.getSubscription();
   if (!subscription) return false;
   return subscription.unsubscribe();

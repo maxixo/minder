@@ -1,16 +1,13 @@
-import type { Request, Response } from 'express';
-import User from '../models/User.js';
-import Entry from '../models/Entry.js';
+import type { Response } from 'express';
+import prisma from '../lib/prisma.js';
+import { serializeEntry, serializeUser } from '../lib/serializers.js';
 import {
   isPushConfigured,
   sendPushNotification,
   sendPushNotificationToMany,
   type PushSubscriptionPayload,
 } from '../services/pushService.js';
-
-interface AuthRequest extends Request {
-  user: any;
-}
+import type { AuthRequest } from '../types/auth.js';
 
 const getCleanTimezone = (timezone: unknown) => {
   if (typeof timezone !== 'string') return null;
@@ -35,8 +32,12 @@ const getNormalizedPushSubscription = (subscription: any): PushSubscriptionPaylo
 
 export const getPreferences = async (req: AuthRequest, res: Response) => {
   try {
-    const user = await User.findById(req.user._id).select('preferences');
-    res.json({ success: true, data: user.preferences });
+    const user = await prisma.user.findUnique({ where: { id: req.user.id } });
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+
+    res.json({ success: true, data: serializeUser(user).preferences });
   } catch (err: any) {
     res.status(500).json({ success: false, message: err.message });
   }
@@ -45,22 +46,25 @@ export const getPreferences = async (req: AuthRequest, res: Response) => {
 export const updatePreferences = async (req: AuthRequest, res: Response) => {
   try {
     const timezone = getCleanTimezone(req.body?.notifications?.timezone);
-    const nextPreferences = { ...req.body };
+    const currentUser = await prisma.user.findUnique({ where: { id: req.user.id } });
 
-    if (req.body?.notifications) {
-      nextPreferences.notifications = {
-        ...req.body.notifications,
-        timezone: timezone || req.body.notifications.timezone || 'UTC',
-      };
+    if (!currentUser) {
+      return res.status(404).json({ success: false, message: 'User not found' });
     }
 
-    const user = await User.findByIdAndUpdate(
-      req.user._id,
-      { $set: { preferences: nextPreferences } },
-      { new: true, runValidators: true }
-    );
+    const user = await prisma.user.update({
+      where: { id: req.user.id },
+      data: {
+        theme: req.body?.theme ?? currentUser.theme,
+        dailyReminder: req.body?.notifications?.dailyReminder ?? currentUser.dailyReminder,
+        reminderTime: req.body?.notifications?.reminderTime ?? currentUser.reminderTime,
+        weeklyReport: req.body?.notifications?.weeklyReport ?? currentUser.weeklyReport,
+        timezone: timezone || req.body?.notifications?.timezone || currentUser.timezone || 'UTC',
+        shareStats: req.body?.privacy?.shareStats ?? currentUser.shareStats,
+      },
+    });
 
-    res.json({ success: true, data: user.preferences });
+    res.json({ success: true, data: serializeUser(user).preferences });
   } catch (err: any) {
     res.status(500).json({ success: false, message: err.message });
   }
@@ -68,7 +72,11 @@ export const updatePreferences = async (req: AuthRequest, res: Response) => {
 
 export const getPushSubscriptionStatus = async (req: AuthRequest, res: Response) => {
   try {
-    const user = await User.findById(req.user._id).select('pushSubscriptions preferences.notifications.timezone');
+    const user = await prisma.user.findUnique({
+      where: { id: req.user.id },
+      include: { pushSubscriptions: true },
+    });
+
     const subscriptions = user?.pushSubscriptions || [];
 
     res.json({
@@ -77,7 +85,7 @@ export const getPushSubscriptionStatus = async (req: AuthRequest, res: Response)
         configured: isPushConfigured(),
         subscribed: subscriptions.length > 0,
         subscriptionCount: subscriptions.length,
-        timezone: user?.preferences?.notifications?.timezone || 'UTC',
+        timezone: user?.timezone || 'UTC',
       },
     });
   } catch (err: any) {
@@ -93,38 +101,49 @@ export const savePushSubscription = async (req: AuthRequest, res: Response) => {
     }
 
     const timezone = getCleanTimezone(req.body?.timezone);
-    const user = await User.findById(req.user._id);
+    const user = await prisma.user.findUnique({ where: { id: req.user.id } });
     if (!user) {
       return res.status(404).json({ success: false, message: 'User not found' });
     }
 
-    const existingSubscriptions = Array.from(user.pushSubscriptions as any[]);
-    const existingIndex = existingSubscriptions.findIndex((item: any) => item.endpoint === subscription.endpoint);
-    const subscriptionRecord = {
-      ...subscription,
-      userAgent: typeof req.headers['user-agent'] === 'string' ? req.headers['user-agent'] : null,
-    };
-
-    if (existingIndex >= 0) {
-      existingSubscriptions[existingIndex] = subscriptionRecord;
-    } else {
-      existingSubscriptions.push(subscriptionRecord);
-    }
-
-    user.set('pushSubscriptions', existingSubscriptions);
+    await prisma.pushSubscription.upsert({
+      where: {
+        userId_endpoint: {
+          userId: req.user.id,
+          endpoint: subscription.endpoint,
+        },
+      },
+      update: {
+        expirationTime: subscription.expirationTime != null ? BigInt(Math.trunc(subscription.expirationTime)) : null,
+        p256dh: subscription.keys.p256dh,
+        auth: subscription.keys.auth,
+        userAgent: typeof req.headers['user-agent'] === 'string' ? req.headers['user-agent'] : null,
+      },
+      create: {
+        userId: req.user.id,
+        endpoint: subscription.endpoint,
+        expirationTime: subscription.expirationTime != null ? BigInt(Math.trunc(subscription.expirationTime)) : null,
+        p256dh: subscription.keys.p256dh,
+        auth: subscription.keys.auth,
+        userAgent: typeof req.headers['user-agent'] === 'string' ? req.headers['user-agent'] : null,
+      },
+    });
 
     if (timezone) {
-      user.preferences.notifications.timezone = timezone;
+      await prisma.user.update({
+        where: { id: req.user.id },
+        data: { timezone },
+      });
     }
 
-    await user.save();
+    const subscriptions = await prisma.pushSubscription.count({ where: { userId: req.user.id } });
 
     res.json({
       success: true,
       data: {
         subscribed: true,
-        subscriptionCount: user.pushSubscriptions.length,
-        timezone: user.preferences.notifications.timezone,
+        subscriptionCount: subscriptions,
+        timezone: timezone || user.timezone,
       },
     });
   } catch (err: any) {
@@ -135,24 +154,24 @@ export const savePushSubscription = async (req: AuthRequest, res: Response) => {
 export const deletePushSubscription = async (req: AuthRequest, res: Response) => {
   try {
     const endpoint = typeof req.body?.endpoint === 'string' ? req.body.endpoint : null;
-    const user = await User.findById(req.user._id);
-    if (!user) {
-      return res.status(404).json({ success: false, message: 'User not found' });
+
+    if (endpoint) {
+      await prisma.pushSubscription.deleteMany({
+        where: { userId: req.user.id, endpoint },
+      });
+    } else {
+      await prisma.pushSubscription.deleteMany({
+        where: { userId: req.user.id },
+      });
     }
 
-    const nextSubscriptions = endpoint
-      ? Array.from(user.pushSubscriptions as any[]).filter((subscription: any) => subscription.endpoint !== endpoint)
-      : [];
-
-    user.set('pushSubscriptions', nextSubscriptions);
-
-    await user.save();
+    const subscriptionCount = await prisma.pushSubscription.count({ where: { userId: req.user.id } });
 
     res.json({
       success: true,
       data: {
-        subscribed: user.pushSubscriptions.length > 0,
-        subscriptionCount: user.pushSubscriptions.length,
+        subscribed: subscriptionCount > 0,
+        subscriptionCount,
       },
     });
   } catch (err: any) {
@@ -162,7 +181,11 @@ export const deletePushSubscription = async (req: AuthRequest, res: Response) =>
 
 export const sendTestPushNotification = async (req: AuthRequest, res: Response) => {
   try {
-    const user = await User.findById(req.user._id).select('pushSubscriptions');
+    const user = await prisma.user.findUnique({
+      where: { id: req.user.id },
+      include: { pushSubscriptions: true },
+    });
+
     if (!user?.pushSubscriptions?.length) {
       return res.status(400).json({ success: false, message: 'No active push subscription found.' });
     }
@@ -175,15 +198,24 @@ export const sendTestPushNotification = async (req: AuthRequest, res: Response) 
       ? req.body.message.trim()
       : 'This is a test reminder from MindfulLife.';
 
-    if (user.pushSubscriptions.length === 1) {
-      await sendPushNotification(user.pushSubscriptions[0] as PushSubscriptionPayload, {
+    const subscriptions = user.pushSubscriptions.map((subscription) => ({
+      endpoint: subscription.endpoint,
+      expirationTime: subscription.expirationTime != null ? Number(subscription.expirationTime) : null,
+      keys: {
+        p256dh: subscription.p256dh,
+        auth: subscription.auth,
+      },
+    }));
+
+    if (subscriptions.length === 1) {
+      await sendPushNotification(subscriptions[0], {
         title: 'MindfulLife test notification',
         body: message,
         url: '/settings',
         tag: 'mindfullife-test',
       });
     } else {
-      const result = await sendPushNotificationToMany(user.pushSubscriptions as PushSubscriptionPayload[], {
+      const result = await sendPushNotificationToMany(subscriptions, {
         title: 'MindfulLife test notification',
         body: message,
         url: '/settings',
@@ -191,11 +223,12 @@ export const sendTestPushNotification = async (req: AuthRequest, res: Response) 
       });
 
       if (result.invalidEndpoints.length) {
-        const nextSubscriptions = Array.from(user.pushSubscriptions as any[]).filter((subscription: any) => (
-          !result.invalidEndpoints.includes(subscription.endpoint)
-        ));
-        user.set('pushSubscriptions', nextSubscriptions);
-        await user.save();
+        await prisma.pushSubscription.deleteMany({
+          where: {
+            userId: req.user.id,
+            endpoint: { in: result.invalidEndpoints },
+          },
+        });
       }
     }
 
@@ -207,11 +240,21 @@ export const sendTestPushNotification = async (req: AuthRequest, res: Response) 
 
 export const exportData = async (req: AuthRequest, res: Response) => {
   try {
-    const entries = await Entry.find({ userId: req.user._id }).lean();
-    const user = await User.findById(req.user._id).lean();
+    const [entries, user] = await Promise.all([
+      prisma.entry.findMany({ where: { userId: req.user.id }, orderBy: { entryDate: 'asc' } }),
+      prisma.user.findUnique({ where: { id: req.user.id } }),
+    ]);
+
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+
     res.setHeader('Content-Disposition', `attachment; filename="mindful-export-${Date.now()}.json"`);
     res.setHeader('Content-Type', 'application/json');
-    res.send(JSON.stringify({ user: { name: user.name, email: user.email }, entries }, null, 2));
+    res.send(JSON.stringify({
+      user: { id: user.id, name: user.name, email: user.email },
+      entries: entries.map(serializeEntry),
+    }, null, 2));
   } catch (err: any) {
     res.status(500).json({ success: false, message: err.message });
   }
@@ -219,8 +262,7 @@ export const exportData = async (req: AuthRequest, res: Response) => {
 
 export const deleteAccount = async (req: AuthRequest, res: Response) => {
   try {
-    await Entry.deleteMany({ userId: req.user._id });
-    await User.findByIdAndDelete(req.user._id);
+    await prisma.user.delete({ where: { id: req.user.id } });
     res.json({ success: true, message: 'Account and all data deleted' });
   } catch (err: any) {
     res.status(500).json({ success: false, message: err.message });

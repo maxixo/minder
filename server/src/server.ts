@@ -1,4 +1,4 @@
-﻿import express, { type Request, type Response } from 'express';
+import express, { type Request, type Response } from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
@@ -6,6 +6,7 @@ import compression from 'compression';
 import rateLimit from 'express-rate-limit';
 import dotenv from 'dotenv';
 import connectDB from './config/database.js';
+import prisma from './lib/prisma.js';
 import { errorHandler, notFound } from './middleware/errorHandler.js';
 import authRoutes from './routes/authRoutes.js';
 import entryRoutes from './routes/entryRoutes.js';
@@ -14,7 +15,7 @@ import userRoutes from './routes/userRoutes.js';
 import { startDailyReminderJob } from './jobs/reminderJob.js';
 
 dotenv.config();
-connectDB();
+await connectDB();
 
 const app = express();
 
@@ -83,7 +84,10 @@ const server = app.listen(PORT, () => {
 process.on('unhandledRejection', (err: unknown) => {
   const message = err instanceof Error ? err.message : String(err);
   console.error(`Unhandled Rejection: ${message}`);
-  server.close(() => process.exit(1));
+  server.close(async () => {
+    await prisma.$disconnect();
+    process.exit(1);
+  });
 });
 
 export default app;

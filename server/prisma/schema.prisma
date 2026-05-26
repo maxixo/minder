@@ -1,0 +1,92 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                 String             @id @default(uuid()) @db.Uuid
+  name               String
+  email              String             @unique
+  passwordHash       String
+  avatar             String?
+  theme              String             @default("light")
+  dailyReminder      Boolean            @default(true)
+  reminderTime       String             @default("20:00")
+  weeklyReport       Boolean            @default(true)
+  timezone           String             @default("UTC")
+  lastReminderSentAt DateTime?
+  shareStats         Boolean            @default(false)
+  pushSubscriptions  PushSubscription[]
+  entries            Entry[]
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+
+  @@map("users")
+}
+
+model PushSubscription {
+  id             String   @id @default(uuid()) @db.Uuid
+  userId         String   @db.Uuid
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  endpoint       String
+  expirationTime BigInt?
+  p256dh         String
+  auth           String
+  userAgent      String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@unique([userId, endpoint])
+  @@index([userId])
+  @@map("push_subscriptions")
+}
+
+model Entry {
+  id                  String   @id @default(uuid()) @db.Uuid
+  userId              String   @db.Uuid
+  user                User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  entryDate           DateTime @db.Date
+  weather             String?
+  gratitude           Json     @default(dbgenerated("'[]'::jsonb")) @db.JsonB
+  expectations        String   @default("")
+  positiveNotes       Json     @default(dbgenerated("'[]'::jsonb")) @db.JsonB
+  whatMakesTodayGreat String   @default("")
+  goodThingsHappened  Json     @default(dbgenerated("'[]'::jsonb")) @db.JsonB
+  selfAssessmentNote  String   @default("")
+  mood                Int?
+  waterIntake         Int      @default(0)
+  sleepHours          Float?
+  sleepQuality        String?
+  meals               Json     @default(dbgenerated("'{}'::jsonb")) @db.JsonB
+  nutrition           Json     @default(dbgenerated("'{}'::jsonb")) @db.JsonB
+  energyLevels        Json     @default(dbgenerated("'[]'::jsonb")) @db.JsonB
+  tomorrowPlan        Json     @default(dbgenerated("'{}'::jsonb")) @db.JsonB
+  selfLove            String   @default("")
+  gratitudeNote       String   @default("")
+  feeling             String?
+  additionalFeelings  Json     @default(dbgenerated("'[]'::jsonb")) @db.JsonB
+  activities          Json     @default(dbgenerated("'{}'::jsonb")) @db.JsonB
+  mindThoughts        String   @default("")
+  nextStep            String   @default("")
+  ratings             Json     @default(dbgenerated("'{}'::jsonb")) @db.JsonB
+  selfCareChecklist   Json     @default(dbgenerated("'{}'::jsonb")) @db.JsonB
+  emotionalGuidance   Json     @default(dbgenerated("'{}'::jsonb")) @db.JsonB
+  selfCarePlanDays    Json     @default(dbgenerated("'{}'::jsonb")) @db.JsonB
+  priorities          Json     @default(dbgenerated("'[]'::jsonb")) @db.JsonB
+  todoList            Json     @default(dbgenerated("'[]'::jsonb")) @db.JsonB
+  focus               String   @default("")
+  mindfulnessNotes    String   @default("")
+  todayNotes          Json     @default(dbgenerated("'[]'::jsonb")) @db.JsonB
+  completedSections   Json     @default(dbgenerated("'[]'::jsonb")) @db.JsonB
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  @@unique([userId, entryDate])
+  @@index([userId, entryDate])
+  @@index([userId])
+  @@map("entries")
+}

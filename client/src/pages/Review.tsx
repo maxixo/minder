@@ -213,7 +213,7 @@ export default function Review() {
               <div className="space-y-3">
                 {tasks.map((task, index) => (
                   <div
-                    key={task._id || `task-${index + 1}`}
+                    key={task.id || `task-${index + 1}`}
                     className="group flex items-center gap-3 rounded-xl border border-[#e8ede8] bg-[#f4f7f4] p-3 dark:border-white/10 dark:bg-[#101915]"
                   >
                     <input

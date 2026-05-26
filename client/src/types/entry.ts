@@ -29,13 +29,13 @@ export interface EntryNutrition {
 }
 
 export interface EntryTodoItem {
-  _id?: string;
+  id?: string;
   text: string;
   completed: boolean;
 }
 
 export interface DailyEntry {
-  _id: string;
+  id: string;
   userId: string;
   date: string;
   weather: EntryWeather;
@@ -108,7 +108,7 @@ export interface DailyEntry {
   updatedAt: string;
 }
 
-export type DailyEntryRequest = Omit<DailyEntry, '_id' | 'userId' | 'createdAt' | 'updatedAt'>;
+export type DailyEntryRequest = Omit<DailyEntry, 'id' | 'userId' | 'createdAt' | 'updatedAt'>;
 
 export type DeepPartial<T> = {
   [K in keyof T]?: T[K] extends Array<infer U>
@@ -135,7 +135,7 @@ const isPlainObject = (value: unknown): value is Record<string, unknown> => {
 const nowIso = () => new Date().toISOString();
 
 export const createEmptyDailyEntry = (date = nowIso()): DailyEntry => ({
-  _id: '',
+  id: '',
   userId: '',
   date,
   weather: null,
@@ -249,7 +249,7 @@ export const withCompletedSection = (
 };
 
 export const toDailyEntryRequest = (entry: DailyEntry): DailyEntryRequest => {
-  const { _id, userId, createdAt, updatedAt, ...request } = entry;
+  const { id, userId, createdAt, updatedAt, ...request } = entry;
   return {
     ...request,
     selfCarePlanDays: { ...request.selfCarePlanDays },
