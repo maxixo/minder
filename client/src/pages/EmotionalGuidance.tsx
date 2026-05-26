@@ -313,7 +313,7 @@ export default function EmotionalGuidance() {
             <section className="rounded-[1.75rem] border border-sage-100 bg-white p-6 shadow-soft sm:p-8 dark:border-white/10 dark:bg-white/5">
               <div className="mb-6 flex items-center justify-between gap-4">
                 <div>
-                  <h3 className="font-display text-2xl font-semibold text-sage-900 dark:text-sage-50">Today's Notes</h3>
+                  <h3 className="font-display text-2xl font-semibold text-sage-900 dark:text-sage-50">Today&apos;s Notes</h3>
                   <p className="mt-2 text-sm text-sage-500 dark:text-sage-300">Brief reminders to carry the day more gently.</p>
                 </div>
                 <button className="text-sage-600 transition-colors hover:text-sage-800 dark:text-sage-300 dark:hover:text-white" onClick={handleAddNote} type="button">

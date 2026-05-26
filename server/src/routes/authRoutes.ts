@@ -2,6 +2,7 @@
 import { body } from 'express-validator';
 import { register, login, logout, getMe, updateProfile, updatePassword } from '../controllers/authController.js';
 import { protect } from '../middleware/auth.js';
+import { profileUpdateValidators } from '../middleware/requestValidators.js';
 import { validate } from '../middleware/validate.js';
 
 const router = express.Router();
@@ -22,7 +23,7 @@ router.post('/login', [
 router.post('/logout', logout);
 
 router.get('/me',       protect, getMe);
-router.put('/profile',  protect, updateProfile);
+router.put('/profile',  protect, profileUpdateValidators, validate, updateProfile);
 router.put('/password', protect, [
   body('currentPassword').notEmpty(),
   body('newPassword').isLength({ min: 8 }),

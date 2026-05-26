@@ -5,7 +5,7 @@
   "main": "src/server.ts",
   "type": "module",
   "scripts": {
-    "start": "tsx src/server.ts",
+    "start": "node dist/server.js",
     "dev": "tsx watch src/server.ts",
     "vapid:generate": "node scripts/generate-vapid-keys.mjs",
     "prisma:generate": "prisma generate",
@@ -13,6 +13,7 @@
     "prisma:migrate": "prisma migrate dev",
     "setup:postgres": "powershell -ExecutionPolicy Bypass -File ./scripts/setup-local-postgres.ps1",
     "build": "tsc",
+    "typecheck": "tsc --noEmit",
     "test": "node --import tsx --test test/database.test.ts test/entry-helpers.test.ts test/reminder-job.test.ts test/timezone-validation.test.ts",
     "test:watch": "node --import tsx --test --watch test/database.test.ts test/entry-helpers.test.ts test/reminder-job.test.ts test/timezone-validation.test.ts"
   },

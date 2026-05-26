@@ -1,5 +1,6 @@
 import type { Request, Response } from 'express';
 import prisma from '../lib/prisma.js';
+import { sendInternalServerError } from '../lib/http.js';
 import { comparePassword, hashPassword } from '../lib/password.js';
 import { serializeUser } from '../lib/serializers.js';
 import { clearSessionCookie, generateToken, setSessionCookie } from '../middleware/auth.js';
@@ -35,7 +36,7 @@ export const register = async (req: Request, res: Response) => {
       data: { user: serializeUser(user) },
     });
   } catch (err: any) {
-    res.status(500).json({ success: false, message: err.message });
+    return sendInternalServerError(res, err, 'Register failed');
   }
 };
 
@@ -55,7 +56,7 @@ export const login = async (req: Request, res: Response) => {
     setSessionCookie(res, token);
     res.json({ success: true, data: { user: serializeUser(user) } });
   } catch (err: any) {
-    res.status(500).json({ success: false, message: err.message });
+    return sendInternalServerError(res, err, 'Login failed');
   }
 };
 
@@ -75,7 +76,7 @@ export const getMe = async (req: AuthRequest, res: Response) => {
     setNoStore(res);
     res.json({ success: true, data: serializeUser(user) });
   } catch (err: any) {
-    res.status(500).json({ success: false, message: err.message });
+    return sendInternalServerError(res, err, 'Get current user failed');
   }
 };
 
@@ -104,7 +105,7 @@ export const updateProfile = async (req: AuthRequest, res: Response) => {
 
     res.json({ success: true, data: serializeUser(user) });
   } catch (err: any) {
-    res.status(500).json({ success: false, message: err.message });
+    return sendInternalServerError(res, err, 'Update profile failed');
   }
 };
 
@@ -128,6 +129,6 @@ export const updatePassword = async (req: AuthRequest, res: Response) => {
 
     res.json({ success: true, message: 'Password updated' });
   } catch (err: any) {
-    res.status(500).json({ success: false, message: err.message });
+    return sendInternalServerError(res, err, 'Update password failed');
   }
 };

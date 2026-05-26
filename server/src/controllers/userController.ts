@@ -1,5 +1,6 @@
 import type { Response } from 'express';
 import prisma from '../lib/prisma.js';
+import { sendInternalServerError } from '../lib/http.js';
 import { serializeEntry, serializeUser } from '../lib/serializers.js';
 import {
   isPushConfigured,
@@ -48,7 +49,7 @@ export const getPreferences = async (req: AuthRequest, res: Response) => {
 
     res.json({ success: true, data: serializeUser(user).preferences });
   } catch (err: any) {
-    res.status(500).json({ success: false, message: err.message });
+    return sendInternalServerError(res, err, 'Get preferences failed');
   }
 };
 
@@ -93,7 +94,7 @@ export const updatePreferences = async (req: AuthRequest, res: Response) => {
 
     res.json({ success: true, data: serializeUser(user).preferences });
   } catch (err: any) {
-    res.status(500).json({ success: false, message: err.message });
+    return sendInternalServerError(res, err, 'Update preferences failed');
   }
 };
 
@@ -116,7 +117,7 @@ export const getPushSubscriptionStatus = async (req: AuthRequest, res: Response)
       },
     });
   } catch (err: any) {
-    res.status(500).json({ success: false, message: err.message });
+    return sendInternalServerError(res, err, 'Get push subscription status failed');
   }
 };
 
@@ -180,7 +181,7 @@ export const savePushSubscription = async (req: AuthRequest, res: Response) => {
       },
     });
   } catch (err: any) {
-    res.status(500).json({ success: false, message: err.message });
+    return sendInternalServerError(res, err, 'Save push subscription failed');
   }
 };
 
@@ -209,7 +210,7 @@ export const deletePushSubscription = async (req: AuthRequest, res: Response) =>
       },
     });
   } catch (err: any) {
-    res.status(500).json({ success: false, message: err.message });
+    return sendInternalServerError(res, err, 'Delete push subscription failed');
   }
 };
 
@@ -268,7 +269,7 @@ export const sendTestPushNotification = async (req: AuthRequest, res: Response) 
 
     res.json({ success: true, message: 'Test notification sent' });
   } catch (err: any) {
-    res.status(500).json({ success: false, message: err.message });
+    return sendInternalServerError(res, err, 'Send test push notification failed');
   }
 };
 
@@ -290,7 +291,7 @@ export const exportData = async (req: AuthRequest, res: Response) => {
       entries: entries.map(serializeEntry),
     }, null, 2));
   } catch (err: any) {
-    res.status(500).json({ success: false, message: err.message });
+    return sendInternalServerError(res, err, 'Export data failed');
   }
 };
 
@@ -299,6 +300,6 @@ export const deleteAccount = async (req: AuthRequest, res: Response) => {
     await prisma.user.delete({ where: { id: req.user.id } });
     res.json({ success: true, message: 'Account and all data deleted' });
   } catch (err: any) {
-    res.status(500).json({ success: false, message: err.message });
+    return sendInternalServerError(res, err, 'Delete account failed');
   }
 };

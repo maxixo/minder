@@ -2,6 +2,7 @@
 import ReactDOM from 'react-dom/client';
 import { registerSW } from 'virtual:pwa-register';
 import App from './App';
+import AppErrorBoundary from './components/common/AppErrorBoundary';
 import './index.css';
 
 registerSW({
@@ -21,6 +22,8 @@ if ('serviceWorker' in navigator) {
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
-    <App />
+    <AppErrorBoundary>
+      <App />
+    </AppErrorBoundary>
   </React.StrictMode>
 );

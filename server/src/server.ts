@@ -18,6 +18,7 @@ dotenv.config();
 await connectDB();
 
 const app = express();
+let isShuttingDown = false;
 
 app.disable('x-powered-by');
 
@@ -67,6 +68,19 @@ app.get('/api/health', (req: Request, res: Response) => {
   res.json({ success: true, message: 'Mindful Webapp API is running', timestamp: new Date().toISOString() });
 });
 
+app.get('/api/ready', async (req: Request, res: Response) => {
+  if (isShuttingDown) {
+    return res.status(503).json({ success: false, message: 'Server is shutting down' });
+  }
+
+  try {
+    await prisma.$queryRaw`SELECT 1`;
+    return res.json({ success: true, message: 'Mindful Webapp API is ready' });
+  } catch {
+    return res.status(503).json({ success: false, message: 'Database is unavailable' });
+  }
+});
+
 app.use('/api/auth', authRoutes);
 app.use('/api/entries', entryRoutes);
 app.use('/api/analytics', analyticsRoutes);
@@ -78,16 +92,40 @@ app.use(errorHandler);
 const PORT = process.env.PORT || 5000;
 const server = app.listen(PORT, () => {
   console.log(`🌿 Mindful Webapp API running on port ${PORT} [${process.env.NODE_ENV}]`);
-  startDailyReminderJob();
+  const shouldRunReminderJob = process.env.NODE_ENV !== 'production'
+    || process.env.RUN_DAILY_REMINDER_JOB === 'true';
+
+  if (shouldRunReminderJob) {
+    startDailyReminderJob();
+  }
+});
+
+const shutdown = async (reason: string, exitCode: number) => {
+  if (isShuttingDown) return;
+  isShuttingDown = true;
+  console.error(`Server shutdown triggered: ${reason}`);
+
+  server.close(async () => {
+    await prisma.$disconnect();
+    process.exit(exitCode);
+  });
+
+  setTimeout(() => {
+    process.exit(exitCode);
+  }, 10_000).unref();
+};
+
+process.on('SIGTERM', () => {
+  void shutdown('SIGTERM', 0);
 });
 
 process.on('unhandledRejection', (err: unknown) => {
   const message = err instanceof Error ? err.message : String(err);
-  console.error(`Unhandled Rejection: ${message}`);
-  server.close(async () => {
-    await prisma.$disconnect();
-    process.exit(1);
-  });
+  void shutdown(`unhandledRejection: ${message}`, 1);
+});
+
+process.on('uncaughtException', (err: Error) => {
+  void shutdown(`uncaughtException: ${err.message}`, 1);
 });
 
 export default app;

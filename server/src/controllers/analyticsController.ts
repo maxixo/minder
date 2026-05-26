@@ -3,6 +3,7 @@ import { eachDayOfInterval, format, subDays } from 'date-fns';
 import prisma from '../lib/prisma.js';
 import { formatDateParam, parseEntryDateInput } from '../lib/date.js';
 import { getCompletionPercentage } from '../lib/entry.js';
+import { sendInternalServerError } from '../lib/http.js';
 import { serializeEntry } from '../lib/serializers.js';
 import type { AuthRequest } from '../types/auth.js';
 
@@ -57,7 +58,7 @@ export const getSummary = async (req: AuthRequest, res: Response) => {
       },
     });
   } catch (err: any) {
-    res.status(500).json({ success: false, message: err.message });
+    return sendInternalServerError(res, err, 'Get analytics summary failed');
   }
 };
 
@@ -75,7 +76,7 @@ export const getMoodTrends = async (req: AuthRequest, res: Response) => {
       data: entries.map((entry) => ({ date: format(entry.entryDate, 'yyyy-MM-dd'), mood: entry.mood })),
     });
   } catch (err: any) {
-    res.status(500).json({ success: false, message: err.message });
+    return sendInternalServerError(res, err, 'Get mood trends failed');
   }
 };
 
@@ -103,7 +104,7 @@ export const getEnergyPatterns = async (req: AuthRequest, res: Response) => {
 
     res.json({ success: true, data });
   } catch (err: any) {
-    res.status(500).json({ success: false, message: err.message });
+    return sendInternalServerError(res, err, 'Get energy patterns failed');
   }
 };
 
@@ -133,7 +134,7 @@ export const getActivityHeatmap = async (req: AuthRequest, res: Response) => {
 
     res.json({ success: true, data: days });
   } catch (err: any) {
-    res.status(500).json({ success: false, message: err.message });
+    return sendInternalServerError(res, err, 'Get activity heatmap failed');
   }
 };
 
@@ -171,6 +172,6 @@ export const getWeeklyReport = async (req: AuthRequest, res: Response) => {
       },
     });
   } catch (err: any) {
-    res.status(500).json({ success: false, message: err.message });
+    return sendInternalServerError(res, err, 'Get weekly report failed');
   }
 };

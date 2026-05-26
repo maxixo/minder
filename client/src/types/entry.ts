@@ -249,7 +249,7 @@ export const withCompletedSection = (
 };
 
 export const toDailyEntryRequest = (entry: DailyEntry): DailyEntryRequest => {
-  const { id, userId, createdAt, updatedAt, ...request } = entry;
+  const { id: _id, userId: _userId, createdAt: _createdAt, updatedAt: _updatedAt, ...request } = entry;
   return {
     ...request,
     selfCarePlanDays: { ...request.selfCarePlanDays },

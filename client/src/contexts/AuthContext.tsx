@@ -1,4 +1,4 @@
-import { createContext, useEffect, useRef, useState, type ReactNode } from 'react';
+import { createContext, useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import authService from '@/services/authService';
 import userService from '@/services/userService';
 import { getBrowserTimeZone, getExistingPushSubscription } from '@/services/pushService';
@@ -23,7 +23,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const isSyncingTimeZoneRef = useRef(false);
   const lastSyncedTimeZoneRef = useRef<string | null>(null);
 
-  const syncSubscriptionTimeZoneToCurrentDevice = async (timeZone: string) => {
+  const syncSubscriptionTimeZoneToCurrentDevice = useCallback(async (timeZone: string) => {
     const existingSubscription = await getExistingPushSubscription().catch(() => null);
     if (!existingSubscription) return;
 
@@ -31,9 +31,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       subscription: existingSubscription.toJSON(),
       timezone: timeZone,
     });
-  };
+  }, []);
 
-  const syncTimeZoneToCurrentDevice = async (targetUser: any) => {
+  const syncTimeZoneToCurrentDevice = useCallback(async (targetUser: any) => {
     if (!targetUser || isSyncingTimeZoneRef.current) return;
 
     const browserTimeZone = getBrowserTimeZone();
@@ -64,7 +64,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     } finally {
       isSyncingTimeZoneRef.current = false;
     }
-  };
+  }, [syncSubscriptionTimeZoneToCurrentDevice]);
 
   useEffect(() => {
     (async () => {
@@ -79,7 +79,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
       finally  { setLoading(false); }
     })();
-  }, []);
+  }, [syncTimeZoneToCurrentDevice]);
 
   useEffect(() => {
     if (!isAuthenticated || !user) return;
@@ -95,7 +95,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       window.removeEventListener('focus', handleFocus);
       document.removeEventListener('visibilitychange', handleFocus);
     };
-  }, [isAuthenticated, user]);
+  }, [isAuthenticated, syncTimeZoneToCurrentDevice, user]);
 
   const register = async (data: any) => {
     const res = await authService.register(data);

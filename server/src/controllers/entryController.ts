@@ -2,6 +2,7 @@ import type { Response } from 'express';
 import prisma from '../lib/prisma.js';
 import { parseEntryDateInput } from '../lib/date.js';
 import { mergeEntryPatch, normalizeEntry } from '../lib/entry.js';
+import { sendInternalServerError } from '../lib/http.js';
 import { buildEntryPersistenceInput, serializeEntry } from '../lib/serializers.js';
 import type { AuthRequest } from '../types/auth.js';
 
@@ -42,7 +43,7 @@ export const createEntry = async (req: AuthRequest, res: Response) => {
       return res.status(400).json({ success: false, message: 'Entry already exists for this date. Use PUT to update.' });
     }
 
-    res.status(500).json({ success: false, message: err.message });
+    return sendInternalServerError(res, err, 'Create entry failed');
   }
 };
 
@@ -72,7 +73,7 @@ export const getEntries = async (req: AuthRequest, res: Response) => {
       pagination: { total: count, page, pages: Math.ceil(count / limit) },
     });
   } catch (err: any) {
-    res.status(500).json({ success: false, message: err.message });
+    return sendInternalServerError(res, err, 'Get entries failed');
   }
 };
 
@@ -82,7 +83,7 @@ export const getEntry = async (req: AuthRequest, res: Response) => {
     if (!entry) return res.status(404).json({ success: false, message: 'Entry not found' });
     res.json({ success: true, data: serializeEntry(entry) });
   } catch (err: any) {
-    res.status(500).json({ success: false, message: err.message });
+    return sendInternalServerError(res, err, 'Get entry failed');
   }
 };
 
@@ -95,7 +96,7 @@ export const getEntryByDate = async (req: AuthRequest, res: Response) => {
 
     res.json({ success: true, data: entry ? serializeEntry(entry) : null });
   } catch (err: any) {
-    res.status(500).json({ success: false, message: err.message });
+    return sendInternalServerError(res, err, 'Get entry by date failed');
   }
 };
 
@@ -107,7 +108,7 @@ export const getTodayEntry = async (req: AuthRequest, res: Response) => {
 
     res.json({ success: true, data: entry ? serializeEntry(entry) : null });
   } catch (err: any) {
-    res.status(500).json({ success: false, message: err.message });
+    return sendInternalServerError(res, err, 'Get today entry failed');
   }
 };
 
@@ -124,7 +125,7 @@ export const getRecentEntries = async (req: AuthRequest, res: Response) => {
 
     res.json({ success: true, data: entries.map(serializeEntry) });
   } catch (err: any) {
-    res.status(500).json({ success: false, message: err.message });
+    return sendInternalServerError(res, err, 'Get recent entries failed');
   }
 };
 
@@ -145,7 +146,7 @@ export const updateEntry = async (req: AuthRequest, res: Response) => {
       return res.status(400).json({ success: false, message: 'Entry already exists for this date. Use PUT to update.' });
     }
 
-    res.status(500).json({ success: false, message: err.message });
+    return sendInternalServerError(res, err, 'Update entry failed');
   }
 };
 
@@ -165,7 +166,7 @@ export const autoSaveEntry = async (req: AuthRequest, res: Response) => {
       return res.status(400).json({ success: false, message: 'Entry already exists for this date. Use PUT to update.' });
     }
 
-    res.status(500).json({ success: false, message: err.message });
+    return sendInternalServerError(res, err, 'Auto-save entry failed');
   }
 };
 
@@ -177,6 +178,6 @@ export const deleteEntry = async (req: AuthRequest, res: Response) => {
     await prisma.entry.delete({ where: { id: entry.id } });
     res.json({ success: true, message: 'Entry deleted' });
   } catch (err: any) {
-    res.status(500).json({ success: false, message: err.message });
+    return sendInternalServerError(res, err, 'Delete entry failed');
   }
 };

@@ -13,9 +13,9 @@ precacheAndRoute(self.__WB_MANIFEST);
 
 registerRoute(
   ({ request, url }) => request.mode === 'navigate' && !url.pathname.startsWith('/api/'),
-  async ({ event }) => {
+  async ({ request }) => {
     try {
-      return await fetch(event.request);
+      return await fetch(request);
     } catch {
       const cachedAppShell = await caches.match('/index.html', { ignoreSearch: true });
       return cachedAppShell || Response.error();
