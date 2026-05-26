@@ -15,6 +15,15 @@ const getCleanTimezone = (timezone: unknown) => {
   return trimmed || null;
 };
 
+const isValidTimeZone = (timeZone: string) => {
+  try {
+    Intl.DateTimeFormat('en-US', { timeZone }).format(new Date());
+    return true;
+  } catch {
+    return false;
+  }
+};
+
 const getNormalizedPushSubscription = (subscription: any): PushSubscriptionPayload | null => {
   if (!subscription?.endpoint || !subscription?.keys?.p256dh || !subscription?.keys?.auth) {
     return null;
@@ -52,17 +61,35 @@ export const updatePreferences = async (req: AuthRequest, res: Response) => {
       return res.status(404).json({ success: false, message: 'User not found' });
     }
 
+    if (timezone && !isValidTimeZone(timezone)) {
+      return res.status(400).json({ success: false, message: 'A valid IANA timezone is required.' });
+    }
+
+    const nextDailyReminder = req.body?.notifications?.dailyReminder ?? currentUser.dailyReminder;
+    const nextReminderTime = req.body?.notifications?.reminderTime ?? currentUser.reminderTime;
+    const shouldResetReminderHistory = (
+      nextReminderTime !== currentUser.reminderTime
+      || (currentUser.dailyReminder === false && nextDailyReminder === true)
+    );
+
     const user = await prisma.user.update({
       where: { id: req.user.id },
       data: {
         theme: req.body?.theme ?? currentUser.theme,
-        dailyReminder: req.body?.notifications?.dailyReminder ?? currentUser.dailyReminder,
-        reminderTime: req.body?.notifications?.reminderTime ?? currentUser.reminderTime,
+        dailyReminder: nextDailyReminder,
+        reminderTime: nextReminderTime,
         weeklyReport: req.body?.notifications?.weeklyReport ?? currentUser.weeklyReport,
         timezone: timezone || req.body?.notifications?.timezone || currentUser.timezone || 'UTC',
         shareStats: req.body?.privacy?.shareStats ?? currentUser.shareStats,
       },
     });
+
+    if (shouldResetReminderHistory) {
+      await prisma.pushSubscription.updateMany({
+        where: { userId: req.user.id },
+        data: { lastSentAt: null },
+      });
+    }
 
     res.json({ success: true, data: serializeUser(user).preferences });
   } catch (err: any) {
@@ -106,6 +133,10 @@ export const savePushSubscription = async (req: AuthRequest, res: Response) => {
       return res.status(404).json({ success: false, message: 'User not found' });
     }
 
+    if (timezone && !isValidTimeZone(timezone)) {
+      return res.status(400).json({ success: false, message: 'A valid IANA timezone is required.' });
+    }
+
     await prisma.pushSubscription.upsert({
       where: {
         userId_endpoint: {
@@ -117,6 +148,7 @@ export const savePushSubscription = async (req: AuthRequest, res: Response) => {
         expirationTime: subscription.expirationTime != null ? BigInt(Math.trunc(subscription.expirationTime)) : null,
         p256dh: subscription.keys.p256dh,
         auth: subscription.keys.auth,
+        timezone: timezone || user.timezone || 'UTC',
         userAgent: typeof req.headers['user-agent'] === 'string' ? req.headers['user-agent'] : null,
       },
       create: {
@@ -125,6 +157,7 @@ export const savePushSubscription = async (req: AuthRequest, res: Response) => {
         expirationTime: subscription.expirationTime != null ? BigInt(Math.trunc(subscription.expirationTime)) : null,
         p256dh: subscription.keys.p256dh,
         auth: subscription.keys.auth,
+        timezone: timezone || user.timezone || 'UTC',
         userAgent: typeof req.headers['user-agent'] === 'string' ? req.headers['user-agent'] : null,
       },
     });
@@ -153,17 +186,18 @@ export const savePushSubscription = async (req: AuthRequest, res: Response) => {
 
 export const deletePushSubscription = async (req: AuthRequest, res: Response) => {
   try {
-    const endpoint = typeof req.body?.endpoint === 'string' ? req.body.endpoint : null;
+    const endpoint = typeof req.body?.endpoint === 'string' ? req.body.endpoint.trim() : '';
 
-    if (endpoint) {
-      await prisma.pushSubscription.deleteMany({
-        where: { userId: req.user.id, endpoint },
-      });
-    } else {
-      await prisma.pushSubscription.deleteMany({
-        where: { userId: req.user.id },
+    if (!endpoint) {
+      return res.status(400).json({
+        success: false,
+        message: 'A push subscription endpoint is required to disable notifications for this device.',
       });
     }
+
+    await prisma.pushSubscription.deleteMany({
+      where: { userId: req.user.id, endpoint },
+    });
 
     const subscriptionCount = await prisma.pushSubscription.count({ where: { userId: req.user.id } });
 

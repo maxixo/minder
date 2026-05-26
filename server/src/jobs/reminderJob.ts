@@ -3,6 +3,32 @@ import { isPushConfigured, sendPushNotificationToMany, type PushSubscriptionPayl
 
 const REMINDER_CHECK_INTERVAL_MS = 60_000;
 
+export const toMinutesSinceMidnight = (timeKey: string) => {
+  const parts = timeKey.split(':');
+  if (parts.length !== 2) return null;
+
+  const [hours, minutes] = parts.map((value) => Number.parseInt(value, 10));
+  if (Number.isNaN(hours) || Number.isNaN(minutes)) return null;
+  return (hours * 60) + minutes;
+};
+
+export const isReminderDue = (currentTimeKey: string, reminderTime: string) => {
+  const currentMinutes = toMinutesSinceMidnight(currentTimeKey);
+  const reminderMinutes = toMinutesSinceMidnight(reminderTime);
+
+  if (currentMinutes == null || reminderMinutes == null) return false;
+  return currentMinutes >= reminderMinutes;
+};
+
+export const isValidTimeZone = (timeZone: string) => {
+  try {
+    Intl.DateTimeFormat('en-US', { timeZone }).format(new Date());
+    return true;
+  } catch {
+    return false;
+  }
+};
+
 const getLocalTimeParts = (date: Date, timeZone: string) => {
   const formatter = new Intl.DateTimeFormat('en-CA', {
     timeZone,
@@ -55,17 +81,27 @@ const sendDueReminders = async () => {
   const now = new Date();
 
   await Promise.all(users.map(async (user) => {
-    const timeZone = user.timezone || 'UTC';
     const reminderTime = user.reminderTime || '20:00';
-    const lastReminderSentAt = user.lastReminderSentAt || null;
-    const { dateKey, timeKey } = getLocalTimeParts(now, timeZone);
+    const dueSubscriptions = user.pushSubscriptions.filter((subscription) => {
+      const timeZone = subscription.timezone || user.timezone || 'UTC';
+      if (!isValidTimeZone(timeZone)) {
+        console.error(`Daily reminder skipped for subscription ${subscription.id}: invalid timezone "${timeZone}"`);
+        return false;
+      }
 
-    if (timeKey !== reminderTime || wasReminderAlreadySentToday(lastReminderSentAt, timeZone, dateKey)) {
+      const { dateKey, timeKey } = getLocalTimeParts(now, timeZone);
+      return (
+        isReminderDue(timeKey, reminderTime)
+        && !wasReminderAlreadySentToday(subscription.lastSentAt || null, timeZone, dateKey)
+      );
+    });
+
+    if (!dueSubscriptions.length) {
       return;
     }
 
     try {
-      const subscriptions = user.pushSubscriptions.map(toPushPayload);
+      const subscriptions = dueSubscriptions.map(toPushPayload);
       const result = await sendPushNotificationToMany(subscriptions, {
         title: 'Time for your daily reflection',
         body: 'Take one minute to check in and log today\'s entry.',
@@ -82,10 +118,16 @@ const sendDueReminders = async () => {
         });
       }
 
-      await prisma.user.update({
-        where: { id: user.id },
-        data: { lastReminderSentAt: now },
-      });
+      const deliveredSubscriptionIds = dueSubscriptions
+        .filter((subscription) => !result.invalidEndpoints.includes(subscription.endpoint))
+        .map((subscription) => subscription.id);
+
+      if (deliveredSubscriptionIds.length) {
+        await prisma.pushSubscription.updateMany({
+          where: { id: { in: deliveredSubscriptionIds } },
+          data: { lastSentAt: now },
+        });
+      }
     } catch (error) {
       console.error('Daily reminder send failed:', error);
     }

@@ -146,6 +146,35 @@ export default function Settings() {
   const [isUpdatingPush, setIsUpdatingPush] = useState(false);
   const [isSendingTestPush, setIsSendingTestPush] = useState(false);
 
+  const applyPushStatus = (browserSubscription: Awaited<ReturnType<typeof getExistingPushSubscription>>, statusResponse: any) => {
+    setIsPushSubscribed(Boolean(browserSubscription));
+    setIsPushServerConfigured(Boolean(statusResponse?.data?.configured));
+    setSubscriptionCount(statusResponse?.data?.subscriptionCount || 0);
+
+    const serverTimezone = statusResponse?.data?.timezone;
+    if (serverTimezone) {
+      setPreferences((current) => ({
+        ...current,
+        notifications: {
+          ...current.notifications,
+          timezone: serverTimezone,
+        },
+      }));
+    }
+  };
+
+  const loadPushStatus = async () => {
+    const [browserSubscription, statusResponse] = await Promise.all([
+      getExistingPushSubscription(),
+      userService.getPushSubscriptionStatus().catch(() => null),
+    ]);
+
+    return {
+      browserSubscription,
+      statusResponse,
+    };
+  };
+
   useEffect(() => {
     if (!user) return;
 
@@ -177,26 +206,10 @@ export default function Settings() {
 
     let cancelled = false;
 
-    void Promise.all([
-      getExistingPushSubscription(),
-      userService.getPushSubscriptionStatus().catch(() => null),
-    ]).then(([browserSubscription, statusResponse]) => {
+    void loadPushStatus().then(({ browserSubscription, statusResponse }) => {
       if (cancelled) return;
 
-      setIsPushSubscribed(Boolean(browserSubscription));
-      setIsPushServerConfigured(Boolean(statusResponse?.data?.configured));
-      setSubscriptionCount(statusResponse?.data?.subscriptionCount || 0);
-
-      const serverTimezone = statusResponse?.data?.timezone;
-      if (serverTimezone) {
-        setPreferences((current) => ({
-          ...current,
-          notifications: {
-            ...current.notifications,
-            timezone: serverTimezone,
-          },
-        }));
-      }
+      applyPushStatus(browserSubscription, statusResponse);
     }).catch(() => undefined);
 
     return () => {
@@ -254,10 +267,15 @@ export default function Settings() {
     return 'Chrome has not exposed the install prompt in this session yet. Refresh once, then check DevTools > Application > Manifest if install still does not appear.';
   }, [canInstall, isInstalled]);
 
+  const getEffectiveReminderTimeZone = () => getBrowserTimeZone();
+
   const notificationStatusDetail = useMemo(() => {
     if (!pushSupported) return 'This browser does not support service worker push notifications.';
     if (!isPushServerConfigured) {
       return 'The server is not configured to send web push yet. Add VAPID keys on the backend before testing delivery.';
+    }
+    if (!preferences.notifications.dailyReminder && isPushSubscribed) {
+      return 'Push is enabled on this device, but daily reminders are paused in your account preferences.';
     }
     if (notificationPermission === 'denied') {
       return 'Chrome is blocking notifications for this site. Open the padlock in the address bar, set Notifications to Allow, then reload the page.';
@@ -269,7 +287,41 @@ export default function Settings() {
       return 'Permission is granted, but this device is not subscribed yet. Use Enable Notifications to create a push subscription.';
     }
     return 'This device is ready to receive push reminders.';
-  }, [isPushServerConfigured, isPushSubscribed, notificationPermission, pushSupported]);
+  }, [isPushServerConfigured, isPushSubscribed, notificationPermission, preferences.notifications.dailyReminder, pushSupported]);
+
+  const enablePushForCurrentDevice = async (timezone: string) => {
+    const permission = await requestNotificationPermission();
+    setNotificationPermission(permission);
+
+    if (permission !== 'granted') {
+      throw new Error(
+        permission === 'denied'
+          ? 'Chrome is blocking notifications for this site. Change the site permission to Allow and reload the page.'
+          : 'Notification permission is required for daily reminders.'
+      );
+    }
+
+    const subscription = await subscribeToPush();
+    const response = await userService.savePushSubscription({
+      subscription,
+      timezone,
+    });
+
+    const { browserSubscription, statusResponse } = await loadPushStatus();
+    applyPushStatus(browserSubscription, statusResponse);
+
+    return response;
+  };
+
+  const syncCurrentDeviceSubscriptionTimeZone = async (timezone: string) => {
+    const existingSubscription = await getExistingPushSubscription();
+    if (!existingSubscription) return null;
+
+    return userService.savePushSubscription({
+      subscription: existingSubscription.toJSON(),
+      timezone,
+    });
+  };
 
   const handleProfileSave = async () => {
     const trimmedName = name.trim();
@@ -297,7 +349,7 @@ export default function Settings() {
 
   const handlePreferencesSave = async () => {
     setIsSavingPreferences(true);
-    const timezone = preferences.notifications.timezone || getBrowserTimeZone();
+    const timezone = getEffectiveReminderTimeZone();
 
     try {
       const response = await userService.updatePreferences({
@@ -308,6 +360,27 @@ export default function Settings() {
         },
       });
       setPreferences(normalizePreferences(response.data));
+
+      if (isPushSubscribed) {
+        await syncCurrentDeviceSubscriptionTimeZone(timezone);
+      }
+
+      if (response.data.notifications.dailyReminder && !isPushSubscribed) {
+        if (!pushSupported) {
+          toast.error('Daily reminders were saved, but this browser does not support push notifications.');
+          return;
+        }
+
+        try {
+          await enablePushForCurrentDevice(timezone);
+          toast.success('Preferences updated and daily reminder notifications enabled for this device.');
+          return;
+        } catch (error: any) {
+          toast.error(error?.message || 'Preferences were saved, but notifications could not be enabled for this device.');
+          return;
+        }
+      }
+
       toast.success('Preferences updated');
     } catch (error: any) {
       toast.error(error?.response?.data?.message || 'Unable to update preferences');
@@ -336,39 +409,24 @@ export default function Settings() {
     setIsUpdatingPush(true);
 
     try {
-      const permission = await requestNotificationPermission();
-      setNotificationPermission(permission);
-
-      if (permission !== 'granted') {
-        toast.error(
-          permission === 'denied'
-            ? 'Chrome is blocking notifications for this site. Change the site permission to Allow and reload the page.'
-            : 'Notification permission is required for daily reminders.'
-        );
-        return;
-      }
-
-      const timezone = preferences.notifications.timezone || getBrowserTimeZone();
-      const subscription = await subscribeToPush();
-
-      await userService.savePushSubscription({
-        subscription,
-        timezone,
-      });
-
-      setPreferences((current) => ({
-        ...current,
+      const timezone = getEffectiveReminderTimeZone();
+      const pushResponse = await enablePushForCurrentDevice(timezone);
+      const preferencesResponse = await userService.updatePreferences({
+        ...preferences,
         notifications: {
-          ...current.notifications,
+          ...preferences.notifications,
+          dailyReminder: true,
           timezone,
         },
-      }));
-      setIsPushSubscribed(true);
-      setIsPushServerConfigured(true);
-      setSubscriptionCount((current) => Math.max(1, current));
+      });
+
+      setPreferences(normalizePreferences(preferencesResponse.data));
+      setSubscriptionCount(pushResponse?.data?.subscriptionCount || 0);
+      const { browserSubscription, statusResponse } = await loadPushStatus();
+      applyPushStatus(browserSubscription, statusResponse);
       toast.success('Daily reminder notifications enabled.');
     } catch (error: any) {
-      toast.error(error?.message || 'Unable to enable notifications.');
+      toast.error(error?.response?.data?.message || error?.message || 'Unable to enable notifications.');
     } finally {
       setIsUpdatingPush(false);
     }
@@ -379,7 +437,7 @@ export default function Settings() {
 
     try {
       const existingSubscription = await getExistingPushSubscription();
-      const endpoint = existingSubscription?.endpoint || undefined;
+      const endpoint = existingSubscription?.endpoint;
 
       if (existingSubscription) {
         await existingSubscription.unsubscribe();
@@ -387,12 +445,21 @@ export default function Settings() {
         await unsubscribeFromPush();
       }
 
-      await userService.deletePushSubscription(endpoint ? { endpoint } : undefined);
+      if (endpoint) {
+        const response = await userService.deletePushSubscription({ endpoint });
+        setSubscriptionCount(response?.data?.subscriptionCount || 0);
+      }
+
       setIsPushSubscribed(false);
-      setSubscriptionCount(0);
-      toast.success('Daily reminder notifications disabled.');
+      const { browserSubscription, statusResponse } = await loadPushStatus();
+      applyPushStatus(browserSubscription, statusResponse);
+      toast.success(
+        endpoint
+          ? 'Daily reminder notifications disabled on this device.'
+          : 'This browser had no active endpoint to remove from the server. Local notifications are disabled.'
+      );
     } catch (error: any) {
-      toast.error(error?.message || 'Unable to disable notifications.');
+      toast.error(error?.response?.data?.message || error?.message || 'Unable to disable notifications.');
     } finally {
       setIsUpdatingPush(false);
     }
@@ -676,20 +743,13 @@ export default function Settings() {
                 <label className="label" htmlFor="settings-reminder-timezone">Reminder Timezone</label>
                 <input
                   className="input rounded-[1rem] border-sage-200 bg-sage-50 dark:border-white/10 dark:bg-[#101915]"
-                  disabled={!preferences.notifications.dailyReminder}
+                  disabled
                   id="settings-reminder-timezone"
-                  onChange={(event) => setPreferences((current) => ({
-                    ...current,
-                    notifications: {
-                      ...current.notifications,
-                      timezone: event.target.value,
-                    },
-                  }))}
                   placeholder="America/New_York"
                   type="text"
-                  value={preferences.notifications.timezone}
+                  value={getEffectiveReminderTimeZone()}
                 />
-                <p className="helper-text">Use an IANA timezone like `America/New_York` so reminders arrive at the right local hour.</p>
+                <p className="helper-text">This timezone syncs automatically from the current device so reminders follow the device you are using.</p>
               </div>
 
               <ToggleRow

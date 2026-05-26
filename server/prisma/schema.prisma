@@ -36,6 +36,8 @@ model PushSubscription {
   expirationTime BigInt?
   p256dh         String
   auth           String
+  timezone       String   @default("UTC")
+  lastSentAt     DateTime?
   userAgent      String?
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
