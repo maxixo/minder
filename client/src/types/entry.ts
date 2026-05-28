@@ -133,6 +133,7 @@ const isPlainObject = (value: unknown): value is Record<string, unknown> => {
 };
 
 const nowIso = () => new Date().toISOString();
+const toDateOnly = (value: string) => value.slice(0, 10);
 
 export const createEmptyDailyEntry = (date = nowIso()): DailyEntry => ({
   id: '',
@@ -252,6 +253,7 @@ export const toDailyEntryRequest = (entry: DailyEntry): DailyEntryRequest => {
   const { id: _id, userId: _userId, createdAt: _createdAt, updatedAt: _updatedAt, ...request } = entry;
   return {
     ...request,
+    date: toDateOnly(request.date),
     selfCarePlanDays: { ...request.selfCarePlanDays },
   };
 };

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import clsx from 'clsx';
 import { toast } from 'sonner';
+import BrandLogo from '@/components/common/BrandLogo';
 import { useDailyEntry } from '@/hooks/useDailyEntry';
 import ProfileMenu from '@/components/common/ProfileMenu';
 import type { DailyEntryPatch, EntryFeeling } from '@/types/entry';
@@ -382,7 +383,13 @@ export default function SelfCare() {
         </main>
 
         <footer className="border-t border-sage-100 px-10 py-6 text-center text-sm text-sage-400 dark:border-white/10 dark:text-sage-400">
-          <p>© 2024 Self-Care Hub • Crafted for Mindfulness</p>
+          <div className="flex flex-col items-center gap-3">
+            <BrandLogo
+              titleClassName="text-lg text-sage-700 dark:text-sage-50"
+              iconClassName="h-8 w-8 text-[#44604a] dark:text-sage-50"
+            />
+            <p>Copyright 2024 MindfulLife. Crafted for mindfulness.</p>
+          </div>
         </footer>
       </div>
     </div>

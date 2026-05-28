@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState, type ChangeEvent, type PointerEve
 import { format, isToday } from 'date-fns';
 import clsx from 'clsx';
 import { toast } from 'sonner';
+import BrandLogo from '@/components/common/BrandLogo';
 import { useAuth } from '@/contexts/useAuth';
 import { useDailyEntry } from '@/hooks/useDailyEntry';
 import ProfileMenu from '@/components/common/ProfileMenu';
@@ -815,17 +816,17 @@ export default function DailyReflection() {
 
       <footer className="mt-20 border-t border-[#e8ede8] bg-[#f4f7f4] py-10 dark:border-white/10 dark:bg-[#15201a]">
         <div className="flex w-full flex-col items-center justify-between gap-6 px-6 md:flex-row">
-          <div className="flex items-center gap-2">
-            <span className="material-symbols-outlined text-[#638869] dark:text-sage-300">spa</span>
-            <span className="font-bold">MindfulReflect</span>
-          </div>
+          <BrandLogo
+            titleClassName="text-lg text-sage-800 dark:text-sage-50"
+            iconClassName="h-8 w-8 text-[#44604a] dark:text-sage-50"
+          />
           <div className="flex gap-8 text-sm font-medium text-[#638869] dark:text-sage-300">
             <a className="hover:text-[#19e63c]" href="#">Guide</a>
             <a className="hover:text-[#19e63c]" href="#">Community</a>
             <a className="hover:text-[#19e63c]" href="#">Privacy</a>
             <a className="hover:text-[#19e63c]" href="#">Support</a>
           </div>
-          <p className="text-xs text-slate-400 dark:text-sage-400">© 2023 MindfulReflect. All rights reserved.</p>
+          <p className="text-xs text-slate-400 dark:text-sage-400">Copyright 2024 MindfulLife. All rights reserved.</p>
         </div>
       </footer>
     </div>

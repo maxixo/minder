@@ -45,6 +45,7 @@ describe('entry helpers', () => {
     expect(request).not.toHaveProperty('userId');
     expect(request).not.toHaveProperty('createdAt');
     expect(request).not.toHaveProperty('updatedAt');
+    expect(request.date).toBe('2026-05-27');
   });
 
   it('adds completed sections without duplicates', () => {

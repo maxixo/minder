@@ -12,6 +12,7 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
+import BrandLogo from '@/components/common/BrandLogo';
 import { useAuth } from '@/contexts/useAuth';
 import { useTheme } from '@/contexts/useTheme';
 import { dashboardQuotes } from '@/constants/dashboardQuotes';
@@ -739,11 +740,11 @@ export default function WellnessOverview() {
 
       <footer className="mt-12 rounded-[1.75rem] border border-sage-200/80 bg-white/80 px-6 py-8 shadow-soft backdrop-blur-sm sm:px-8 dark:border-white/10 dark:bg-[#15201a]/90">
         <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
-          <div className="flex items-center gap-3 text-sage-600 dark:text-sage-100">
-            <span className="material-symbols-outlined text-2xl">eco</span>
-            <p className="font-display text-xl font-semibold">MindfulLife</p>
-          </div>
-          <p className="text-sm text-slate-500 dark:text-sage-300">© 2024 MindfulLife App. Cultivating peace, one breath at a time.</p>
+          <BrandLogo
+            titleClassName="text-xl text-sage-700 dark:text-sage-50"
+            iconClassName="h-9 w-9 text-[#44604a] dark:text-sage-50"
+          />
+          <p className="text-sm text-slate-500 dark:text-sage-300">Copyright 2024 MindfulLife App. Cultivating peace, one breath at a time.</p>
           <div className="flex gap-4 text-slate-400 dark:text-sage-300">
             <button className="rounded-full p-2 transition-colors hover:bg-sage-50 hover:text-sage-700 dark:hover:bg-white/10 dark:hover:text-white" type="button">
               <span className="material-symbols-outlined">language</span>

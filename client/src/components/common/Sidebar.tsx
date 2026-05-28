@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import clsx from 'clsx';
 import { NavLink, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/useAuth';
+import BrandLogo from './BrandLogo';
 
 const primaryLinks = [
   { to: '/dashboard', label: 'Dashboard', icon: 'dashboard' },
@@ -62,15 +63,11 @@ export default function Sidebar() {
   return (
     <>
       <div className="sticky top-0 z-30 mb-6 flex items-center justify-between rounded-[1.75rem] border border-sage-200 bg-white/90 px-4 py-3 shadow-soft backdrop-blur-sm lg:hidden dark:border-white/10 dark:bg-[#15201a]/90">
-        <div className="flex items-center gap-3 text-sage-700 dark:text-sage-100">
-          <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-sage-100 text-sage-600 dark:bg-white/10 dark:text-sage-100">
-            <span className="material-symbols-outlined">eco</span>
-          </div>
-          <div>
-            <p className="font-display text-lg font-semibold">MindfulLife</p>
-            <p className="text-xs uppercase tracking-[0.24em] text-sage-500 dark:text-sage-300">{currentPageTitle}</p>
-          </div>
-        </div>
+        <BrandLogo
+          subtitle={currentPageTitle}
+          titleClassName="text-lg"
+          iconClassName="h-11 w-11"
+        />
         <button
           aria-expanded={isMobileMenuOpen}
           aria-label="Open mobile navigation"
@@ -142,10 +139,12 @@ export default function Sidebar() {
           <div className="absolute inset-x-0 bottom-0 rounded-t-[2rem] border border-sage-200 bg-white px-5 pb-[calc(env(safe-area-inset-bottom)+1.25rem)] pt-5 shadow-soft dark:border-white/10 dark:bg-[#15201a]">
             <div className="mx-auto mb-4 h-1.5 w-14 rounded-full bg-sage-200 dark:bg-white/10" />
             <div className="mb-5 flex items-center justify-between">
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.24em] text-sage-500 dark:text-sage-300">Navigate</p>
-                <p className="mt-1 font-display text-2xl font-semibold text-sage-800 dark:text-sage-50">MindfulLife</p>
-              </div>
+              <BrandLogo
+                subtitle="Navigate"
+                titleClassName="text-2xl text-sage-800 dark:text-sage-50"
+                subtitleClassName="text-sage-500 dark:text-sage-300"
+                iconClassName="h-10 w-10 text-[#44604a] dark:text-sage-50"
+              />
               <button
                 aria-label="Close mobile navigation"
                 className="mt-2 inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-sage-200 bg-sage-50 text-sage-700 transition-colors hover:bg-white dark:border-white/10 dark:bg-white/5 dark:text-sage-100 dark:hover:bg-white/10"
@@ -195,15 +194,13 @@ export default function Sidebar() {
       ) : null}
 
       <aside className="fixed inset-y-0 left-0 z-40 hidden w-72 flex-col overflow-y-auto border-r border-sage-200 bg-white/90 px-6 py-6 shadow-soft backdrop-blur-sm lg:flex dark:border-white/10 dark:bg-[#15201a]/90">
-        <div className="flex items-center gap-3 pb-6">
-          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-sage-100 text-sage-600 dark:bg-white/10 dark:text-sage-100">
-            <span className="material-symbols-outlined text-2xl">eco</span>
-          </div>
-          <div>
-            <p className="font-display text-2xl font-semibold text-sage-800 dark:text-sage-50">MindfulLife</p>
-            <p className="text-xs uppercase tracking-[0.3em] text-sage-500 dark:text-sage-300">Wellness Dashboard</p>
-          </div>
-        </div>
+        <BrandLogo
+          className="pb-6"
+          subtitle="Wellness Dashboard"
+          titleClassName="text-2xl text-sage-800 dark:text-sage-50"
+          subtitleClassName="tracking-[0.3em] text-sage-500 dark:text-sage-300"
+          iconClassName="h-12 w-12 text-[#44604a] dark:text-sage-50"
+        />
 
         <nav className="mt-2 space-y-2">
           <p className="px-4 pb-2 text-xs font-semibold uppercase tracking-[0.28em] text-sage-500 dark:text-sage-300">Practice</p>

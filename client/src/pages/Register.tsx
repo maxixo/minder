@@ -1,5 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import BrandLogo from '@/components/common/BrandLogo';
 import { useAuth } from '@/contexts/useAuth';
 
 export default function Register() {
@@ -65,12 +66,10 @@ export default function Register() {
       <div className="relative flex min-h-screen w-full flex-col">
         <div className="flex h-full grow flex-col">
           <header className="flex items-center justify-between whitespace-nowrap border-b border-[#e0e1e0] bg-white px-10 py-3 dark:border-[#2d2f2d] dark:bg-[#1f211f]">
-            <div className="flex items-center gap-3 text-[#5e7860]">
-              <span className="material-symbols-outlined text-3xl">filter_vintage</span>
-              <h2 className="font-display text-lg font-bold leading-tight tracking-[-0.015em] text-[#141514] dark:text-white">
-                MindfulNature
-              </h2>
-            </div>
+            <BrandLogo
+              titleClassName="text-lg text-[#141514] dark:text-white"
+              iconClassName="h-9 w-9 text-[#44604a] dark:text-sage-50"
+            />
 
             <div className="flex flex-1 justify-end gap-8">
               <div className="hidden items-center gap-9 md:flex">
@@ -118,6 +117,7 @@ export default function Register() {
               </div>
 
               <div className="mb-10 text-center">
+                <BrandLogo className="mb-5 justify-center" titleClassName="text-3xl" iconClassName="h-10 w-10" />
                 <h1 className="mb-3 font-display text-3xl font-bold leading-tight tracking-tight text-[#141514] dark:text-white">
                   Create Your Account
                 </h1>
@@ -253,7 +253,7 @@ export default function Register() {
               </a>
             </div>
             <p className="font-display text-[10px] uppercase tracking-widest text-[#b0b3b0]">
-              © 2024 MindfulNature. All rights reserved.
+              Copyright 2024 MindfulLife. All rights reserved.
             </p>
           </footer>
         </div>

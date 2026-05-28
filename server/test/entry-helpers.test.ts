@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { validationResult } from 'express-validator';
 import { ensureTodoItemIds, getCompletionPercentage } from '../src/lib/entry.ts';
+import { entryPayloadValidators } from '../src/middleware/requestValidators.ts';
 import { buildEntryPersistenceInput, serializeEntry, serializeUser } from '../src/lib/serializers.ts';
 
 test('serializeUser returns nested preferences and omits passwordHash', () => {
@@ -85,4 +87,23 @@ test('ensureTodoItemIds generates ids and completion percentage matches legacy f
   });
 
   assert.equal(completion, 100);
+});
+
+test('entry payload validators allow decimal energy levels from the reflection graph', async () => {
+  const req = {
+    body: {
+      date: '2026-05-24',
+      energyLevels: [
+        { time: 9, energy: 6.4 },
+        { time: 15, energy: 4.8 },
+      ],
+    },
+  } as any;
+
+  for (const validator of entryPayloadValidators) {
+    await validator.run(req);
+  }
+
+  const result = validationResult(req);
+  assert.equal(result.isEmpty(), true, JSON.stringify(result.array()));
 });

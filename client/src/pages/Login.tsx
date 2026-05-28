@@ -1,5 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import BrandLogo from '@/components/common/BrandLogo';
 import { useAuth } from '@/contexts/useAuth';
 import '@/styles/pages/login.css';
 
@@ -38,17 +39,7 @@ export default function Login() {
       <div className="relative flex min-h-screen w-full flex-col">
         <div className="flex h-full grow flex-col">
           <header className="flex items-center justify-between whitespace-nowrap border-b border-primary/10 bg-white/30 px-6 py-3 backdrop-blur-sm md:px-20">
-            <div className="flex items-center gap-3">
-              <div className="size-8 text-[#5e7860]">
-                <svg fill="none" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
-                  <path
-                    d="M42.1739 20.1739L27.8261 5.82609C29.1366 7.13663 28.3989 10.1876 26.2002 13.7654C24.8538 15.9564 22.9595 18.3449 20.6522 20.6522C18.3449 22.9595 15.9564 24.8538 13.7654 26.2002C10.1876 28.3989 7.13663 29.1366 5.82609 27.8261L20.1739 42.1739C21.4845 43.4845 24.5355 42.7467 28.1133 40.548C30.3042 39.2016 32.6927 37.3073 35 35C37.3073 32.6927 39.2016 30.3042 40.548 28.1133C42.7467 24.5355 43.4845 21.4845 42.1739 20.1739Z"
-                    fill="currentColor"
-                  />
-                </svg>
-              </div>
-              <h2 className="text-xl font-bold tracking-tight text-[#5e7860]">Mindful</h2>
-            </div>
+            <BrandLogo titleClassName="text-xl" iconClassName="h-8 w-8" />
 
             <div className="hidden items-center gap-8 md:flex">
               <a className="text-sm font-medium transition-colors hover:text-[#5e7860]" href="#">
@@ -79,9 +70,7 @@ export default function Login() {
                 <div className="absolute -right-12 -top-12 h-32 w-32 rounded-full bg-[#5e7860]/10 blur-3xl" />
 
                 <div className="relative z-10 flex flex-col items-center">
-                  <div className="mb-4 inline-flex rounded-full bg-sage-50 p-3 sm:p-4">
-                    <span className="material-symbols-outlined text-3xl text-[#5e7860]">spa</span>
-                  </div>
+                  <BrandLogo className="mb-5 justify-center" titleClassName="text-3xl sm:text-[2.2rem]" iconClassName="h-10 w-10" />
 
                   <h1 className="mb-2 text-center font-display text-3xl font-semibold text-[#5e7860] sm:text-4xl md:text-5xl">
                     Welcome Back
@@ -165,7 +154,7 @@ export default function Login() {
 
                   <div className="mt-8 flex flex-col items-center gap-4">
                     <p className="text-sm text-gray-500">
-                      New to Mindful?{' '}
+                      New to MindfulLife?{' '}
                       <Link className="font-bold text-[#5e7860] hover:underline" to="/register">
                         Create an account
                       </Link>

@@ -6,6 +6,9 @@ const PERIOD_VALUES = ['7days', '30days', '90days', 'year'];
 const REMINDER_TIME_PATTERN = /^([01]\d|2[0-3]):[0-5]\d$/;
 const DATE_ONLY_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 const ENTRY_SECTION_VALUES = ['reflection', 'selfcare', 'emotional', 'review'];
+const WEATHER_VALUES = ['sunny', 'partly_cloudy', 'cloudy', 'rainy', 'stormy', 'snowy'];
+const SLEEP_QUALITY_VALUES = ['poor', 'fair', 'good', 'great', 'excellent'];
+const FEELING_VALUES = ['happy', 'peace', 'sad', 'worried', 'excited', 'bored', 'relaxed', 'lonely', 'tired', 'angry', 'overwhelmed'];
 
 const isPlainObject = (value: unknown): value is Record<string, unknown> => (
   Boolean(value) && typeof value === 'object' && !Array.isArray(value)
@@ -57,6 +60,16 @@ const assertOptionalBoolean = (value: unknown, field: string) => {
   if (value === undefined || value === null) return;
   if (typeof value !== 'boolean') {
     throw new Error(`${field} must be true or false.`);
+  }
+};
+
+const assertOptionalEnumString = (value: unknown, field: string, values: string[]) => {
+  if (value === undefined || value === null) return;
+  if (typeof value !== 'string') {
+    throw new Error(`${field} must be a string.`);
+  }
+  if (!values.includes(value)) {
+    throw new Error(`${field} must be one of ${values.join(', ')}.`);
   }
 };
 
@@ -116,6 +129,7 @@ const validateEntryPayload = (payload: unknown) => {
   }
 
   assertOptionalString(payload.weather, 'weather', 40);
+  assertOptionalEnumString(payload.weather, 'weather', WEATHER_VALUES);
   assertStringArray(payload.gratitude, 'gratitude', { maxItems: 10, maxItemLength: 280 });
   assertOptionalString(payload.expectations, 'expectations', 2000);
   assertStringArray(payload.positiveNotes, 'positiveNotes', { maxItems: 10, maxItemLength: 280 });
@@ -126,6 +140,7 @@ const validateEntryPayload = (payload: unknown) => {
   assertOptionalNumber(payload.waterIntake, 'waterIntake', { integer: true, min: 0, max: 100 });
   assertOptionalNumber(payload.sleepHours, 'sleepHours', { min: 0, max: 24 });
   assertOptionalString(payload.sleepQuality, 'sleepQuality', 120);
+  assertOptionalEnumString(payload.sleepQuality, 'sleepQuality', SLEEP_QUALITY_VALUES);
   assertRecordWithBooleans(payload.meals, 'meals', ['breakfast', 'lunch', 'dinner', 'snack']);
   assertRecordWithNumbers(payload.nutrition, 'nutrition', ['calories', 'protein', 'carbs', 'fat'], { min: 0, max: 100000 });
 
@@ -141,7 +156,7 @@ const validateEntryPayload = (payload: unknown) => {
         throw new Error(`energyLevels[${index}] must be an object.`);
       }
       assertOptionalNumber(item.time, `energyLevels[${index}].time`, { integer: true, min: 0, max: 24 });
-      assertOptionalNumber(item.energy, `energyLevels[${index}].energy`, { integer: true, min: 0, max: 10 });
+      assertOptionalNumber(item.energy, `energyLevels[${index}].energy`, { min: 0, max: 10 });
     });
   }
 
@@ -156,7 +171,15 @@ const validateEntryPayload = (payload: unknown) => {
   assertOptionalString(payload.selfLove, 'selfLove', 2000);
   assertOptionalString(payload.gratitudeNote, 'gratitudeNote', 2000);
   assertOptionalString(payload.feeling, 'feeling', 120);
+  assertOptionalEnumString(payload.feeling, 'feeling', FEELING_VALUES);
   assertStringArray(payload.additionalFeelings, 'additionalFeelings', { maxItems: 10, maxItemLength: 120 });
+  if (Array.isArray(payload.additionalFeelings)) {
+    payload.additionalFeelings.forEach((item, index) => {
+      if (!FEELING_VALUES.includes(item)) {
+        throw new Error(`additionalFeelings[${index}] must be one of ${FEELING_VALUES.join(', ')}.`);
+      }
+    });
+  }
   assertRecordWithNumbers(payload.activities, 'activities', ['reading', 'music', 'mindfulness'], { integer: true, min: 0, max: 1000 });
   assertOptionalString(payload.mindThoughts, 'mindThoughts', 4000);
   assertOptionalString(payload.nextStep, 'nextStep', 2000);
