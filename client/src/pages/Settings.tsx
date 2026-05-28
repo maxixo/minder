@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import clsx from 'clsx';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
+import { getSafeAvatarUrl } from '@/lib/avatar';
 import { useAuth } from '@/contexts/useAuth';
 import { useTheme, } from '@/contexts/useTheme';
 import { usePwaInstall } from '@/hooks/usePwaInstall';
@@ -145,6 +146,7 @@ export default function Settings() {
   const [subscriptionCount, setSubscriptionCount] = useState(0);
   const [isUpdatingPush, setIsUpdatingPush] = useState(false);
   const [isSendingTestPush, setIsSendingTestPush] = useState(false);
+  const safeAvatarUrl = getSafeAvatarUrl(avatar);
 
   const applyPushStatus = (browserSubscription: Awaited<ReturnType<typeof getExistingPushSubscription>>, statusResponse: any) => {
     setIsPushSubscribed(Boolean(browserSubscription));
@@ -571,12 +573,13 @@ export default function Settings() {
           </div>
 
           <div className="flex items-center gap-4 rounded-[1.5rem] border border-sage-200 bg-sage-100/80 p-5 shadow-sm backdrop-blur sm:min-w-[300px] dark:border-white/10 dark:bg-white/5">
-            {avatar ? (
-              <div
-                aria-label="Profile avatar"
-                className="h-16 w-16 rounded-2xl bg-cover bg-center bg-no-repeat shadow-sm"
-                role="img"
-                style={{ backgroundImage: `url("${avatar}")` }}
+            {safeAvatarUrl ? (
+              <img
+                alt=""
+                aria-hidden="true"
+                className="h-16 w-16 rounded-2xl object-cover shadow-sm"
+                referrerPolicy="no-referrer"
+                src={safeAvatarUrl}
               />
             ) : (
               <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-sage-100 text-lg font-semibold text-sage-700 shadow-sm dark:bg-white/10 dark:text-sage-100">

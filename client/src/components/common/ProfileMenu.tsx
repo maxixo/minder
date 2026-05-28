@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import clsx from 'clsx';
 import { useAuth } from '@/contexts/useAuth';
+import { getSafeAvatarUrl } from '@/lib/avatar';
 
 const menuLinks = [
   { label: 'Account', to: '/settings#account-overview', icon: 'account_circle' },
@@ -15,6 +16,7 @@ export default function ProfileMenu() {
   const location = useLocation();
   const containerRef = useRef<HTMLDivElement | null>(null);
   const [isOpen, setIsOpen] = useState(false);
+  const avatarUrl = getSafeAvatarUrl(user?.avatar);
 
   const initials = useMemo(() => (user?.name || 'Mindful Life')
     .split(' ')
@@ -66,11 +68,13 @@ export default function ProfileMenu() {
         onClick={() => setIsOpen((current) => !current)}
         type="button"
       >
-        {user?.avatar ? (
-          <span
+        {avatarUrl ? (
+          <img
+            alt=""
             aria-hidden="true"
-            className="size-full rounded-full bg-cover bg-center bg-no-repeat"
-            style={{ backgroundImage: `url("${user.avatar}")` }}
+            className="size-full rounded-full object-cover"
+            referrerPolicy="no-referrer"
+            src={avatarUrl}
           />
         ) : (
           initials

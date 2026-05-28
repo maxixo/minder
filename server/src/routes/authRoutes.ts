@@ -2,10 +2,13 @@
 import { body } from 'express-validator';
 import { register, login, logout, getMe, updateProfile, updatePassword } from '../controllers/authController.js';
 import { protect } from '../middleware/auth.js';
+import { getCsrfToken } from '../middleware/csrf.js';
 import { profileUpdateValidators } from '../middleware/requestValidators.js';
 import { validate } from '../middleware/validate.js';
 
 const router = express.Router();
+
+router.get('/csrf', getCsrfToken);
 
 router.post('/register', [
   body('name').trim().notEmpty().withMessage('Name is required'),

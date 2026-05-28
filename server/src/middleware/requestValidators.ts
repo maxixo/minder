@@ -1,13 +1,236 @@
 import { body, param, query, type ValidationChain } from 'express-validator';
+import { isAllowedAvatarUrl } from '../lib/avatar.js';
 
 const THEME_VALUES = ['light', 'dark', 'auto'];
 const PERIOD_VALUES = ['7days', '30days', '90days', 'year'];
 const REMINDER_TIME_PATTERN = /^([01]\d|2[0-3]):[0-5]\d$/;
 const DATE_ONLY_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
+const ENTRY_SECTION_VALUES = ['reflection', 'selfcare', 'emotional', 'review'];
+
+const isPlainObject = (value: unknown): value is Record<string, unknown> => (
+  Boolean(value) && typeof value === 'object' && !Array.isArray(value)
+);
 
 const booleanField = (field: string, message: string): ValidationChain => (
   body(field).optional().isBoolean().withMessage(message)
 );
+
+const assertOptionalString = (value: unknown, field: string, maxLength: number) => {
+  if (value === undefined || value === null) return;
+  if (typeof value !== 'string') {
+    throw new Error(`${field} must be a string.`);
+  }
+  if (value.length > maxLength) {
+    throw new Error(`${field} must be ${maxLength} characters or fewer.`);
+  }
+};
+
+const assertOptionalNumber = (
+  value: unknown,
+  field: string,
+  {
+    integer = false,
+    min,
+    max,
+  }: {
+    integer?: boolean;
+    min?: number;
+    max?: number;
+  } = {},
+) => {
+  if (value === undefined || value === null) return;
+  if (typeof value !== 'number' || Number.isNaN(value)) {
+    throw new Error(`${field} must be a number.`);
+  }
+  if (integer && !Number.isInteger(value)) {
+    throw new Error(`${field} must be an integer.`);
+  }
+  if (min !== undefined && value < min) {
+    throw new Error(`${field} must be at least ${min}.`);
+  }
+  if (max !== undefined && value > max) {
+    throw new Error(`${field} must be no greater than ${max}.`);
+  }
+};
+
+const assertOptionalBoolean = (value: unknown, field: string) => {
+  if (value === undefined || value === null) return;
+  if (typeof value !== 'boolean') {
+    throw new Error(`${field} must be true or false.`);
+  }
+};
+
+const assertStringArray = (
+  value: unknown,
+  field: string,
+  { maxItems, maxItemLength }: { maxItems: number; maxItemLength: number },
+) => {
+  if (value === undefined || value === null) return;
+  if (!Array.isArray(value)) {
+    throw new Error(`${field} must be an array.`);
+  }
+  if (value.length > maxItems) {
+    throw new Error(`${field} must contain ${maxItems} items or fewer.`);
+  }
+
+  value.forEach((item, index) => {
+    if (typeof item !== 'string') {
+      throw new Error(`${field}[${index}] must be a string.`);
+    }
+    if (item.length > maxItemLength) {
+      throw new Error(`${field}[${index}] must be ${maxItemLength} characters or fewer.`);
+    }
+  });
+};
+
+const assertRecordWithBooleans = (value: unknown, field: string, keys: string[]) => {
+  if (value === undefined || value === null) return;
+  if (!isPlainObject(value)) {
+    throw new Error(`${field} must be an object.`);
+  }
+
+  keys.forEach((key) => {
+    assertOptionalBoolean(value[key], `${field}.${key}`);
+  });
+};
+
+const assertRecordWithNumbers = (
+  value: unknown,
+  field: string,
+  keys: string[],
+  options: { integer?: boolean; min?: number; max?: number } = {},
+) => {
+  if (value === undefined || value === null) return;
+  if (!isPlainObject(value)) {
+    throw new Error(`${field} must be an object.`);
+  }
+
+  keys.forEach((key) => {
+    assertOptionalNumber(value[key], `${field}.${key}`, options);
+  });
+};
+
+const validateEntryPayload = (payload: unknown) => {
+  if (!isPlainObject(payload)) {
+    throw new Error('Entry payload must be a JSON object.');
+  }
+
+  assertOptionalString(payload.weather, 'weather', 40);
+  assertStringArray(payload.gratitude, 'gratitude', { maxItems: 10, maxItemLength: 280 });
+  assertOptionalString(payload.expectations, 'expectations', 2000);
+  assertStringArray(payload.positiveNotes, 'positiveNotes', { maxItems: 10, maxItemLength: 280 });
+  assertOptionalString(payload.whatMakesTodayGreat, 'whatMakesTodayGreat', 2000);
+  assertStringArray(payload.goodThingsHappened, 'goodThingsHappened', { maxItems: 10, maxItemLength: 280 });
+  assertOptionalString(payload.selfAssessmentNote, 'selfAssessmentNote', 2000);
+  assertOptionalNumber(payload.mood, 'mood', { integer: true, min: 1, max: 5 });
+  assertOptionalNumber(payload.waterIntake, 'waterIntake', { integer: true, min: 0, max: 100 });
+  assertOptionalNumber(payload.sleepHours, 'sleepHours', { min: 0, max: 24 });
+  assertOptionalString(payload.sleepQuality, 'sleepQuality', 120);
+  assertRecordWithBooleans(payload.meals, 'meals', ['breakfast', 'lunch', 'dinner', 'snack']);
+  assertRecordWithNumbers(payload.nutrition, 'nutrition', ['calories', 'protein', 'carbs', 'fat'], { min: 0, max: 100000 });
+
+  if (payload.energyLevels !== undefined && payload.energyLevels !== null) {
+    if (!Array.isArray(payload.energyLevels)) {
+      throw new Error('energyLevels must be an array.');
+    }
+    if (payload.energyLevels.length > 24) {
+      throw new Error('energyLevels must contain 24 items or fewer.');
+    }
+    payload.energyLevels.forEach((item, index) => {
+      if (!isPlainObject(item)) {
+        throw new Error(`energyLevels[${index}] must be an object.`);
+      }
+      assertOptionalNumber(item.time, `energyLevels[${index}].time`, { integer: true, min: 0, max: 24 });
+      assertOptionalNumber(item.energy, `energyLevels[${index}].energy`, { integer: true, min: 0, max: 10 });
+    });
+  }
+
+  if (payload.tomorrowPlan !== undefined && payload.tomorrowPlan !== null) {
+    if (!isPlainObject(payload.tomorrowPlan)) {
+      throw new Error('tomorrowPlan must be an object.');
+    }
+    assertOptionalString(payload.tomorrowPlan.howToMakeBetter, 'tomorrowPlan.howToMakeBetter', 2000);
+    assertOptionalString(payload.tomorrowPlan.expectations, 'tomorrowPlan.expectations', 2000);
+  }
+
+  assertOptionalString(payload.selfLove, 'selfLove', 2000);
+  assertOptionalString(payload.gratitudeNote, 'gratitudeNote', 2000);
+  assertOptionalString(payload.feeling, 'feeling', 120);
+  assertStringArray(payload.additionalFeelings, 'additionalFeelings', { maxItems: 10, maxItemLength: 120 });
+  assertRecordWithNumbers(payload.activities, 'activities', ['reading', 'music', 'mindfulness'], { integer: true, min: 0, max: 1000 });
+  assertOptionalString(payload.mindThoughts, 'mindThoughts', 4000);
+  assertOptionalString(payload.nextStep, 'nextStep', 2000);
+  assertRecordWithNumbers(payload.ratings, 'ratings', ['selfTalk', 'energyPoint', 'overall'], { min: 0, max: 10 });
+  assertRecordWithBooleans(payload.selfCareChecklist, 'selfCareChecklist', [
+    'ateBreakfast',
+    'ateLunch',
+    'ateDinner',
+    'slept7to9Hours',
+    'tookNap',
+    'watchedMovie',
+    'gotFreshAir',
+    'exercised',
+    'calledFriend',
+    'journaled',
+    'drankWater',
+  ]);
+
+  if (payload.emotionalGuidance !== undefined && payload.emotionalGuidance !== null) {
+    if (!isPlainObject(payload.emotionalGuidance)) {
+      throw new Error('emotionalGuidance must be an object.');
+    }
+    assertOptionalString(payload.emotionalGuidance.whereAreYou, 'emotionalGuidance.whereAreYou', 2000);
+    assertOptionalString(payload.emotionalGuidance.howYoureFeeling, 'emotionalGuidance.howYoureFeeling', 2000);
+    assertOptionalString(payload.emotionalGuidance.whatYoureThinking, 'emotionalGuidance.whatYoureThinking', 2000);
+    assertOptionalString(payload.emotionalGuidance.copingMethod, 'emotionalGuidance.copingMethod', 280);
+    assertOptionalString(payload.emotionalGuidance.feelingBeforeGo, 'emotionalGuidance.feelingBeforeGo', 2000);
+  }
+
+  if (payload.selfCarePlanDays !== undefined && payload.selfCarePlanDays !== null) {
+    if (!isPlainObject(payload.selfCarePlanDays)) {
+      throw new Error('selfCarePlanDays must be an object.');
+    }
+    Object.entries(payload.selfCarePlanDays).forEach(([key, value]) => {
+      assertOptionalBoolean(value, `selfCarePlanDays.${key}`);
+    });
+  }
+
+  assertStringArray(payload.priorities, 'priorities', { maxItems: 10, maxItemLength: 280 });
+
+  if (payload.todoList !== undefined && payload.todoList !== null) {
+    if (!Array.isArray(payload.todoList)) {
+      throw new Error('todoList must be an array.');
+    }
+    if (payload.todoList.length > 50) {
+      throw new Error('todoList must contain 50 items or fewer.');
+    }
+    payload.todoList.forEach((item, index) => {
+      if (!isPlainObject(item)) {
+        throw new Error(`todoList[${index}] must be an object.`);
+      }
+      assertOptionalString(item.id, `todoList[${index}].id`, 120);
+      assertOptionalString(item.text, `todoList[${index}].text`, 280);
+      assertOptionalBoolean(item.completed, `todoList[${index}].completed`);
+    });
+  }
+
+  assertOptionalString(payload.focus, 'focus', 2000);
+  assertOptionalString(payload.mindfulnessNotes, 'mindfulnessNotes', 4000);
+  assertStringArray(payload.todayNotes, 'todayNotes', { maxItems: 10, maxItemLength: 280 });
+
+  if (payload.completedSections !== undefined && payload.completedSections !== null) {
+    if (!Array.isArray(payload.completedSections)) {
+      throw new Error('completedSections must be an array.');
+    }
+    payload.completedSections.forEach((item, index) => {
+      if (typeof item !== 'string' || !ENTRY_SECTION_VALUES.includes(item)) {
+        throw new Error(`completedSections[${index}] must be one of ${ENTRY_SECTION_VALUES.join(', ')}.`);
+      }
+    });
+  }
+
+  return true;
+};
 
 export const profileUpdateValidators: ValidationChain[] = [
   body('name')
@@ -23,7 +246,9 @@ export const profileUpdateValidators: ValidationChain[] = [
     .isString()
     .trim()
     .isLength({ max: 2048 })
-    .withMessage('Avatar URL must be 2048 characters or fewer.'),
+    .withMessage('Avatar URL must be 2048 characters or fewer.')
+    .custom((value) => !value || isAllowedAvatarUrl(value))
+    .withMessage('Avatar URL must use HTTPS, or HTTP on localhost.'),
   body('preferences.theme')
     .optional()
     .isIn(THEME_VALUES)
@@ -111,7 +336,8 @@ export const testPushNotificationValidators: ValidationChain[] = [
 export const entryPayloadValidators: ValidationChain[] = [
   body()
     .isObject()
-    .withMessage('Entry payload must be a JSON object.'),
+    .withMessage('Entry payload must be a JSON object.')
+    .custom(validateEntryPayload),
   body('date')
     .optional()
     .matches(DATE_ONLY_PATTERN)
