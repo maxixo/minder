@@ -8,6 +8,7 @@ import dotenv from 'dotenv';
 import connectDB from './config/database.js';
 import prisma from './lib/prisma.js';
 import { errorHandler, notFound } from './middleware/errorHandler.js';
+import { requireTrustedOrigin } from './middleware/trustedOrigin.js';
 import authRoutes from './routes/authRoutes.js';
 import entryRoutes from './routes/entryRoutes.js';
 import analyticsRoutes from './routes/analyticsRoutes.js';
@@ -61,6 +62,7 @@ const authLimiter = rateLimit({
 });
 
 app.use('/api/', limiter);
+app.use('/api/', requireTrustedOrigin(allowedOrigins));
 app.use('/api/auth/login', authLimiter);
 app.use('/api/auth/register', authLimiter);
 
