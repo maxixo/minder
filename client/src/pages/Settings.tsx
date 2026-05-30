@@ -276,18 +276,24 @@ export default function Settings() {
   const installStatusMessage = useMemo(() => {
     if (isInstalled) return 'MindfulLife is already installed on this device.';
     if (canInstall) return 'This browser can install MindfulLife right now.';
+    if (isIosLikeBrowser) {
+      return 'On iPhone or iPad, install MindfulLife from Safari using Share > Add to Home Screen.';
+    }
     if (typeof window !== 'undefined' && !window.isSecureContext) {
-      return 'Chrome only shows the install flow in a secure context like HTTPS or localhost.';
+      return 'App installation is only available on HTTPS or localhost.';
     }
     if (import.meta.env.DEV) {
-      return 'Chrome has not exposed the install prompt yet. In local development, refresh once after the service worker registers, then try again.';
+      return 'The browser has not exposed the install prompt yet. Refresh once after the service worker registers, then try again.';
     }
-    return 'Chrome has not exposed the install prompt in this session yet. Refresh once, then check DevTools > Application > Manifest if install still does not appear.';
-  }, [canInstall, isInstalled]);
+    return 'The browser has not exposed the install prompt in this session yet. Refresh once, then check the installed-app settings if install still does not appear.';
+  }, [canInstall, isInstalled, isIosLikeBrowser]);
 
   const getEffectiveReminderTimeZone = () => getBrowserTimeZone();
 
   const notificationStatusDetail = useMemo(() => {
+    if (isIosLikeBrowser && !isInstalled) {
+      return 'On iPhone or iPad, install MindfulLife to the Home Screen in Safari before enabling notifications.';
+    }
     if (!pushSupported) return 'This browser does not support service worker push notifications.';
     if (!isPushServerConfigured) {
       return 'The server is not configured to send web push yet. Add VAPID keys on the backend before testing delivery.';
@@ -296,7 +302,7 @@ export default function Settings() {
       return 'Push is enabled on this device, but daily reminders are paused in your account preferences.';
     }
     if (notificationPermission === 'denied') {
-      return 'Chrome is blocking notifications for this site. Open the padlock in the address bar, set Notifications to Allow, then reload the page.';
+      return 'Notifications are blocked for this site. Update the site permission in your browser settings, then reload the page.';
     }
     if (notificationPermission === 'default') {
       return 'Notifications have not been approved for this site yet.';
@@ -305,7 +311,7 @@ export default function Settings() {
       return 'Permission is granted, but this device is not subscribed yet. Use Enable Notifications to create a push subscription.';
     }
     return 'This device is ready to receive push reminders.';
-  }, [isPushServerConfigured, isPushSubscribed, notificationPermission, preferences.notifications.dailyReminder, pushSupported]);
+  }, [isInstalled, isIosLikeBrowser, isPushServerConfigured, isPushSubscribed, notificationPermission, preferences.notifications.dailyReminder, pushSupported]);
 
   const enablePushForCurrentDevice = async (timezone: string) => {
     const permission = await requestNotificationPermission();
@@ -314,7 +320,7 @@ export default function Settings() {
     if (permission !== 'granted') {
       throw new Error(
         permission === 'denied'
-          ? 'Chrome is blocking notifications for this site. Change the site permission to Allow and reload the page.'
+          ? 'Notifications are blocked for this site. Change the site permission to Allow and reload the page.'
           : 'Notification permission is required for daily reminders.'
       );
     }
@@ -474,6 +480,11 @@ export default function Settings() {
   };
 
   const handleEnableNotifications = async () => {
+    if (isIosLikeBrowser && !isInstalled) {
+      toast.error('On iPhone or iPad, add MindfulLife to the Home Screen in Safari before enabling notifications.');
+      return;
+    }
+
     if (!pushSupported) {
       toast.error('Push notifications are not supported in this browser.');
       return;

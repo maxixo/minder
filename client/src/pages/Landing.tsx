@@ -232,7 +232,7 @@ export default function Landing() {
           </div>
         </section>
 
-        <section className="mb-24 border-b border-outline-variant/40 px-gutter pb-section-gap md:mb-32" data-reveal id="about">
+        <section className="mb-24 px-gutter pb-section-gap md:mb-32" data-reveal id="about">
           <div className="mx-auto grid h-auto max-w-7xl grid-cols-1 gap-6 md:h-[600px] md:grid-cols-12">
             <div className="min-h-[300px] overflow-hidden rounded-card shadow-lg md:col-span-8">
               <img
@@ -259,7 +259,7 @@ export default function Landing() {
 
       </main>
 
-      <footer className="mt-24 border-t border-outline-variant/40 bg-surface px-gutter py-16 md:mt-32">
+      <footer className="mt-24 bg-surface px-gutter py-16 md:mt-32">
         <div className="mx-auto max-w-7xl">
           <div className="grid gap-12 md:grid-cols-[1.3fr_0.8fr_0.8fr_1fr]">
             <div className="max-w-md">
@@ -316,7 +316,7 @@ export default function Landing() {
             </div>
           </div>
 
-          <div className="mt-12 flex flex-col gap-4 border-t border-outline-variant/40 pt-6 md:flex-row md:items-center md:justify-between">
+          <div className="mt-12 flex flex-col gap-4 pt-6 md:flex-row md:items-center md:justify-between">
             <p className="font-label-sm text-label-sm text-secondary">© 2024 MindfulLife. Cultivating digital sanctuary.</p>
             <div className="flex flex-wrap gap-6">
               <a className="font-label-sm text-label-sm text-on-surface-variant underline decoration-primary/30 transition-colors hover:text-primary" href="#">

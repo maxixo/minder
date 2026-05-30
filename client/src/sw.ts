@@ -39,8 +39,8 @@ self.addEventListener('push', (event) => {
     body: payload.body || 'Open MindfulLife to continue your daily reflection.',
     data: { url: payload.url || '/reflection' },
     tag: payload.tag || 'mindfullife-reminder',
-    icon: '/icons/mindfullife-icon.svg',
-    badge: '/icons/mindfullife-icon.svg',
+    icon: '/icons/icon-192.png',
+    badge: '/icons/icon-192.png',
   }));
 });
 
