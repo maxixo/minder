@@ -1,9 +1,22 @@
 .landing-page-body {
-  background: #faf9f6 !important;
+  background:
+    radial-gradient(circle at top left, rgba(174, 207, 181, 0.14), transparent 34%),
+    radial-gradient(circle at bottom right, rgba(214, 194, 171, 0.18), transparent 28%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.38), rgba(255, 255, 255, 0)),
+    var(--app-bg) !important;
+  color: var(--app-text);
 }
 
 .landing-page-body::before {
   display: none;
+}
+
+html.dark .landing-page-body {
+  background:
+    radial-gradient(circle at top left, rgba(111, 161, 125, 0.16), transparent 32%),
+    radial-gradient(circle at bottom right, rgba(96, 122, 102, 0.2), transparent 26%),
+    linear-gradient(180deg, rgba(11, 16, 13, 0.1), rgba(11, 16, 13, 0)),
+    var(--app-bg) !important;
 }
 
 .material-symbols-outlined {
@@ -15,6 +28,12 @@
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
+}
+
+html.dark .hero-bg {
+  background-image:
+    linear-gradient(180deg, rgba(10, 15, 12, 0.28), rgba(10, 15, 12, 0.62)),
+    url('https://lh3.googleusercontent.com/aida-public/AB6AXuCzbQKQYMpsEbd3HiqHGMWRou-4rZKjqHZTujps4r8xs0lnkmUw-YowVaWAMXzZykUrN8WZM3dBcKmE-l44dsJWQKIXBCR_rE0vYdar_pY4JMbkc2JhalYRFcTVmIHlrsOwagY1Ub3Ks89sWszFKbW7HWKpeSHLyfmkArf_ffhBEIlysyR6uOf1ABpjJySyWYksLAxlLOF0CHN5kVVXwbop_lDVzlw0XNBZyi-O6pWvyGwP1EG5UPfKpqxSnYEGZRC9v_tQrk0ljTXk');
 }
 
 .btn-sage {
@@ -38,6 +57,12 @@
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
   border: 1px solid rgba(255, 255, 255, 0.5);
+}
+
+html.dark .glass-hero {
+  background: rgba(20, 28, 23, 0.58);
+  border: 1px solid rgba(169, 189, 174, 0.18);
+  box-shadow: 0 24px 80px -38px rgba(0, 0, 0, 0.6);
 }
 
 .expressive-heading {

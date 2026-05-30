@@ -1,16 +1,26 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
+import AuthThemeToggle from '@/components/common/AuthThemeToggle';
+import BrandLogo from '@/components/common/BrandLogo';
 import { useAuth } from '@/contexts/useAuth';
+import { useTheme } from '@/contexts/useTheme';
 import '@/styles/pages/landing.css';
 
-const logoUrl = 'https://lh3.googleusercontent.com/aida/ADBb0ugIGpG8AjwZbdP1Rws9cJnkT0Ap0yhwgEl03crYwy6f4ZIi9vY4C1uDyOrFz8tK968pumhiT4PZatQou9aImAGCLXYdZQBl-TtzEHYYwIZwQnSUPw4OuGbuBZrArBN2tgj6LNKW2GiOuO6bO4gmcwThkUQCj5tF2HlleKblrRHn-KfJWZdMCqiwNFbFayktUHYJteXkf2PoAGoE17rxZKshMqyAiDdYAQz1tYIIDiLTC6u0FflofcHLQiw';
 const landscapeUrl = 'https://lh3.googleusercontent.com/aida-public/AB6AXuDXYq286VW1f18x4qR0D_EBxJje683pXioD7k_dhiwFf0zNbx__14iosn3l0URvO4VJFm5O64C8QjGo10GenFwh-z12q2hjP2x3RHpvSzq5TBwpPI3_WEH-n8c3MeOt5EF9wGmnnDhflGbdx6v5LdB0Zuf9c8MqO9UCoo72WTa7nxWJphQiPZnAdvAzyYcBcV8HIoBcLRt-ivSlfs4l9_kcY2KUjIkackTS914Uq4w28z13izsRTz6DdW1si7VbGkAntVYh8qZyYkio';
 const leafUrl = 'https://lh3.googleusercontent.com/aida-public/AB6AXuCYbatW62FFdeXo8LEnim5aLeeA6nNnIElL4cPd58OlOX8c9w0uVSNRXKey7L1xgsceyOGTujh-7Bp6TWhte-StUJTtMENJISoDShxgh5Re04aDjLOtRjWDbpASqW1QMN9tnISWIy3DufAsXeM7dIvlbGtxL46hqr7ZQGte-qBWc0s4uVgMosJrOgqDlWS2F0cJlA9mkdLq3CoaEyrbfamjSe90jYhw6KEi3_9ifxoKD8Ompa0PWUmrL8VDeta5mwkDwKfzB5bFxMLg';
+const navItems = [
+  { id: 'reflection', label: 'Reflection' },
+  { id: 'energy', label: 'Energy' },
+  { id: 'guidance', label: 'Guidance' },
+  { id: 'about', label: 'About' },
+] as const;
 
 export default function Landing() {
   const { isAuthenticated } = useAuth();
+  const { isDarkMode } = useTheme();
   const pageRef = useRef<HTMLDivElement | null>(null);
   const [isScrolled, setIsScrolled] = useState(false);
+  const [activeSection, setActiveSection] = useState<(typeof navItems)[number]['id']>('reflection');
 
   const primaryCtaPath = useMemo(() => (isAuthenticated ? '/dashboard' : '/register'), [isAuthenticated]);
 
@@ -62,6 +72,36 @@ export default function Landing() {
     };
   }, []);
 
+  useEffect(() => {
+    const sections = navItems
+      .map(({ id }) => document.getElementById(id))
+      .filter((section): section is HTMLElement => section !== null);
+
+    if (!sections.length) return undefined;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const visibleEntry = entries
+          .filter((entry) => entry.isIntersecting)
+          .sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
+
+        if (visibleEntry?.target.id) {
+          setActiveSection(visibleEntry.target.id as (typeof navItems)[number]['id']);
+        }
+      },
+      {
+        rootMargin: '-20% 0px -55% 0px',
+        threshold: [0.2, 0.35, 0.5, 0.7],
+      }
+    );
+
+    sections.forEach((section) => observer.observe(section));
+
+    return () => {
+      observer.disconnect();
+    };
+  }, []);
+
   return (
     <div
       className="flex min-h-screen flex-col bg-background text-on-background selection:bg-primary-fixed selection:text-on-primary-fixed"
@@ -69,32 +109,48 @@ export default function Landing() {
     >
       <nav className={`fixed left-0 top-0 z-50 w-full bg-surface/80 backdrop-blur-md transition-all duration-300 dark:bg-surface-dim/80 ${isScrolled ? 'py-2 shadow-sm' : 'py-4'}`}>
         <div className="mx-auto flex max-w-7xl items-center justify-between px-gutter">
-          <Link className="flex items-center gap-3" to="/">
-            <img alt="MindfulLife Logo" className="h-8 md:h-10" src={logoUrl} />
-            <span className="hidden font-headline-sm text-headline-sm tracking-tight text-primary dark:text-primary-fixed md:block">MindfulLife</span>
+          <Link className="shrink-0" to="/">
+            <BrandLogo
+              className="gap-2"
+              iconClassName="h-8 w-8 md:h-9 md:w-9"
+              titleClassName="text-xl md:text-2xl"
+              tone={isDarkMode ? 'light' : 'brand'}
+              withWordmark
+            />
           </Link>
 
-          <div className="hidden items-center gap-10 md:flex">
-            <a className="border-b-2 border-primary pb-1 font-body-md text-body-md font-bold text-primary dark:border-primary-fixed dark:text-primary-fixed" href="#reflection">
-              Reflection
-            </a>
-            <a className="font-body-md text-body-md text-on-surface-variant transition-colors duration-300 hover:text-primary dark:text-outline-variant dark:hover:text-primary-fixed" href="#energy">
-              Energy
-            </a>
-            <a className="font-body-md text-body-md text-on-surface-variant transition-colors duration-300 hover:text-primary dark:text-outline-variant dark:hover:text-primary-fixed" href="#guidance">
-              Guidance
-            </a>
-            <a className="font-body-md text-body-md text-on-surface-variant transition-colors duration-300 hover:text-primary dark:text-outline-variant dark:hover:text-primary-fixed" href="#about">
-              About
-            </a>
+          <div className="hidden flex-1 items-center justify-center md:flex">
+            <div className="flex items-center gap-8 lg:gap-10">
+              {navItems.map(({ id, label }) => {
+                const isActive = activeSection === id;
+
+                return (
+                  <a
+                    key={id}
+                    className={`border-b-2 pb-1 font-body-md text-body-md transition-colors duration-300 ${
+                      isActive
+                        ? 'border-primary font-bold text-primary dark:border-primary-fixed dark:text-primary-fixed'
+                        : 'border-transparent font-medium text-on-surface-variant hover:text-primary dark:text-outline-variant dark:hover:text-primary-fixed'
+                    }`}
+                    href={`#${id}`}
+                    onClick={() => setActiveSection(id)}
+                  >
+                    {label}
+                  </a>
+                );
+              })}
+            </div>
           </div>
 
-          <Link
-            className="rounded-full bg-primary-container px-6 py-2 font-label-md text-label-md text-on-primary-container transition-all duration-200 hover:opacity-80"
-            to={primaryCtaPath}
-          >
-            Start Your Journey
-          </Link>
+          <div className="flex items-center gap-3">
+            <AuthThemeToggle className="shrink-0" showLabel={false} />
+            <Link
+              className="rounded-full bg-primary-container px-6 py-2 font-label-md text-label-md text-on-primary-container transition-all duration-200 hover:opacity-80"
+              to={primaryCtaPath}
+            >
+              Start Your Journey
+            </Link>
+          </div>
         </div>
       </nav>
 
@@ -113,7 +169,10 @@ export default function Landing() {
                 <Link className="btn-sage text-lg" to={primaryCtaPath}>
                   Begin Your Journey
                 </Link>
-                <a className="px-8 py-4 font-label-md text-primary hover:underline decoration-2 underline-offset-4" href="#reflection">
+                <a
+                  className="px-8 py-4 font-label-md text-primary transition-colors decoration-2 underline-offset-4 hover:underline dark:text-primary-fixed"
+                  href="#reflection"
+                >
                   Explore Methodologies
                 </a>
               </div>
@@ -173,7 +232,7 @@ export default function Landing() {
           </div>
         </section>
 
-        <section className="border-b border-outline-variant/40 px-gutter pb-section-gap" data-reveal id="about">
+        <section className="mb-24 border-b border-outline-variant/40 px-gutter pb-section-gap md:mb-32" data-reveal id="about">
           <div className="mx-auto grid h-auto max-w-7xl grid-cols-1 gap-6 md:h-[600px] md:grid-cols-12">
             <div className="min-h-[300px] overflow-hidden rounded-card shadow-lg md:col-span-8">
               <img
@@ -197,8 +256,82 @@ export default function Landing() {
           </div>
         </section>
 
-        
+
       </main>
+
+      <footer className="mt-24 border-t border-outline-variant/40 bg-surface px-gutter py-16 md:mt-32">
+        <div className="mx-auto max-w-7xl">
+          <div className="grid gap-12 md:grid-cols-[1.3fr_0.8fr_0.8fr_1fr]">
+            <div className="max-w-md">
+              <BrandLogo
+                className="gap-2"
+                iconClassName="h-8 w-8 md:h-9 md:w-9"
+                titleClassName="text-xl"
+                tone={isDarkMode ? 'light' : 'brand'}
+                withWordmark
+              />
+              <p className="mt-5 font-body-md text-body-md leading-7 text-secondary">
+                A calmer digital sanctuary for reflection, energy awareness, and emotional clarity.
+              </p>
+            </div>
+
+            <div>
+              <p className="mb-4 font-label-md text-label-md uppercase tracking-[0.16em] text-primary">Explore</p>
+              <div className="space-y-3">
+                <a className="block font-body-md text-body-md text-on-surface-variant transition-colors hover:text-primary" href="#reflection">
+                  Reflection
+                </a>
+                <a className="block font-body-md text-body-md text-on-surface-variant transition-colors hover:text-primary" href="#energy">
+                  Energy
+                </a>
+                <a className="block font-body-md text-body-md text-on-surface-variant transition-colors hover:text-primary" href="#guidance">
+                  Guidance
+                </a>
+              </div>
+            </div>
+
+            <div>
+              <p className="mb-4 font-label-md text-label-md uppercase tracking-[0.16em] text-primary">Access</p>
+              <div className="space-y-3">
+                <Link className="block font-body-md text-body-md text-on-surface-variant transition-colors hover:text-primary" to="/login">
+                  Sign In
+                </Link>
+                <Link className="block font-body-md text-body-md text-on-surface-variant transition-colors hover:text-primary" to="/register">
+                  Create Account
+                </Link>
+                <Link className="block font-body-md text-body-md text-on-surface-variant transition-colors hover:text-primary" to="/dashboard">
+                  Dashboard
+                </Link>
+              </div>
+            </div>
+
+            <div>
+              <p className="mb-4 font-label-md text-label-md uppercase tracking-[0.16em] text-primary">Stay Grounded</p>
+              <p className="font-body-md text-body-md leading-7 text-secondary">
+                Begin with one quiet check-in and let the next step become clear.
+              </p>
+              <Link className="btn-sage mt-6 inline-block" to={primaryCtaPath}>
+                Start Your Journey
+              </Link>
+            </div>
+          </div>
+
+          <div className="mt-12 flex flex-col gap-4 border-t border-outline-variant/40 pt-6 md:flex-row md:items-center md:justify-between">
+            <p className="font-label-sm text-label-sm text-secondary">© 2024 MindfulLife. Cultivating digital sanctuary.</p>
+            <div className="flex flex-wrap gap-6">
+              <a className="font-label-sm text-label-sm text-on-surface-variant underline decoration-primary/30 transition-colors hover:text-primary" href="#">
+                Privacy Policy
+              </a>
+              <a className="font-label-sm text-label-sm text-on-surface-variant underline decoration-primary/30 transition-colors hover:text-primary" href="#">
+                Terms of Service
+              </a>
+              <a className="font-label-sm text-label-sm text-on-surface-variant underline decoration-primary/30 transition-colors hover:text-primary" href="#">
+                Contact Us
+              </a>
+            </div>
+          </div>
+        </div>
+      </footer>
 
     </div>
   );

@@ -3,23 +3,25 @@ import { useTheme } from '@/contexts/useTheme';
 
 interface AuthThemeToggleProps {
   className?: string;
+  showLabel?: boolean;
 }
 
-export default function AuthThemeToggle({ className }: AuthThemeToggleProps) {
+export default function AuthThemeToggle({ className, showLabel = true }: AuthThemeToggleProps) {
   const { isDarkMode, toggleTheme } = useTheme();
 
   return (
     <button
       aria-label={`Current theme: ${isDarkMode ? 'dark' : 'light'} mode. Switch to ${isDarkMode ? 'light' : 'dark'} mode`}
       className={clsx(
-        'inline-flex items-center gap-3 rounded-full border border-sage-200 bg-sage-50/90 px-3 py-2 text-sm font-semibold text-sage-700 shadow-sm transition-all hover:border-sage-300 hover:bg-white dark:border-white/10 dark:bg-white/5 dark:text-sage-100 dark:hover:bg-white/10',
+        'inline-flex items-center rounded-full border border-sage-200 bg-sage-50/90 py-2 text-sm font-semibold text-sage-700 shadow-sm transition-all hover:border-sage-300 hover:bg-white dark:border-white/10 dark:bg-white/5 dark:text-sage-100 dark:hover:bg-white/10',
+        showLabel ? 'gap-3 px-3' : 'gap-2 px-2.5',
         className
       )}
       onClick={toggleTheme}
       type="button"
     >
       <span className="material-symbols-outlined text-[18px]">{isDarkMode ? 'dark_mode' : 'light_mode'}</span>
-      <span>{isDarkMode ? 'Dark mode' : 'Light mode'}</span>
+      {showLabel ? <span>{isDarkMode ? 'Dark mode' : 'Light mode'}</span> : null}
       <span
         className={clsx(
           'relative inline-flex h-6 w-11 rounded-full transition-colors',
