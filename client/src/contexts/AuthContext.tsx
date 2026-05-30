@@ -12,9 +12,43 @@ export interface AuthContextValue {
   login: (credentials: any) => Promise<any>;
   logout: () => void;
   updateProfile: (data: any) => Promise<any>;
+  syncUser: (nextUser: any) => void;
 }
 
 export const AuthContext = createContext<AuthContextValue | null>(null);
+
+const mergeUserState = (currentUser: any, nextUser: any, submittedData?: any) => {
+  if (!currentUser) {
+    if (submittedData?.avatar !== undefined) {
+      return {
+        ...(nextUser || {}),
+        avatar: submittedData.avatar,
+      };
+    }
+
+    return nextUser;
+  }
+
+  return {
+    ...currentUser,
+    ...(nextUser || {}),
+    avatar: submittedData?.avatar !== undefined
+      ? submittedData.avatar
+      : nextUser?.avatar ?? currentUser.avatar ?? null,
+    preferences: {
+      ...(currentUser.preferences || {}),
+      ...(nextUser?.preferences || {}),
+      notifications: {
+        ...(currentUser.preferences?.notifications || {}),
+        ...(nextUser?.preferences?.notifications || {}),
+      },
+      privacy: {
+        ...(currentUser.preferences?.privacy || {}),
+        ...(nextUser?.preferences?.privacy || {}),
+      },
+    },
+  };
+};
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user,            setUser]            = useState<any>(null);
@@ -57,7 +91,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       });
 
       await syncSubscriptionTimeZoneToCurrentDevice(browserTimeZone);
-      setUser(response.data);
+      setUser((currentUser: any) => mergeUserState(currentUser, response.data));
       lastSyncedTimeZoneRef.current = browserTimeZone;
     } catch {
       lastSyncedTimeZoneRef.current = null;
@@ -119,15 +153,20 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setIsAuthenticated(false);
   };
 
+  const syncUser = (nextUser: any) => {
+    setUser((currentUser: any) => mergeUserState(currentUser, nextUser));
+    setIsAuthenticated(Boolean(nextUser));
+  };
+
   const updateProfile = async (data: any) => {
     const res = await authService.updateProfile(data);
-    setUser(res.data);
+    setUser((currentUser: any) => mergeUserState(currentUser, res.data, data));
     toast.success('Profile updated');
     return res;
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, isAuthenticated, register, login, logout, updateProfile }}>
+    <AuthContext.Provider value={{ user, loading, isAuthenticated, register, login, logout, updateProfile, syncUser }}>
       {children}
     </AuthContext.Provider>
   );

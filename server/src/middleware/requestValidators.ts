@@ -1,5 +1,6 @@
 import { body, param, query, type ValidationChain } from 'express-validator';
 import { isAllowedAvatarUrl } from '../lib/avatar.js';
+import { validateAvatarUploadDataUrl } from '../lib/cloudinary.js';
 
 const THEME_VALUES = ['light', 'dark', 'auto'];
 const PERIOD_VALUES = ['7days', '30days', '90days', 'year'];
@@ -289,6 +290,14 @@ export const profileUpdateValidators: ValidationChain[] = [
     .notEmpty()
     .withMessage('Timezone cannot be empty.'),
   booleanField('preferences.privacy.shareStats', 'Share stats must be true or false.'),
+];
+
+export const avatarUploadValidators: ValidationChain[] = [
+  body('file')
+    .custom((value) => {
+      validateAvatarUploadDataUrl(value);
+      return true;
+    }),
 ];
 
 export const preferenceUpdateValidators: ValidationChain[] = [

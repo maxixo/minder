@@ -1,8 +1,8 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import clsx from 'clsx';
 import { useAuth } from '@/contexts/useAuth';
-import { getSafeAvatarUrl } from '@/lib/avatar';
+import UserAvatar from '@/components/common/UserAvatar';
 
 const menuLinks = [
   { label: 'Account', to: '/settings#account-overview', icon: 'account_circle' },
@@ -10,20 +10,12 @@ const menuLinks = [
   { label: 'Review', to: '/review', icon: 'menu_book' },
 ] as const;
 
-export default function ProfileMenu() {
+export default function ProfileMenu({ buttonClassName }: { buttonClassName?: string }) {
   const { logout, user } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const containerRef = useRef<HTMLDivElement | null>(null);
   const [isOpen, setIsOpen] = useState(false);
-  const avatarUrl = getSafeAvatarUrl(user?.avatar);
-
-  const initials = useMemo(() => (user?.name || 'Mindful Life')
-    .split(' ')
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((part) => part[0]?.toUpperCase())
-    .join(' '), [user?.name]);
 
   useEffect(() => {
     if (!isOpen) return undefined;
@@ -64,21 +56,21 @@ export default function ProfileMenu() {
         aria-expanded={isOpen}
         aria-haspopup="menu"
         aria-label="Open profile menu"
-        className="flex size-10 items-center justify-center rounded-full border-2 border-[#19e63c] bg-[#19e63c]/20 text-[10px] font-semibold text-[#3a523e] transition-colors hover:bg-[#19e63c]/30 focus:outline-none focus:ring-2 focus:ring-[#19e63c]/40 dark:text-sage-100"
+        className={clsx(
+          'flex size-10 items-center justify-center rounded-full border-2 border-[#19e63c] bg-[#19e63c]/20 text-[10px] font-semibold text-[#3a523e] transition-colors hover:bg-[#19e63c]/30 focus:outline-none focus:ring-2 focus:ring-[#19e63c]/40 dark:text-sage-100',
+          buttonClassName
+        )}
         onClick={() => setIsOpen((current) => !current)}
         type="button"
       >
-        {avatarUrl ? (
-          <img
-            alt=""
-            aria-hidden="true"
-            className="size-full rounded-full object-cover"
-            referrerPolicy="no-referrer"
-            src={avatarUrl}
-          />
-        ) : (
-          initials
-        )}
+        <UserAvatar
+          ariaHidden
+          avatar={user?.avatar}
+          className="size-full rounded-full"
+          fallbackClassName="flex items-center justify-center"
+          imgClassName="object-cover"
+          name={user?.name}
+        />
       </button>
 
       {isOpen ? (

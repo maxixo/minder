@@ -1,8 +1,9 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import clsx from 'clsx';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
+import UserAvatar from '@/components/common/UserAvatar';
 import { getSafeAvatarUrl } from '@/lib/avatar';
 import { useAuth } from '@/contexts/useAuth';
 import { useTheme, } from '@/contexts/useTheme';
@@ -67,16 +68,30 @@ const normalizePreferences = (preferences: any): PreferencesState => ({
   },
 });
 
-const getInitials = (name: string) => name
-  .split(' ')
-  .filter(Boolean)
-  .slice(0, 2)
-  .map((part) => part[0]?.toUpperCase())
-  .join(' ');
-
 const settingsPanelClassName = 'rounded-[1.75rem] border border-sage-200 bg-gradient-to-br from-sage-50 via-[#f8fcf8] to-sage-100/80 p-6 shadow-soft sm:p-8 dark:border-white/10 dark:bg-gradient-to-br dark:from-[#18231d] dark:via-[#121b16] dark:to-[#0f1712]';
 const settingsInputClassName = 'input rounded-[1.25rem] border-sage-200 bg-sage-100/70 dark:border-white/10 dark:bg-[#101915]';
 const settingsInsetClassName = 'rounded-[1.25rem] border border-sage-200 bg-sage-50/90 p-4 shadow-sm dark:border-white/10 dark:bg-white/5';
+const MAX_AVATAR_FILE_BYTES = 2 * 1024 * 1024;
+const ACCEPTED_AVATAR_FILE_TYPES = ['image/png', 'image/jpeg', 'image/webp', 'image/gif'];
+
+const readFileAsDataUrl = (file: File) => new Promise<string>((resolve, reject) => {
+  const reader = new FileReader();
+
+  reader.onload = () => {
+    if (typeof reader.result !== 'string') {
+      reject(new Error('Unable to read the selected image file.'));
+      return;
+    }
+
+    resolve(reader.result);
+  };
+
+  reader.onerror = () => {
+    reject(new Error('Unable to read the selected image file.'));
+  };
+
+  reader.readAsDataURL(file);
+});
 
 const ToggleRow = ({
   checked,
@@ -121,9 +136,10 @@ const ToggleRow = ({
 export default function Settings() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { logout, updateProfile, user } = useAuth();
+  const { logout, syncUser, updateProfile, user } = useAuth();
   const { isDarkMode, setThemePreference } = useTheme();
   const { canInstall, install, isInstalled, isIosLikeBrowser } = usePwaInstall();
+  const avatarInputRef = useRef<HTMLInputElement | null>(null);
 
   const [name, setName] = useState('');
   const [avatar, setAvatar] = useState('');
@@ -135,6 +151,7 @@ export default function Settings() {
   const [profileError, setProfileError] = useState('');
   const [passwordError, setPasswordError] = useState('');
   const [isSavingProfile, setIsSavingProfile] = useState(false);
+  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
   const [isSavingPreferences, setIsSavingPreferences] = useState(false);
   const [isSavingPassword, setIsSavingPassword] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
@@ -181,7 +198,7 @@ export default function Settings() {
     if (!user) return;
 
     setName(user.name || '');
-    setAvatar(user.avatar || '');
+    setAvatar(user.avatarUrl || user.avatar || '');
     setPreferences(normalizePreferences(user.preferences));
 
     let cancelled = false;
@@ -232,7 +249,6 @@ export default function Settings() {
 
   const firstName = user?.name?.split(' ')[0] || 'Friend';
   const memberSince = user?.createdAt ? format(new Date(user.createdAt), 'MMMM yyyy') : 'recently';
-  const initials = getInitials(name || user?.name || 'Mindful Life');
 
   const overviewItems = useMemo(
     () => [
@@ -327,7 +343,6 @@ export default function Settings() {
 
   const handleProfileSave = async () => {
     const trimmedName = name.trim();
-    const trimmedAvatar = avatar.trim();
 
     if (!trimmedName) {
       setProfileError('Name is required.');
@@ -340,12 +355,68 @@ export default function Settings() {
     try {
       await updateProfile({
         name: trimmedName,
-        avatar: trimmedAvatar || null,
       });
     } catch (error: any) {
       toast.error(error?.response?.data?.message || 'Unable to update profile');
     } finally {
       setIsSavingProfile(false);
+    }
+  };
+
+  const handleAvatarSelection = async (event: ChangeEvent<HTMLInputElement>) => {
+    const selectedFile = event.target.files?.[0];
+
+    if (!selectedFile) {
+      return;
+    }
+
+    if (!ACCEPTED_AVATAR_FILE_TYPES.includes(selectedFile.type)) {
+      toast.error('Choose a PNG, JPEG, WEBP, or GIF image.');
+      event.target.value = '';
+      return;
+    }
+
+    if (selectedFile.size > MAX_AVATAR_FILE_BYTES) {
+      toast.error('Avatar images must be 2MB or smaller.');
+      event.target.value = '';
+      return;
+    }
+
+    setProfileError('');
+    setIsUploadingAvatar(true);
+
+    try {
+      const fileDataUrl = await readFileAsDataUrl(selectedFile);
+      const response = await authService.uploadProfileAvatar(fileDataUrl);
+      const nextAvatar = response?.data?.avatar || '';
+
+      syncUser(response?.data);
+      setAvatar(nextAvatar);
+      toast.success('Avatar updated');
+    } catch (error: any) {
+      toast.error(error?.response?.data?.message || error?.message || 'Unable to upload avatar');
+    } finally {
+      event.target.value = '';
+      setIsUploadingAvatar(false);
+    }
+  };
+
+  const handleAvatarRemove = async () => {
+    setProfileError('');
+    setIsUploadingAvatar(true);
+
+    try {
+      const response = await authService.deleteProfileAvatar();
+      syncUser(response?.data);
+      setAvatar('');
+      toast.success('Avatar removed');
+    } catch (error: any) {
+      toast.error(error?.response?.data?.message || 'Unable to remove avatar');
+    } finally {
+      if (avatarInputRef.current) {
+        avatarInputRef.current.value = '';
+      }
+      setIsUploadingAvatar(false);
     }
   };
 
@@ -573,19 +644,14 @@ export default function Settings() {
           </div>
 
           <div className="flex items-center gap-4 rounded-[1.5rem] border border-sage-200 bg-sage-100/80 p-5 shadow-sm backdrop-blur sm:min-w-[300px] dark:border-white/10 dark:bg-white/5">
-            {safeAvatarUrl ? (
-              <img
-                alt=""
-                aria-hidden="true"
-                className="h-16 w-16 rounded-2xl object-cover shadow-sm"
-                referrerPolicy="no-referrer"
-                src={safeAvatarUrl}
-              />
-            ) : (
-              <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-sage-100 text-lg font-semibold text-sage-700 shadow-sm dark:bg-white/10 dark:text-sage-100">
-                {initials}
-              </div>
-            )}
+            <UserAvatar
+              ariaHidden
+              avatar={safeAvatarUrl}
+              className="h-16 w-16 rounded-2xl shadow-sm"
+              fallbackClassName="flex items-center justify-center bg-sage-100 text-lg font-semibold text-sage-700 dark:bg-white/10 dark:text-sage-100"
+              imgClassName="object-cover"
+              name={name || user?.name}
+            />
 
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.24em] text-sage-500 dark:text-sage-300">Account Snapshot</p>
@@ -624,15 +690,55 @@ export default function Settings() {
               </div>
 
               <div className="md:col-span-2">
-                <label className="label" htmlFor="settings-avatar">Avatar URL</label>
-                <input
-                  className={settingsInputClassName}
-                  id="settings-avatar"
-                  onChange={(event) => setAvatar(event.target.value)}
-                  placeholder="https://example.com/avatar.jpg"
-                  type="url"
-                  value={avatar}
-                />
+                <label className="label" htmlFor="settings-avatar-upload">Avatar</label>
+                <div className="mb-4 rounded-[1.25rem] border border-sage-200 bg-sage-100/70 p-4 dark:border-white/10 dark:bg-[#101915]">
+                  <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="flex items-center gap-4">
+                      <UserAvatar
+                        ariaHidden
+                        avatar={safeAvatarUrl}
+                        className="h-20 w-20 rounded-2xl shadow-sm"
+                        fallbackClassName="flex items-center justify-center bg-sage-200 text-lg font-semibold text-sage-700 dark:bg-white/10 dark:text-sage-100"
+                        imgClassName="object-cover"
+                        name={name || user?.name}
+                      />
+                      <div>
+                        <p className="text-sm font-semibold text-slate-900 dark:text-sage-50">Stored in Cloudinary</p>
+                        <p className="mt-1 text-sm text-sage-600 dark:text-sage-300">PNG, JPEG, WEBP, or GIF up to 2MB.</p>
+                      </div>
+                    </div>
+
+                    <div className="flex flex-wrap gap-3">
+                      <input
+                        accept={ACCEPTED_AVATAR_FILE_TYPES.join(',')}
+                        className="sr-only"
+                        id="settings-avatar-upload"
+                        onChange={handleAvatarSelection}
+                        ref={avatarInputRef}
+                        type="file"
+                      />
+                      <button
+                        className="btn btn-secondary rounded-full"
+                        disabled={isUploadingAvatar}
+                        onClick={() => avatarInputRef.current?.click()}
+                        type="button"
+                      >
+                        <span className="material-symbols-outlined text-[18px]">upload</span>
+                        {isUploadingAvatar ? 'Uploading...' : 'Upload Avatar'}
+                      </button>
+                      <button
+                        className="btn btn-ghost rounded-full border border-sage-200 dark:border-white/10"
+                        disabled={!avatar || isUploadingAvatar}
+                        onClick={handleAvatarRemove}
+                        type="button"
+                      >
+                        <span className="material-symbols-outlined text-[18px]">delete</span>
+                        Remove Avatar
+                      </button>
+                    </div>
+                  </div>
+                </div>
+                <p className="helper-text">Uploads go through the backend and the returned secure URL is saved on your profile.</p>
               </div>
 
               <div className="md:col-span-2">
@@ -651,7 +757,7 @@ export default function Settings() {
             {profileError ? <p className="error-text mt-4">{profileError}</p> : null}
 
             <div className="mt-6 flex justify-end">
-              <button className="btn btn-primary rounded-full px-6" disabled={isSavingProfile} onClick={handleProfileSave} type="button">
+              <button className="btn btn-primary rounded-full px-6" disabled={isSavingProfile || isUploadingAvatar} onClick={handleProfileSave} type="button">
                 <span className="material-symbols-outlined text-[18px]">save</span>
                 {isSavingProfile ? 'Saving...' : 'Save Profile'}
               </button>

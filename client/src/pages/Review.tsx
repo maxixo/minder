@@ -111,7 +111,7 @@ export default function Review() {
             {reviewDateLabel}
           </div>
 
-          <ProfileMenu />
+          <ProfileMenu buttonClassName="border-sage-200 bg-white text-[#3a523e] hover:bg-sage-50 dark:border-white/10 dark:bg-white/5 dark:text-sage-100 dark:hover:bg-white/10" />
         </div>
       </header>
 

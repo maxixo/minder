@@ -41,6 +41,25 @@ export default defineConfig({
   resolve: {
     alias: { '@': path.resolve(__dirname, './src') },
   },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (!id.includes('node_modules')) return;
+
+          if (id.includes('recharts')) {
+            return 'charts';
+          }
+
+          if (id.includes('date-fns')) {
+            return 'date-utils';
+          }
+
+          return 'vendor';
+        },
+      },
+    },
+  },
   server: {
     port: 5173,
     proxy: { '/api': { target: 'http://localhost:5000', changeOrigin: true } },

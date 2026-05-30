@@ -1,6 +1,7 @@
 import type { Request, Response } from 'express';
 import prisma from '../lib/prisma.js';
 import { sendInternalServerError } from '../lib/http.js';
+import { deleteAvatarImage, isCloudinaryConfigured, uploadAvatarImage } from '../lib/cloudinary.js';
 import { comparePassword, hashPassword } from '../lib/password.js';
 import { serializeUser } from '../lib/serializers.js';
 import { clearSessionCookie, generateToken, setSessionCookie } from '../middleware/auth.js';
@@ -89,11 +90,17 @@ export const updateProfile = async (req: AuthRequest, res: Response) => {
       return res.status(404).json({ success: false, message: 'User not found' });
     }
 
+    const normalizedAvatar = avatar === '' ? null : avatar;
+
+    if (normalizedAvatar === null && currentUser.avatar && isCloudinaryConfigured()) {
+      await deleteAvatarImage(req.user.id);
+    }
+
     const user = await prisma.user.update({
       where: { id: req.user.id },
       data: {
         name: name ?? currentUser.name,
-        avatar: avatar !== undefined ? avatar : currentUser.avatar,
+        avatar: normalizedAvatar !== undefined ? normalizedAvatar : currentUser.avatar,
         theme: preferences?.theme ?? currentUser.theme,
         dailyReminder: preferences?.notifications?.dailyReminder ?? currentUser.dailyReminder,
         reminderTime: preferences?.notifications?.reminderTime ?? currentUser.reminderTime,
@@ -106,6 +113,57 @@ export const updateProfile = async (req: AuthRequest, res: Response) => {
     res.json({ success: true, data: serializeUser(user) });
   } catch (err: any) {
     return sendInternalServerError(res, err, 'Update profile failed');
+  }
+};
+
+export const uploadProfileAvatar = async (req: AuthRequest, res: Response) => {
+  try {
+    if (!isCloudinaryConfigured()) {
+      return res.status(503).json({ success: false, message: 'Cloudinary avatar uploads are not configured on the server.' });
+    }
+
+    const currentUser = await prisma.user.findUnique({ where: { id: req.user.id } });
+
+    if (!currentUser) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+
+    const avatarUrl = await uploadAvatarImage({
+      dataUrl: req.body?.file,
+      userId: req.user.id,
+    });
+
+    const user = await prisma.user.update({
+      where: { id: req.user.id },
+      data: { avatar: avatarUrl },
+    });
+
+    res.json({ success: true, data: serializeUser(user) });
+  } catch (err: any) {
+    return sendInternalServerError(res, err, 'Upload profile avatar failed');
+  }
+};
+
+export const deleteProfileAvatar = async (req: AuthRequest, res: Response) => {
+  try {
+    const currentUser = await prisma.user.findUnique({ where: { id: req.user.id } });
+
+    if (!currentUser) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+
+    if (currentUser.avatar && isCloudinaryConfigured()) {
+      await deleteAvatarImage(req.user.id);
+    }
+
+    const user = await prisma.user.update({
+      where: { id: req.user.id },
+      data: { avatar: null },
+    });
+
+    res.json({ success: true, data: serializeUser(user) });
+  } catch (err: any) {
+    return sendInternalServerError(res, err, 'Delete profile avatar failed');
   }
 };
 

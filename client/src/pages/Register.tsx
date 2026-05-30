@@ -1,7 +1,9 @@
-import { useEffect, useState, type FormEvent } from 'react';
+import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import AuthThemeToggle from '@/components/common/AuthThemeToggle';
 import BrandLogo from '@/components/common/BrandLogo';
 import { useAuth } from '@/contexts/useAuth';
+import '@/styles/pages/login.css';
 
 export default function Register() {
   const navigate = useNavigate();
@@ -13,6 +15,24 @@ export default function Register() {
   const [privacyAccepted, setPrivacyAccepted] = useState(false);
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const progress = useMemo(() => {
+    const checks = [
+      name.trim().length > 0,
+      email.trim().length > 0,
+      password.length >= 8,
+      confirmPassword.length > 0 && password === confirmPassword,
+      privacyAccepted,
+    ];
+    const completedFields = checks.filter(Boolean).length;
+    const percent = Math.round((completedFields / checks.length) * 100);
+
+    return {
+      completedFields,
+      percent,
+      totalFields: checks.length,
+    };
+  }, [confirmPassword, email, name, password, privacyAccepted]);
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -62,16 +82,18 @@ export default function Register() {
   };
 
   return (
-    <div className="min-h-screen w-full overflow-x-hidden bg-[#f7f7f7] text-[#141514] dark:bg-[#181a18] dark:text-white">
+    <div className="botanical-pattern min-h-screen w-full overflow-x-hidden bg-gradient-to-br from-sage-50 to-sand-100 font-sans text-[#141514] transition-colors dark:from-[#18201b] dark:to-[#101714] dark:text-sage-50">
       <div className="relative flex min-h-screen w-full flex-col">
         <div className="flex h-full grow flex-col">
-          <header className="flex items-center justify-between whitespace-nowrap border-b border-[#e0e1e0] bg-white px-10 py-3 dark:border-[#2d2f2d] dark:bg-[#1f211f]">
+          <header className="flex items-center justify-between whitespace-nowrap border-b border-primary/10 bg-white/30 px-6 py-3 backdrop-blur-sm dark:border-white/10 dark:bg-[#15201a]/70 md:px-20">
             <BrandLogo
-              titleClassName="text-lg text-[#141514] dark:text-white"
-              iconClassName="h-9 w-9 text-[#44604a] dark:text-sage-50"
+              titleClassName="text-xl text-[#141514] dark:text-sage-50"
+              iconClassName="h-8 w-8 text-[#44604a] dark:text-sage-50"
             />
 
-            <div className="flex flex-1 justify-end gap-8">
+            <div className="flex flex-1 justify-end gap-3 md:gap-8">
+              <AuthThemeToggle />
+
               <div className="hidden items-center gap-9 md:flex">
                 <a
                   className="text-sm font-medium leading-normal text-[#141514] transition-colors hover:text-[#5e7860] dark:text-white"
@@ -104,24 +126,37 @@ export default function Register() {
             </div>
           </header>
 
-          <main className="flex flex-1 items-center justify-center bg-[radial-gradient(circle_at_top_right,_var(--tw-gradient-stops))] from-[#5e7860]/10 via-[#f7f7f7] to-[#f7f7f7] px-4 py-12 dark:from-[#5e7860]/5 dark:via-[#181a18] dark:to-[#181a18]">
-            <div className="flex w-full max-w-[560px] flex-col rounded-xl border border-[#e0e1e0] bg-white p-8 shadow-sm dark:border-[#2d2f2d] dark:bg-[#1f211f] md:p-12">
+          <main className="flex flex-1 items-center justify-center px-4 py-6">
+            <div className="w-full max-w-[560px] animate-fade-in">
+              <div className="relative overflow-hidden rounded-[3rem_2rem_4rem_2rem] border border-white/40 bg-white/80 p-8 shadow-xl backdrop-blur-md transition-colors dark:border-white/10 dark:bg-[#15201a]/85 md:p-12">
+                <div className="absolute -right-12 -top-12 h-32 w-32 rounded-full bg-[#5e7860]/10 blur-3xl dark:bg-sage-300/10" />
+
+                <div className="relative z-10 flex flex-col">
               <div className="mb-8 flex flex-col gap-3">
                 <div className="flex items-end justify-between gap-6">
-                  <p className="text-sm font-semibold uppercase tracking-wide text-[#5e7860]">Step 1 of 2: Basics</p>
-                  <p className="text-sm font-normal text-[#737873]">50%</p>
+                  <p className="text-sm font-semibold uppercase tracking-wide text-[#5e7860]">
+                    Basics Completed: {progress.completedFields} of {progress.totalFields}
+                  </p>
+                  <p className="text-sm font-normal text-[#737873] dark:text-[#a0a3a0]">{progress.percent}%</p>
                 </div>
                 <div className="h-1.5 w-full overflow-hidden rounded-full bg-[#e0e1e0] dark:bg-[#2d2f2d]">
-                  <div className="h-full bg-[#5e7860]" style={{ width: '50%' }} />
+                  <div
+                    className="h-full bg-[#5e7860] transition-all duration-300"
+                    style={{ width: `${progress.percent}%` }}
+                  />
                 </div>
               </div>
 
               <div className="mb-10 text-center">
-                <BrandLogo className="mb-5 justify-center" titleClassName="text-3xl" iconClassName="h-10 w-10" />
+                <BrandLogo
+                  className="mb-5 justify-center"
+                  titleClassName="text-3xl text-[#141514] dark:text-sage-50 sm:text-[2.2rem]"
+                  iconClassName="h-10 w-10 text-[#44604a] dark:text-sage-50"
+                />
                 <h1 className="mb-3 font-display text-3xl font-bold leading-tight tracking-tight text-[#141514] dark:text-white">
                   Create Your Account
                 </h1>
-                <p className="font-display text-lg leading-relaxed text-[#737873] dark:text-[#a0a3a0]">
+                <p className="text-lg leading-relaxed text-gray-500 dark:text-sage-300">
                   Begin your journey towards emotional wellness and mindful reflection.
                 </p>
               </div>
@@ -160,7 +195,7 @@ export default function Register() {
                       autoComplete="new-password"
                       disabled={isSubmitting}
                       onChange={(event) => setPassword(event.target.value)}
-                      placeholder="••••••••"
+                      placeholder="********"
                       type="password"
                       value={password}
                     />
@@ -172,7 +207,7 @@ export default function Register() {
                       autoComplete="new-password"
                       disabled={isSubmitting}
                       onChange={(event) => setConfirmPassword(event.target.value)}
-                      placeholder="••••••••"
+                      placeholder="********"
                       type="password"
                       value={confirmPassword}
                     />
@@ -194,10 +229,7 @@ export default function Register() {
                     onChange={(event) => setPrivacyAccepted(event.target.checked)}
                     type="checkbox"
                   />
-                  <label
-                    className="font-display text-sm leading-relaxed text-[#737873] dark:text-[#a0a3a0]"
-                    htmlFor="privacy"
-                  >
+                  <label className="text-sm leading-relaxed text-gray-600 dark:text-sage-300" htmlFor="privacy">
                     I agree to the{' '}
                     <a className="text-[#5e7860] underline underline-offset-2" href="#">
                       Privacy Policy
@@ -220,15 +252,17 @@ export default function Register() {
               </form>
 
               <div className="mt-8 border-t border-[#e0e1e0] pt-6 text-center dark:border-[#2d2f2d]">
-                <p className="font-display text-[#737873] dark:text-[#a0a3a0]">
+                <p className="text-sm text-gray-500 dark:text-sage-300">
                   Already have an account?
                   <Link
-                    className="ml-1 font-display font-semibold text-[#5e7860] hover:underline underline-offset-4"
+                    className="ml-1 font-semibold text-[#5e7860] hover:underline underline-offset-4"
                     to="/login"
                   >
                     Sign in here
                   </Link>
                 </p>
+              </div>
+                </div>
               </div>
             </div>
           </main>
@@ -252,7 +286,7 @@ export default function Register() {
                 Help
               </a>
             </div>
-            <p className="font-display text-[10px] uppercase tracking-widest text-[#b0b3b0]">
+            <p className="text-[10px] uppercase tracking-widest text-[#b0b3b0]">
               Copyright 2024 MindfulLife. All rights reserved.
             </p>
           </footer>

@@ -423,7 +423,7 @@ export default function DailyReflection() {
             </div>
 
             <div className="shrink-0">
-              <ProfileMenu />
+              <ProfileMenu buttonClassName="border-sage-200 bg-white text-[#3a523e] hover:bg-sage-50 dark:border-white/10 dark:bg-[#15201a] dark:text-sage-100 dark:hover:bg-[#223127]" />
             </div>
           </div>
 

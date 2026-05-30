@@ -191,7 +191,7 @@ export default function SelfCare() {
               <span className="material-symbols-outlined">notifications</span>
             </button>
 
-            <ProfileMenu />
+            <ProfileMenu buttonClassName="border-sage-200 bg-white text-sage-900 hover:bg-sage-50 dark:border-white/10 dark:bg-white/5 dark:text-sage-100 dark:hover:bg-white/10" />
           </div>
         </header>
 

@@ -67,7 +67,7 @@ const toPushPayload = (subscription: any): PushSubscriptionPayload => ({
   },
 });
 
-const sendDueReminders = async () => {
+export const runDailyReminders = async () => {
   if (!isPushConfigured()) return;
 
   const users = await prisma.user.findMany({
@@ -137,11 +137,11 @@ const sendDueReminders = async () => {
 let reminderInterval: NodeJS.Timeout | null = null;
 
 export const startDailyReminderJob = () => {
-  if (reminderInterval || process.env.DISABLE_DAILY_REMINDER_JOB === 'true') return;
+  if (reminderInterval || process.env.RUN_DAILY_REMINDER_JOB !== 'true') return;
 
   reminderInterval = setInterval(() => {
-    void sendDueReminders();
+    void runDailyReminders();
   }, REMINDER_CHECK_INTERVAL_MS);
 
-  void sendDueReminders();
+  void runDailyReminders();
 };

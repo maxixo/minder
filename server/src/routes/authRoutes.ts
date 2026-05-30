@@ -1,9 +1,18 @@
 ﻿import express from 'express';
 import { body } from 'express-validator';
-import { register, login, logout, getMe, updateProfile, updatePassword } from '../controllers/authController.js';
+import {
+  register,
+  login,
+  logout,
+  getMe,
+  updateProfile,
+  updatePassword,
+  uploadProfileAvatar,
+  deleteProfileAvatar,
+} from '../controllers/authController.js';
 import { protect } from '../middleware/auth.js';
 import { getCsrfToken } from '../middleware/csrf.js';
-import { profileUpdateValidators } from '../middleware/requestValidators.js';
+import { avatarUploadValidators, profileUpdateValidators } from '../middleware/requestValidators.js';
 import { validate } from '../middleware/validate.js';
 
 const router = express.Router();
@@ -27,6 +36,8 @@ router.post('/logout', logout);
 
 router.get('/me',       protect, getMe);
 router.put('/profile',  protect, profileUpdateValidators, validate, updateProfile);
+router.post('/profile/avatar', protect, avatarUploadValidators, validate, uploadProfileAvatar);
+router.delete('/profile/avatar', protect, deleteProfileAvatar);
 router.put('/password', protect, [
   body('currentPassword').notEmpty(),
   body('newPassword').isLength({ min: 8 }),

@@ -1,20 +1,29 @@
+import { lazy, Suspense } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from 'sonner';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { ThemeProvider } from '@/contexts/ThemeContext';
 
-import Login            from '@/pages/Login';
-import Register         from '@/pages/Register';
-import Home             from '@/pages/Home';
-import DailyReflection  from '@/pages/DailyReflection';
-import SelfCare         from '@/pages/SelfCare';
-import EmotionalGuidance from '@/pages/EmotionalGuidance';
-import Review           from '@/pages/Review';
-import Analytics        from '@/pages/Analytics';
-import Settings         from '@/pages/Settings';
-
 import Layout           from '@/components/common/Layout';
 import ProtectedRoute   from '@/components/common/ProtectedRoute';
+import PublicOnlyRoute  from '@/components/common/PublicOnlyRoute';
+
+const Landing = lazy(() => import('@/pages/Landing'));
+const Login = lazy(() => import('@/pages/Login'));
+const Register = lazy(() => import('@/pages/Register'));
+const Home = lazy(() => import('@/pages/Home'));
+const DailyReflection = lazy(() => import('@/pages/DailyReflection'));
+const SelfCare = lazy(() => import('@/pages/SelfCare'));
+const EmotionalGuidance = lazy(() => import('@/pages/EmotionalGuidance'));
+const Review = lazy(() => import('@/pages/Review'));
+const Analytics = lazy(() => import('@/pages/Analytics'));
+const Settings = lazy(() => import('@/pages/Settings'));
+
+const RouteLoader = () => (
+  <div className="flex min-h-screen items-center justify-center bg-sage-50 dark:bg-[#0f1712]">
+    <div className="h-10 w-10 animate-spin rounded-full border-4 border-sage-200 border-t-sage-600 dark:border-white/10 dark:border-t-sage-400" />
+  </div>
+);
 
 export default function App() {
   return (
@@ -22,21 +31,23 @@ export default function App() {
       <ThemeProvider>
         <Router>
           <Toaster position="top-right" richColors closeButton />
-          <Routes>
-            <Route path="/login"    element={<Login />} />
-            <Route path="/register" element={<Register />} />
-            <Route path="/" element={<ProtectedRoute><Layout /></ProtectedRoute>}>
-              <Route index            element={<Home />} />
-              <Route path="dashboard"  element={<Home />} />
-              <Route path="reflection" element={<DailyReflection />} />
-              <Route path="selfcare"   element={<SelfCare />} />
-              <Route path="emotional"  element={<EmotionalGuidance />} />
-              <Route path="review"     element={<Review />} />
-              <Route path="analytics"  element={<Analytics />} />
-              <Route path="settings"   element={<Settings />} />
-            </Route>
-            <Route path="*" element={<Navigate to="/" replace />} />
-          </Routes>
+          <Suspense fallback={<RouteLoader />}>
+            <Routes>
+              <Route path="/" element={<Landing />} />
+              <Route path="/login" element={<PublicOnlyRoute><Login /></PublicOnlyRoute>} />
+              <Route path="/register" element={<PublicOnlyRoute><Register /></PublicOnlyRoute>} />
+              <Route element={<ProtectedRoute><Layout /></ProtectedRoute>}>
+                <Route path="/dashboard" element={<Home />} />
+                <Route path="/reflection" element={<DailyReflection />} />
+                <Route path="/selfcare" element={<SelfCare />} />
+                <Route path="/emotional" element={<EmotionalGuidance />} />
+                <Route path="/review" element={<Review />} />
+                <Route path="/analytics" element={<Analytics />} />
+                <Route path="/settings" element={<Settings />} />
+              </Route>
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </Routes>
+          </Suspense>
         </Router>
       </ThemeProvider>
     </AuthProvider>

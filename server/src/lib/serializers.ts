@@ -18,6 +18,7 @@ export const serializeUser = (user: any) => ({
   name: user.name,
   email: user.email,
   avatar: user.avatar ?? null,
+  avatarUrl: user.avatar ?? null,
   preferences: {
     theme: user.theme || 'light',
     notifications: {

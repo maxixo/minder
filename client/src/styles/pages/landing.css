@@ -1,0 +1,58 @@
+.landing-page-body {
+  background: #faf9f6 !important;
+}
+
+.landing-page-body::before {
+  display: none;
+}
+
+.material-symbols-outlined {
+  font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24;
+}
+
+.hero-bg {
+  background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuCzbQKQYMpsEbd3HiqHGMWRou-4rZKjqHZTujps4r8xs0lnkmUw-YowVaWAMXzZykUrN8WZM3dBcKmE-l44dsJWQKIXBCR_rE0vYdar_pY4JMbkc2JhalYRFcTVmIHlrsOwagY1Ub3Ks89sWszFKbW7HWKpeSHLyfmkArf_ffhBEIlysyR6uOf1ABpjJySyWYksLAxlLOF0CHN5kVVXwbop_lDVzlw0XNBZyi-O6pWvyGwP1EG5UPfKpqxSnYEGZRC9v_tQrk0ljTXk');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+
+.btn-sage {
+  background-color: #4f6d58;
+  color: white;
+  padding: 16px 32px;
+  border-radius: 9999px;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-weight: 600;
+  transition: all 0.3s ease;
+}
+
+.btn-sage:hover {
+  opacity: 0.9;
+  transform: translateY(-2px);
+  box-shadow: 0 10px 40px -10px rgba(79, 109, 88, 0.4);
+}
+
+.glass-hero {
+  background: rgba(255, 255, 255, 0.4);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.5);
+}
+
+.expressive-heading {
+  font-family: 'EB Garamond', serif;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  font-style: italic;
+}
+
+.type-scale-h1 {
+  font-size: clamp(3.5rem, 8vw, 6rem);
+  line-height: 1.05;
+}
+
+.type-scale-p {
+  font-size: clamp(1.125rem, 2vw, 1.375rem);
+  line-height: 1.6;
+}

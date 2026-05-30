@@ -5,6 +5,7 @@ export interface AuthenticatedUser {
   name: string;
   email: string;
   avatar: string | null;
+  avatarUrl: string | null;
   preferences: {
     theme: string;
     notifications: {

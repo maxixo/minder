@@ -5,24 +5,44 @@ import morgan from 'morgan';
 import compression from 'compression';
 import rateLimit from 'express-rate-limit';
 import dotenv from 'dotenv';
+import { fileURLToPath } from 'node:url';
 import connectDB from './config/database.js';
 import prisma from './lib/prisma.js';
 import { requireCsrfToken } from './middleware/csrf.js';
 import { errorHandler, notFound } from './middleware/errorHandler.js';
 import { requireTrustedOrigin } from './middleware/trustedOrigin.js';
 import authRoutes from './routes/authRoutes.js';
+import cronRoutes from './routes/cronRoutes.js';
 import entryRoutes from './routes/entryRoutes.js';
 import analyticsRoutes from './routes/analyticsRoutes.js';
 import userRoutes from './routes/userRoutes.js';
 import { startDailyReminderJob } from './jobs/reminderJob.js';
 
-dotenv.config();
+dotenv.config({ path: fileURLToPath(new URL('../.env', import.meta.url)) });
 await connectDB();
 
 const app = express();
 let isShuttingDown = false;
 
 app.disable('x-powered-by');
+
+const parseTrustProxySetting = (value: string | undefined) => {
+  if (!value) {
+    return process.env.NODE_ENV === 'production' ? 1 : false;
+  }
+
+  const normalizedValue = value.trim().toLowerCase();
+
+  if (normalizedValue === 'true') return true;
+  if (normalizedValue === 'false') return false;
+
+  const parsedNumber = Number.parseInt(normalizedValue, 10);
+  if (!Number.isNaN(parsedNumber)) return parsedNumber;
+
+  return value;
+};
+
+app.set('trust proxy', parseTrustProxySetting(process.env.TRUST_PROXY));
 
 app.use(helmet());
 const allowedOrigins = (process.env.CLIENT_URL || 'http://localhost:5173')
@@ -62,6 +82,7 @@ const authLimiter = rateLimit({
   legacyHeaders: false,
 });
 
+app.use('/api/cron', limiter, cronRoutes);
 app.use('/api/', limiter);
 app.use('/api/', requireTrustedOrigin(allowedOrigins));
 app.use('/api/', requireCsrfToken);
@@ -96,12 +117,7 @@ app.use(errorHandler);
 const PORT = process.env.PORT || 5000;
 const server = app.listen(PORT, () => {
   console.log(`🌿 Mindful Webapp API running on port ${PORT} [${process.env.NODE_ENV}]`);
-  const shouldRunReminderJob = process.env.NODE_ENV !== 'production'
-    || process.env.RUN_DAILY_REMINDER_JOB === 'true';
-
-  if (shouldRunReminderJob) {
-    startDailyReminderJob();
-  }
+  startDailyReminderJob();
 });
 
 const shutdown = async (reason: string, exitCode: number) => {

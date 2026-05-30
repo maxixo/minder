@@ -22,3 +22,4 @@ server/.env.*
 !server/.env.example
 !server/.env.*.example
 vapid.md
+landing.html
