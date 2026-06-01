@@ -34,8 +34,18 @@ export const useDailyEntry = () => {
   const [error, setError] = useState('');
   const [selectedDate, setSelectedDateState] = useState(() => toStartOfLocalDay(new Date()));
   const requestSequenceRef = useRef(0);
+  const selectedDateRef = useRef(selectedDate);
+  const savingRef = useRef(saving);
 
   const today = toStartOfLocalDay(new Date());
+
+  useEffect(() => {
+    selectedDateRef.current = selectedDate;
+  }, [selectedDate]);
+
+  useEffect(() => {
+    savingRef.current = saving;
+  }, [saving]);
 
   const loadEntryByDate = useCallback(async (date: Date) => {
     const requestedDate = toStartOfLocalDay(date);
@@ -51,7 +61,7 @@ export const useDailyEntry = () => {
       const response = await entryService.getEntryByDate(toDateParam(clampedDate));
       const normalized = response.data
         ? normalizeDailyEntry(response.data)
-        : createEmptyDailyEntry(clampedDate.toISOString());
+        : createEmptyDailyEntry(toDateParam(clampedDate));
 
       if (requestId === requestSequenceRef.current) {
         setEntry(normalized);
@@ -76,6 +86,27 @@ export const useDailyEntry = () => {
     void loadEntryByDate(new Date()).catch(() => undefined);
   }, [loadEntryByDate]);
 
+  useEffect(() => {
+    const refreshSelectedDate = () => {
+      if (savingRef.current) return;
+      void loadEntryByDate(selectedDateRef.current).catch(() => undefined);
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        refreshSelectedDate();
+      }
+    };
+
+    window.addEventListener('focus', refreshSelectedDate);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      window.removeEventListener('focus', refreshSelectedDate);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [loadEntryByDate]);
+
   const resolveEntry = useCallback(async () => {
     if (entry) return entry;
     return loadEntryByDate(selectedDate);
@@ -87,10 +118,10 @@ export const useDailyEntry = () => {
 
     try {
       const currentEntry = await resolveEntry();
-      const selectedDateIso = toStartOfLocalDay(selectedDate).toISOString();
+      const selectedDateValue = toDateParam(toStartOfLocalDay(selectedDate));
       const nextEntry = normalizeDailyEntry({
         ...mergeEntryPatch(currentEntry, patch),
-        date: currentEntry.date || selectedDateIso,
+        date: currentEntry.date || selectedDateValue,
         completedSections: withCompletedSection(currentEntry.completedSections, options.completedSection),
       });
       const payload = toDailyEntryRequest(nextEntry);

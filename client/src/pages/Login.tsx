@@ -92,10 +92,10 @@ export default function Login() {
                       <label className="mb-2 ml-1 block text-xs font-semibold uppercase tracking-wider text-[#5e7860]/70">
                         Email Address
                       </label>
-                      <div className="flex items-center rounded-xl border-2 border-transparent bg-sand-100 px-4 py-1 transition-all focus-within:border-[#5e7860]/20 dark:bg-[#101915]">
+                      <div className="flex items-center rounded-xl border-2 border-transparent bg-sand-100 px-4 py-1 transition-all dark:bg-[#101915]">
                         <span className="material-symbols-outlined mr-3 text-[#5e7860]/50 dark:text-sage-300/60">mail</span>
                         <input
-                          className="w-full border-none bg-transparent py-2.5 text-gray-800 placeholder:text-gray-400 focus:ring-0 dark:text-sage-50 dark:placeholder:text-sage-400"
+                          className="w-full border-none bg-transparent py-2.5 text-gray-800 outline-none placeholder:text-gray-400 focus:outline-none focus:ring-0 dark:text-sage-50 dark:placeholder:text-sage-400"
                           autoComplete="email"
                           disabled={isSubmitting}
                           onChange={(event) => setEmail(event.target.value)}
@@ -113,10 +113,10 @@ export default function Login() {
                           Forgot?
                         </a>
                       </div>
-                      <div className="flex items-center rounded-xl border-2 border-transparent bg-sand-100 px-4 py-1 transition-all focus-within:border-[#5e7860]/20 dark:bg-[#101915]">
+                      <div className="flex items-center rounded-xl border-2 border-transparent bg-sand-100 px-4 py-1 transition-all dark:bg-[#101915]">
                         <span className="material-symbols-outlined mr-3 text-[#5e7860]/50 dark:text-sage-300/60">lock</span>
                         <input
-                          className="w-full border-none bg-transparent py-2.5 text-gray-800 placeholder:text-gray-400 focus:ring-0 dark:text-sage-50 dark:placeholder:text-sage-400"
+                          className="w-full border-none bg-transparent py-2.5 text-gray-800 outline-none placeholder:text-gray-400 focus:outline-none focus:ring-0 dark:text-sage-50 dark:placeholder:text-sage-400"
                           autoComplete="current-password"
                           disabled={isSubmitting}
                           onChange={(event) => setPassword(event.target.value)}
@@ -143,7 +143,7 @@ export default function Login() {
 
                     <div className="flex items-center gap-2 px-1">
                       <input
-                        className="h-4 w-4 rounded border-[#5e7860]/20 bg-sand-50 text-[#5e7860] focus:ring-[#5e7860] dark:border-white/10 dark:bg-[#101915]"
+                        className="h-4 w-4 rounded border-[#5e7860]/20 bg-sand-50 text-[#5e7860] focus:ring-0 dark:border-white/10 dark:bg-[#101915]"
                         id="remember"
                         type="checkbox"
                       />

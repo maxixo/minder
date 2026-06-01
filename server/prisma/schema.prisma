@@ -22,6 +22,7 @@ model User {
   shareStats         Boolean            @default(false)
   pushSubscriptions  PushSubscription[]
   entries            Entry[]
+  entryInsights      EntryInsight[]
   createdAt          DateTime           @default(now())
   updatedAt          DateTime           @updatedAt
 
@@ -51,6 +52,7 @@ model Entry {
   id                  String   @id @default(uuid()) @db.Uuid
   userId              String   @db.Uuid
   user                User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  insight             EntryInsight?
   entryDate           DateTime @db.Date
   weather             String?
   gratitude           Json     @default(dbgenerated("'[]'::jsonb")) @db.JsonB
@@ -91,4 +93,27 @@ model Entry {
   @@index([userId, entryDate])
   @@index([userId])
   @@map("entries")
+}
+
+model EntryInsight {
+  id               String   @id @default(uuid()) @db.Uuid
+  entryId          String   @unique @db.Uuid
+  userId           String   @db.Uuid
+  entry            Entry    @relation(fields: [entryId], references: [id], onDelete: Cascade)
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  summary          String
+  sentimentScore   Float?
+  dominantEmotions Json     @default(dbgenerated("'[]'::jsonb")) @db.JsonB
+  themes           Json     @default(dbgenerated("'[]'::jsonb")) @db.JsonB
+  stressors        Json     @default(dbgenerated("'[]'::jsonb")) @db.JsonB
+  positiveAnchors  Json     @default(dbgenerated("'[]'::jsonb")) @db.JsonB
+  suggestedActions Json     @default(dbgenerated("'[]'::jsonb")) @db.JsonB
+  riskFlags        Json     @default(dbgenerated("'[]'::jsonb")) @db.JsonB
+  modelVersion     String
+  generatedAt      DateTime @default(now())
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@index([userId, generatedAt])
+  @@map("entry_insights")
 }

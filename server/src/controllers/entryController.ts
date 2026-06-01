@@ -3,7 +3,8 @@ import prisma from '../lib/prisma.js';
 import { parseEntryDateInput } from '../lib/date.js';
 import { mergeEntryPatch, normalizeEntry } from '../lib/entry.js';
 import { sendInternalServerError } from '../lib/http.js';
-import { buildEntryPersistenceInput, serializeEntry } from '../lib/serializers.js';
+import { buildEntryPersistenceInput, serializeEntry, serializeEntryInsight } from '../lib/serializers.js';
+import { getEntryInsightByEntryId, refreshEntryInsight } from '../services/insightService.js';
 import type { AuthRequest } from '../types/auth.js';
 
 const buildDateRange = (startDate?: string, endDate?: string) => {
@@ -21,6 +22,14 @@ const resolvePersistedEntryPatch = (existingEntry: any, patch: Record<string, un
   return buildEntryPersistenceInput(nextEntry);
 };
 
+const refreshEntryInsightSafely = async (entryId: string) => {
+  try {
+    await refreshEntryInsight(entryId);
+  } catch (error) {
+    console.error(`Entry insight refresh failed for ${entryId}: ${error instanceof Error ? error.message : String(error)}`);
+  }
+};
+
 export const createEntry = async (req: AuthRequest, res: Response) => {
   try {
     const entryDate = parseEntryDateInput(req.body?.date);
@@ -36,6 +45,7 @@ export const createEntry = async (req: AuthRequest, res: Response) => {
         ...data,
       },
     });
+    await refreshEntryInsightSafely(entry.id);
 
     res.status(201).json({ success: true, data: serializeEntry(entry) });
   } catch (err: any) {
@@ -84,6 +94,18 @@ export const getEntry = async (req: AuthRequest, res: Response) => {
     res.json({ success: true, data: serializeEntry(entry) });
   } catch (err: any) {
     return sendInternalServerError(res, err, 'Get entry failed');
+  }
+};
+
+export const getEntryInsight = async (req: AuthRequest, res: Response) => {
+  try {
+    const entry = await prisma.entry.findFirst({ where: { id: req.params.id, userId: req.user.id }, select: { id: true } });
+    if (!entry) return res.status(404).json({ success: false, message: 'Entry not found' });
+
+    const insight = await getEntryInsightByEntryId(entry.id, req.user.id);
+    res.json({ success: true, data: insight ? serializeEntryInsight(insight) : null });
+  } catch (err: any) {
+    return sendInternalServerError(res, err, 'Get entry insight failed');
   }
 };
 
@@ -139,6 +161,7 @@ export const updateEntry = async (req: AuthRequest, res: Response) => {
       where: { id: entry.id },
       data: resolvePersistedEntryPatch(entry, patch),
     });
+    await refreshEntryInsightSafely(updatedEntry.id);
 
     res.json({ success: true, data: serializeEntry(updatedEntry) });
   } catch (err: any) {

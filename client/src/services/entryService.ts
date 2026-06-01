@@ -1,5 +1,6 @@
-﻿import api from './api';
+import api from './api';
 import type { ApiEnvelope, PaginatedApiEnvelope } from '@/types/api';
+import type { EntryInsightResponse } from '@/types/ai';
 import type { DailyEntry, DailyEntryRequest, EntryQueryParams } from '@/types/entry';
 
 const entryService = {
@@ -8,6 +9,9 @@ const entryService = {
   ).data,
   getEntry: async (id: string): Promise<ApiEnvelope<DailyEntry>> => (
     await api.get(`/entries/${id}`)
+  ).data,
+  getEntryInsight: async (id: string): Promise<ApiEnvelope<EntryInsightResponse | null>> => (
+    await api.get(`/entries/${id}/insight`)
   ).data,
   getEntryByDate: async (date: string): Promise<ApiEnvelope<DailyEntry | null>> => (
     await api.get(`/entries/date/${date}`)

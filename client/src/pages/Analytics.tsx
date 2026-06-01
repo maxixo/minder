@@ -24,6 +24,7 @@ import {
 import { useAuth } from '@/contexts/useAuth';
 import { useTheme } from '@/contexts/useTheme';
 import analyticsService from '@/services/analyticsService';
+import type { AiSummaryResponse, ThemeTrendResponse } from '@/types/ai';
 import '@/styles/pages/analytics.css';
 
 type Period = '7days' | '30days' | '90days' | 'year';
@@ -95,6 +96,26 @@ const emptyWeeklyReport: WeeklyReportData = {
   averageWaterIntake: 0,
   averageSleepHours: 0,
   topFeelings: [],
+};
+
+const emptyAiSummary: AiSummaryResponse = {
+  period: '30days',
+  narrative: 'There are not enough analyzed reflections in this period yet to build an AI summary.',
+  recurringThemes: [],
+  commonStressors: [],
+  positiveAnchors: [],
+  suggestedFocusAreas: [],
+  languageShift: {
+    direction: 'insufficient_data',
+    explanation: 'There is not enough scored text yet to estimate a language shift.',
+  },
+};
+
+const emptyThemeTrends: ThemeTrendResponse = {
+  period: '30days',
+  recurringThemes: [],
+  commonStressors: [],
+  positiveAnchors: [],
 };
 
 const unwrapEnvelope = <T,>(response: ApiEnvelope<T>) => response.data;
@@ -201,6 +222,8 @@ export default function Analytics() {
   const [energyPatterns, setEnergyPatterns] = useState<EnergyPatternPoint[]>([]);
   const [activityHeatmap, setActivityHeatmap] = useState<HeatmapDay[]>([]);
   const [weeklyReport, setWeeklyReport] = useState<WeeklyReportData>(emptyWeeklyReport);
+  const [aiSummary, setAiSummary] = useState<AiSummaryResponse>(emptyAiSummary);
+  const [themeTrends, setThemeTrends] = useState<ThemeTrendResponse>(emptyThemeTrends);
 
   useEffect(() => {
     let cancelled = false;
@@ -209,8 +232,10 @@ export default function Analytics() {
       setIsLoading(true);
       setError('');
 
-      const [summaryResult, moodResult, energyResult, heatmapResult, weeklyResult] = await Promise.allSettled([
+      const [summaryResult, aiSummaryResult, themeTrendResult, moodResult, energyResult, heatmapResult, weeklyResult] = await Promise.allSettled([
         analyticsService.getSummary(period),
+        analyticsService.getAiSummary(period),
+        analyticsService.getThemeTrends(period),
         analyticsService.getMoodTrends(period),
         analyticsService.getEnergyPatterns(),
         analyticsService.getActivityHeatmap(year),
@@ -233,6 +258,20 @@ export default function Analytics() {
       } else {
         requestFailed = true;
         setMoodTrends([]);
+      }
+
+      if (aiSummaryResult.status === 'fulfilled') {
+        setAiSummary(unwrapEnvelope(aiSummaryResult.value));
+      } else {
+        requestFailed = true;
+        setAiSummary({ ...emptyAiSummary, period });
+      }
+
+      if (themeTrendResult.status === 'fulfilled') {
+        setThemeTrends(unwrapEnvelope(themeTrendResult.value));
+      } else {
+        requestFailed = true;
+        setThemeTrends({ ...emptyThemeTrends, period });
       }
 
       if (energyResult.status === 'fulfilled') {
@@ -413,6 +452,99 @@ export default function Analytics() {
                 <p className="mt-3 text-sm leading-6 text-slate-600 dark:text-sage-200">{card.detail}</p>
               </article>
             ))}
+      </section>
+
+      <section className="mt-8 grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1.35fr)_minmax(320px,1fr)]">
+        <article className="rounded-[1.75rem] border border-sage-100 bg-gradient-to-br from-[#f8fbf8] via-white to-sand-50 p-6 shadow-soft sm:p-8 dark:border-white/10 dark:bg-gradient-to-br dark:from-[#18231d] dark:via-[#101915] dark:to-[#1b241f]">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-sage-500 dark:text-sage-300">AI Summary</p>
+              <h2 className="mt-2 font-display text-3xl font-semibold text-sage-900 dark:text-sage-50">Narrative interpretation</h2>
+            </div>
+            <div className="rounded-full bg-white/80 px-4 py-2 text-xs font-semibold uppercase tracking-[0.22em] text-sage-600 shadow-sm dark:bg-white/10 dark:text-sage-200">
+              {aiSummary.languageShift.direction.replace(/_/g, ' ')}
+            </div>
+          </div>
+
+          {isLoading ? (
+            <div className="mt-6 skeleton h-36 rounded-[1.5rem]" />
+          ) : (
+            <>
+              <p className="mt-6 text-base leading-8 text-sage-700 dark:text-sage-200">{aiSummary.narrative}</p>
+
+              <div className="mt-6 grid gap-4 md:grid-cols-2">
+                <div className="rounded-[1.5rem] border border-sage-100 bg-white/90 p-5 shadow-sm dark:border-white/10 dark:bg-white/5">
+                  <p className="text-xs font-semibold uppercase tracking-[0.2em] text-sage-500 dark:text-sage-300">Suggested Focus</p>
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    {aiSummary.suggestedFocusAreas.length ? aiSummary.suggestedFocusAreas.map((item) => (
+                      <span
+                        key={item}
+                        className="rounded-full border border-sage-200 bg-sage-50 px-3 py-1 text-xs font-semibold uppercase tracking-[0.14em] text-sage-700 dark:border-white/10 dark:bg-white/10 dark:text-sage-100"
+                      >
+                        {item}
+                      </span>
+                    )) : (
+                      <p className="text-sm leading-6 text-sage-600 dark:text-sage-200">More reflection text will make these focus areas more specific.</p>
+                    )}
+                  </div>
+                </div>
+
+                <div className="rounded-[1.5rem] border border-sage-100 bg-white/90 p-5 shadow-sm dark:border-white/10 dark:bg-white/5">
+                  <p className="text-xs font-semibold uppercase tracking-[0.2em] text-sage-500 dark:text-sage-300">Language Shift</p>
+                  <p className="mt-4 text-sm leading-7 text-sage-700 dark:text-sage-200">{aiSummary.languageShift.explanation}</p>
+                </div>
+              </div>
+            </>
+          )}
+        </article>
+
+        <article className="rounded-[1.75rem] border border-sage-100 bg-white p-6 shadow-soft sm:p-8 dark:border-white/10 dark:bg-white/5">
+          <p className="text-xs font-semibold uppercase tracking-[0.24em] text-sage-500 dark:text-sage-300">Theme Trends</p>
+          <h2 className="mt-2 font-display text-3xl font-semibold text-sage-900 dark:text-sage-50">What keeps repeating</h2>
+
+          {isLoading ? (
+            <div className="mt-6 space-y-4">
+              <div className="skeleton h-24 rounded-[1.5rem]" />
+              <div className="skeleton h-24 rounded-[1.5rem]" />
+            </div>
+          ) : (
+            <div className="mt-6 space-y-4">
+              <div className="rounded-[1.5rem] border border-sage-100 bg-sage-50/70 p-5 dark:border-white/10 dark:bg-[#101915]">
+                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-sage-500 dark:text-sage-300">Recurring Themes</p>
+                <div className="mt-4 flex flex-wrap gap-2">
+                  {themeTrends.recurringThemes.length ? themeTrends.recurringThemes.map((item) => (
+                    <span
+                      key={item.theme}
+                      className="inline-flex items-center gap-2 rounded-full border border-sage-200 bg-white px-3 py-1 text-sm font-medium text-sage-700 dark:border-white/10 dark:bg-white/10 dark:text-sage-100"
+                    >
+                      <span>{item.theme}</span>
+                      <span className="rounded-full bg-sage-100 px-2 py-0.5 text-xs font-semibold text-sage-700 dark:bg-white/10 dark:text-sage-100">{item.count}</span>
+                    </span>
+                  )) : (
+                    <p className="text-sm leading-6 text-sage-600 dark:text-sage-200">No recurring themes yet.</p>
+                  )}
+                </div>
+              </div>
+
+              <div className="rounded-[1.5rem] border border-sage-100 bg-sand-100/50 p-5 dark:border-white/10 dark:bg-[#101915]">
+                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-sage-500 dark:text-sage-300">Common Stressors</p>
+                <div className="mt-4 flex flex-wrap gap-2">
+                  {themeTrends.commonStressors.length ? themeTrends.commonStressors.map((item) => (
+                    <span
+                      key={item.label}
+                      className="inline-flex items-center gap-2 rounded-full border border-sand-200 bg-white px-3 py-1 text-sm font-medium text-sage-700 dark:border-white/10 dark:bg-white/10 dark:text-sage-100"
+                    >
+                      <span>{item.label}</span>
+                      <span className="rounded-full bg-sand-100 px-2 py-0.5 text-xs font-semibold text-sage-700 dark:bg-white/10 dark:text-sage-100">{item.count}</span>
+                    </span>
+                  )) : (
+                    <p className="text-sm leading-6 text-sage-600 dark:text-sage-200">No common stressors surfaced yet.</p>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+        </article>
       </section>
 
       <div className="mt-8 grid grid-cols-1 gap-8 xl:grid-cols-[minmax(0,1.7fr)_minmax(320px,1fr)]">

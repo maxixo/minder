@@ -5,6 +5,7 @@ import { formatDateParam, parseEntryDateInput } from '../lib/date.js';
 import { getCompletionPercentage } from '../lib/entry.js';
 import { sendInternalServerError } from '../lib/http.js';
 import { serializeEntry } from '../lib/serializers.js';
+import { generateUserInsightSummary, getThemeTrendSummary, type InsightPeriod } from '../services/insightService.js';
 import type { AuthRequest } from '../types/auth.js';
 
 const periodStart = (period: string | undefined) => {
@@ -15,6 +16,11 @@ const periodStart = (period: string | undefined) => {
 const average = (values: Array<number | null | undefined>) => {
   const filtered = values.filter((value): value is number => value != null);
   return filtered.length ? +(filtered.reduce((sum, value) => sum + value, 0) / filtered.length).toFixed(1) : 0;
+};
+
+const resolveInsightPeriod = (value: unknown): InsightPeriod => {
+  const period = typeof value === 'string' ? value : '30days';
+  return ['7days', '30days', '90days', 'year'].includes(period) ? period as InsightPeriod : '30days';
 };
 
 export const getSummary = async (req: AuthRequest, res: Response) => {
@@ -173,5 +179,23 @@ export const getWeeklyReport = async (req: AuthRequest, res: Response) => {
     });
   } catch (err: any) {
     return sendInternalServerError(res, err, 'Get weekly report failed');
+  }
+};
+
+export const getAiSummary = async (req: AuthRequest, res: Response) => {
+  try {
+    const summary = await generateUserInsightSummary(req.user.id, resolveInsightPeriod(req.query.period));
+    res.json({ success: true, data: summary });
+  } catch (err: any) {
+    return sendInternalServerError(res, err, 'Get AI summary failed');
+  }
+};
+
+export const getThemeTrends = async (req: AuthRequest, res: Response) => {
+  try {
+    const summary = await getThemeTrendSummary(req.user.id, resolveInsightPeriod(req.query.period));
+    res.json({ success: true, data: summary });
+  } catch (err: any) {
+    return sendInternalServerError(res, err, 'Get AI theme trends failed');
   }
 };

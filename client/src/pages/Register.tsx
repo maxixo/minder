@@ -163,9 +163,9 @@ export default function Register() {
 
               <form className="flex flex-col gap-5" onSubmit={handleSubmit}>
                 <div className="flex flex-col gap-2">
-                  <label className="text-sm font-medium text-[#141514] dark:text-white">Full Name</label>
+                  <label className="mb-2 ml-1 block text-xs font-semibold uppercase tracking-wider text-[#5e7860]/70">Full Name</label>
                   <input
-                    className="h-12 w-full rounded-lg border-[#e0e1e0] px-4 placeholder:text-[#b0b3b0] focus:border-[#5e7860] focus:ring-[#5e7860] dark:border-[#2d2f2d] dark:bg-[#181a18] dark:text-white"
+                    className="h-12 w-full rounded-xl border-2 border-transparent bg-sand-100 px-4 text-gray-800 outline-none placeholder:text-gray-400 focus:border-transparent focus:outline-none focus:ring-0 dark:bg-[#101915] dark:text-sage-50 dark:placeholder:text-sage-400"
                     disabled={isSubmitting}
                     onChange={(event) => setName(event.target.value)}
                     placeholder="Enter your name"
@@ -175,9 +175,9 @@ export default function Register() {
                 </div>
 
                 <div className="flex flex-col gap-2">
-                  <label className="text-sm font-medium text-[#141514] dark:text-white">Email Address</label>
+                  <label className="mb-2 ml-1 block text-xs font-semibold uppercase tracking-wider text-[#5e7860]/70">Email Address</label>
                   <input
-                    className="h-12 w-full rounded-lg border-[#e0e1e0] px-4 placeholder:text-[#b0b3b0] focus:border-[#5e7860] focus:ring-[#5e7860] dark:border-[#2d2f2d] dark:bg-[#181a18] dark:text-white"
+                    className="h-12 w-full rounded-xl border-2 border-transparent bg-sand-100 px-4 text-gray-800 outline-none placeholder:text-gray-400 focus:border-transparent focus:outline-none focus:ring-0 dark:bg-[#101915] dark:text-sage-50 dark:placeholder:text-sage-400"
                     autoComplete="email"
                     disabled={isSubmitting}
                     onChange={(event) => setEmail(event.target.value)}
@@ -189,9 +189,9 @@ export default function Register() {
 
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                   <div className="flex flex-col gap-2">
-                    <label className="text-sm font-medium text-[#141514] dark:text-white">Password</label>
+                    <label className="mb-2 ml-1 block text-xs font-semibold uppercase tracking-wider text-[#5e7860]/70">Password</label>
                     <input
-                      className="h-12 w-full rounded-lg border-[#e0e1e0] px-4 placeholder:text-[#b0b3b0] focus:border-[#5e7860] focus:ring-[#5e7860] dark:border-[#2d2f2d] dark:bg-[#181a18] dark:text-white"
+                      className="h-12 w-full rounded-xl border-2 border-transparent bg-sand-100 px-4 text-gray-800 outline-none placeholder:text-gray-400 focus:border-transparent focus:outline-none focus:ring-0 dark:bg-[#101915] dark:text-sage-50 dark:placeholder:text-sage-400"
                       autoComplete="new-password"
                       disabled={isSubmitting}
                       onChange={(event) => setPassword(event.target.value)}
@@ -201,9 +201,9 @@ export default function Register() {
                     />
                   </div>
                   <div className="flex flex-col gap-2">
-                    <label className="text-sm font-medium text-[#141514] dark:text-white">Confirm Password</label>
+                    <label className="mb-2 ml-1 block text-xs font-semibold uppercase tracking-wider text-[#5e7860]/70">Confirm Password</label>
                     <input
-                      className="h-12 w-full rounded-lg border-[#e0e1e0] px-4 placeholder:text-[#b0b3b0] focus:border-[#5e7860] focus:ring-[#5e7860] dark:border-[#2d2f2d] dark:bg-[#181a18] dark:text-white"
+                      className="h-12 w-full rounded-xl border-2 border-transparent bg-sand-100 px-4 text-gray-800 outline-none placeholder:text-gray-400 focus:border-transparent focus:outline-none focus:ring-0 dark:bg-[#101915] dark:text-sage-50 dark:placeholder:text-sage-400"
                       autoComplete="new-password"
                       disabled={isSubmitting}
                       onChange={(event) => setConfirmPassword(event.target.value)}
@@ -222,7 +222,7 @@ export default function Register() {
 
                 <div className="mt-2 flex items-start gap-3">
                   <input
-                    className="mt-1 h-4 w-4 rounded border-[#e0e1e0] text-[#5e7860] focus:ring-[#5e7860]"
+                    className="mt-1 h-4 w-4 rounded border-[#e0e1e0] text-[#5e7860] focus:ring-0"
                     checked={privacyAccepted}
                     disabled={isSubmitting}
                     id="privacy"

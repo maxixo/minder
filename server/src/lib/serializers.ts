@@ -113,6 +113,20 @@ export const serializeEntry = (entry: any) => normalizeEntry({
   updatedAt: entry.updatedAt ? new Date(entry.updatedAt).toISOString() : undefined,
 });
 
+export const serializeEntryInsight = (insight: any) => ({
+  entryId: insight.entryId,
+  summary: insight.summary ?? '',
+  sentimentScore: typeof insight.sentimentScore === 'number' ? insight.sentimentScore : null,
+  dominantEmotions: asArray<string>(insight.dominantEmotions),
+  themes: asArray<string>(insight.themes),
+  stressors: asArray<string>(insight.stressors),
+  positiveAnchors: asArray<string>(insight.positiveAnchors),
+  suggestedActions: asArray<string>(insight.suggestedActions),
+  riskFlags: asArray<string>(insight.riskFlags),
+  modelVersion: insight.modelVersion ?? 'unknown',
+  generatedAt: insight.generatedAt ? new Date(insight.generatedAt).toISOString() : new Date().toISOString(),
+});
+
 export const buildEntryPersistenceInput = (entry: Record<string, any>) => {
   const normalized = normalizeEntry(entry);
 

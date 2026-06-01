@@ -6,6 +6,8 @@ import BrandLogo from '@/components/common/BrandLogo';
 import { useAuth } from '@/contexts/useAuth';
 import { useDailyEntry } from '@/hooks/useDailyEntry';
 import ProfileMenu from '@/components/common/ProfileMenu';
+import entryService from '@/services/entryService';
+import type { EntryInsightResponse } from '@/types/ai';
 import type { DailyEntryPatch, EntryEnergyPoint, EntryWeather } from '@/types/entry';
 import '@/styles/pages/daily-reflection.css';
 
@@ -133,6 +135,7 @@ const toReflectionWeather = (weather: EntryWeather): ReflectionWeather => (
 );
 
 const toReflectionMood = (mood: number | null): ReflectionMood => (mood != null ? valueMoodMap[mood] || 'neutral' : 'neutral');
+const toEntryDateKey = (value?: string | null) => (typeof value === 'string' ? value.slice(0, 10) : '');
 
 const normalizeEnergyLevels = (levels: EntryEnergyPoint[] | undefined): ReflectionEnergyPoint[] => {
   if (!levels?.length) return [];
@@ -191,6 +194,9 @@ export default function DailyReflection() {
   const [selectedEnergyPointId, setSelectedEnergyPointId] = useState<string | null>(null);
   const [draggingEnergyPointId, setDraggingEnergyPointId] = useState<string | null>(null);
   const [energyError, setEnergyError] = useState('');
+  const [entryInsight, setEntryInsight] = useState<EntryInsightResponse | null>(null);
+  const [insightLoading, setInsightLoading] = useState(false);
+  const [insightError, setInsightError] = useState('');
 
   const firstName = user?.name?.split(' ')[0] || 'Sarah';
   const entryDateLabel = useMemo(
@@ -200,6 +206,21 @@ export default function DailyReflection() {
   const selectedDateInputValue = useMemo(() => format(selectedDate, 'yyyy-MM-dd'), [selectedDate]);
   const todayInputMax = format(new Date(), 'yyyy-MM-dd');
   const controlsDisabled = loading || saving;
+
+  const resetReflectionForm = () => {
+    setGratitude(['', '', '']);
+    setIntention('');
+    setQuickWins(['', '']);
+    setWeather('sunny');
+    setMood('neutral');
+    setHydration(0);
+    setSleep(0);
+    setMeals(defaultMealsState);
+    setEnergyLevels([]);
+    setSelectedEnergyPointId(null);
+    setDraggingEnergyPointId(null);
+    setEnergyError('');
+  };
 
   const handleDateChange = (event: ChangeEvent<HTMLInputElement>) => {
     const [year, month, day] = event.target.value.split('-').map((part) => Number(part));
@@ -225,7 +246,10 @@ export default function DailyReflection() {
   };
 
   useEffect(() => {
-    if (!entry) return;
+    if (!entry || toEntryDateKey(entry.date) !== selectedDateInputValue) {
+      resetReflectionForm();
+      return;
+    }
 
     setGratitude(normalizeList(entry.gratitude || [], 3));
     setIntention(entry.expectations || '');
@@ -243,11 +267,45 @@ export default function DailyReflection() {
     setSelectedEnergyPointId(null);
     setDraggingEnergyPointId(null);
     setEnergyError('');
-  }, [entry]);
+  }, [entry, selectedDateInputValue]);
 
   useEffect(() => {
-    setMeals(defaultMealsState);
-  }, [selectedDate]);
+    let cancelled = false;
+
+    const loadInsight = async () => {
+      if (!entry?.id) {
+        setEntryInsight(null);
+        setInsightError('');
+        setInsightLoading(false);
+        return;
+      }
+
+      setInsightLoading(true);
+      setInsightError('');
+
+      try {
+        const response = await entryService.getEntryInsight(entry.id);
+        if (!cancelled) {
+          setEntryInsight(response.data);
+        }
+      } catch (loadError: any) {
+        if (!cancelled) {
+          setEntryInsight(null);
+          setInsightError(loadError?.response?.data?.message || 'Unable to load the AI insight for this entry.');
+        }
+      } finally {
+        if (!cancelled) {
+          setInsightLoading(false);
+        }
+      }
+    };
+
+    void loadInsight();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [entry?.id, entry?.updatedAt]);
 
   const sortedEnergyLevels = useMemo(() => sortByTime(energyLevels), [energyLevels]);
   const selectedEnergyPoint = useMemo(
@@ -503,6 +561,76 @@ export default function DailyReflection() {
           <div className="rounded-xl border border-amber-200 bg-amber-50 px-6 py-4 text-sm leading-6 text-amber-800 shadow-sm">
             {error}
           </div>
+        ) : null}
+
+        {entry?.id ? (
+          <section className="rounded-xl border border-[#dce8dd] bg-[#f8fbf8] px-6 py-5 shadow-sm dark:border-white/10 dark:bg-white/5">
+            <div className="flex flex-col gap-4">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[#638869] dark:text-sage-300">AI Insight</p>
+                  <h2 className="mt-2 text-xl font-bold text-[#3a523e] dark:text-sage-50">Reflection preview</h2>
+                </div>
+                <span className="rounded-full bg-white px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-[#638869] dark:bg-[#101915] dark:text-sage-200">
+                  {entryInsight?.modelVersion || 'pending'}
+                </span>
+              </div>
+
+              {insightLoading ? (
+                <p className="text-sm leading-6 text-[#638869] dark:text-sage-200">Generating a grounded summary from this reflection...</p>
+              ) : null}
+
+              {!insightLoading && insightError ? (
+                <p className="text-sm leading-6 text-amber-700 dark:text-amber-300">{insightError}</p>
+              ) : null}
+
+              {!insightLoading && !insightError && entryInsight ? (
+                <>
+                  <p className="text-sm leading-7 text-[#4f6b55] dark:text-sage-200">{entryInsight.summary}</p>
+
+                  {entryInsight.themes.length ? (
+                    <div className="flex flex-wrap gap-2">
+                      {entryInsight.themes.map((theme) => (
+                        <span
+                          key={theme}
+                          className="rounded-full border border-[#cfe0d1] bg-white px-3 py-1 text-xs font-semibold uppercase tracking-[0.14em] text-[#4f6b55] dark:border-white/10 dark:bg-[#101915] dark:text-sage-200"
+                        >
+                          {theme}
+                        </span>
+                      ))}
+                    </div>
+                  ) : null}
+
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <div className="rounded-xl border border-[#e3ece4] bg-white px-4 py-4 dark:border-white/10 dark:bg-[#101915]">
+                      <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#638869] dark:text-sage-300">Positive Anchors</p>
+                      <p className="mt-3 text-sm leading-6 text-[#4f6b55] dark:text-sage-200">
+                        {entryInsight.positiveAnchors.length ? entryInsight.positiveAnchors.join(', ') : 'No strong anchor surfaced yet from this entry.'}
+                      </p>
+                    </div>
+                    <div className="rounded-xl border border-[#e3ece4] bg-white px-4 py-4 dark:border-white/10 dark:bg-[#101915]">
+                      <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#638869] dark:text-sage-300">Suggested Next Step</p>
+                      <p className="mt-3 text-sm leading-6 text-[#4f6b55] dark:text-sage-200">
+                        {entryInsight.suggestedActions[0] || 'Keep logging a little more context so the next insight can be more specific.'}
+                      </p>
+                    </div>
+                  </div>
+
+                  {entryInsight.riskFlags.length ? (
+                    <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-4 text-sm leading-6 text-amber-800 dark:border-amber-300/50 dark:bg-amber-100">
+                      This entry includes language that may need extra care. If you are in immediate danger or thinking about harming yourself, contact local emergency services or a crisis line right away.
+                    </div>
+                  ) : null}
+                </>
+              ) : null}
+
+              {!insightLoading && !insightError && !entryInsight ? (
+                <p className="text-sm leading-6 text-[#638869] dark:text-sage-200">
+                  Save a fuller reflection to generate themes, anchors, and one grounded suggestion here.
+                </p>
+              ) : null}
+            </div>
+          </section>
         ) : null}
 
             <div className="grid grid-cols-1 gap-8 lg:grid-cols-12">

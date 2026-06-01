@@ -1,5 +1,5 @@
 ﻿import express from 'express';
-import { createEntry, getEntries, getEntry, getEntryByDate, getTodayEntry, getRecentEntries, updateEntry, autoSaveEntry, deleteEntry } from '../controllers/entryController.js';
+import { createEntry, getEntries, getEntry, getEntryInsight, getEntryByDate, getTodayEntry, getRecentEntries, updateEntry, autoSaveEntry, deleteEntry } from '../controllers/entryController.js';
 import { protect } from '../middleware/auth.js';
 import {
   entryCollectionValidators,
@@ -16,6 +16,7 @@ router.use(protect);
 router.get('/today',        getTodayEntry);
 router.get('/recent',       recentEntriesValidators, validate, getRecentEntries);
 router.get('/date/:date',   entryDateParamValidator, validate, getEntryByDate);
+router.get('/:id/insight',  entryIdParamValidator, validate, getEntryInsight);
 router.patch('/:id/autosave', entryIdParamValidator, entryPayloadValidators, validate, autoSaveEntry);
 router.route('/')
   .get(entryCollectionValidators, validate, getEntries)
