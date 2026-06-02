@@ -1,6 +1,7 @@
 import { createContext, useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import authService from '@/services/authService';
 import userService from '@/services/userService';
+import { updateLoginReturnContext } from '@/lib/loginReturnContext';
 import { getBrowserTimeZone, getExistingPushSubscription } from '@/services/pushService';
 import { toast } from 'sonner';
 
@@ -106,6 +107,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         const res = await authService.getCurrentUser();
         setUser(res.data);
         setIsAuthenticated(true);
+        updateLoginReturnContext({
+          email: res.data?.email || '',
+          firstName: res.data?.name?.split(' ')[0] || '',
+        });
         void syncTimeZoneToCurrentDevice(res.data);
       } catch {
         setUser(null);
@@ -143,6 +148,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const res = await authService.login(credentials);
     setUser(res.data.user);
     setIsAuthenticated(true);
+    updateLoginReturnContext({
+      email: res.data?.user?.email || credentials?.email || '',
+      firstName: res.data?.user?.name?.split(' ')[0] || '',
+    });
     toast.success('Welcome back!');
     return res;
   };

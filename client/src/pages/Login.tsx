@@ -1,34 +1,74 @@
-import { useEffect, useState, type FormEvent } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useEffect, useMemo, useState, type FormEvent } from 'react';
+import { format, parseISO } from 'date-fns';
+import { Link } from 'react-router-dom';
 import AuthThemeToggle from '@/components/common/AuthThemeToggle';
 import BrandLogo from '@/components/common/BrandLogo';
 import { useAuth } from '@/contexts/useAuth';
+import {
+  getLoginResumePath,
+  isLoginReturnContextEnabled,
+  readLoginReturnContext,
+  setLoginReturnContextEnabled,
+  updateLoginReturnContext,
+} from '@/lib/loginReturnContext';
+import { clearPostLoginRedirectPath, setPostLoginRedirectPath } from '@/lib/postLoginRedirect';
 import '@/styles/pages/login.css';
 
 export default function Login() {
-  const navigate = useNavigate();
-  const { login, isAuthenticated } = useAuth();
+  const { login } = useAuth();
+  const [returnContext, setReturnContext] = useState(() => readLoginReturnContext());
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [rememberMe, setRememberMe] = useState(() => isLoginReturnContextEnabled());
+  const [postLoginPath, setPostLoginPath] = useState('/dashboard');
 
   useEffect(() => {
-    if (isAuthenticated) {
-      navigate('/dashboard', { replace: true });
-    }
-  }, [isAuthenticated, navigate]);
+    const savedReturnContext = readLoginReturnContext();
+    setReturnContext(savedReturnContext);
+    setRememberMe(isLoginReturnContextEnabled());
+  }, []);
+
+  useEffect(() => {
+    if (!returnContext?.email || email) return;
+    setEmail(returnContext.email);
+  }, [email, returnContext?.email]);
+
+  const lastEntryDate = useMemo(
+    () => (returnContext?.lastEntryDate ? parseISO(returnContext.lastEntryDate) : null),
+    [returnContext?.lastEntryDate]
+  );
+  const hasRecentResume = Boolean(returnContext?.lastEntryDate);
+  const resumeDateLabel = useMemo(() => (lastEntryDate ? format(lastEntryDate, 'MMM d') : ''), [lastEntryDate]);
+  const resumePath = useMemo(() => getLoginResumePath(returnContext?.lastEntryDate), [returnContext?.lastEntryDate]);
+
+  useEffect(() => {
+    setPostLoginPath(returnContext?.lastEntryDate ? resumePath : '/dashboard');
+  }, [resumePath, returnContext?.lastEntryDate]);
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setError('');
     setIsSubmitting(true);
 
+    const trimmedEmail = email.trim();
+    const redirectPath = postLoginPath || '/dashboard';
+    setPostLoginRedirectPath(redirectPath);
+
     try {
-      await login({ email, password });
-      navigate('/dashboard', { replace: true });
+      const response = await login({ email: trimmedEmail, password });
+      setLoginReturnContextEnabled(rememberMe);
+
+      if (rememberMe) {
+        updateLoginReturnContext({
+          email: trimmedEmail,
+          firstName: response.data?.user?.name?.split(' ')[0] || returnContext?.firstName || '',
+        });
+      }
     } catch (err: any) {
+      clearPostLoginRedirectPath();
       setError(err.response?.data?.message || 'Unable to sign in right now.');
     } finally {
       setIsSubmitting(false);
@@ -88,6 +128,36 @@ export default function Login() {
                   <p className="mb-6 text-center text-gray-500 dark:text-sage-300 sm:mb-8">Continue your journey to wellness</p>
 
                   <form className="w-full space-y-6" onSubmit={handleSubmit}>
+                    <div className="rounded-2xl border border-[#5e7860]/12 bg-[#eef3ec] p-1 dark:border-white/10 dark:bg-[#101915]">
+                      <div className="grid grid-cols-2 gap-1">
+                        <button
+                          className={`inline-flex items-center justify-center rounded-[1rem] px-3 py-3 text-sm font-semibold transition-all ${
+                            postLoginPath === '/dashboard'
+                              ? 'bg-white text-[#24402d] shadow-sm dark:bg-[#18231d] dark:text-sage-50'
+                              : 'text-[#5a725d] hover:bg-white/60 dark:text-sage-300 dark:hover:bg-white/5'
+                          }`}
+                          onClick={() => setPostLoginPath('/dashboard')}
+                          type="button"
+                        >
+                          Dashboard
+                        </button>
+                        <button
+                          className={`inline-flex items-center justify-center rounded-[1rem] px-3 py-3 text-sm font-semibold transition-all ${
+                            postLoginPath === resumePath && hasRecentResume
+                              ? 'bg-[#35513c] text-white shadow-sm'
+                              : hasRecentResume
+                                ? 'text-[#35513c] hover:bg-white/60 dark:text-sage-100 dark:hover:bg-white/5'
+                                : 'cursor-not-allowed text-[#9aac9b] dark:text-sage-500'
+                          }`}
+                          disabled={!hasRecentResume}
+                          onClick={() => setPostLoginPath(resumePath)}
+                          type="button"
+                        >
+                          {hasRecentResume ? `Resume ${resumeDateLabel}` : 'Recent Reflection'}
+                        </button>
+                      </div>
+                    </div>
+
                     <div className="relative">
                       <label className="mb-2 ml-1 block text-xs font-semibold uppercase tracking-wider text-[#5e7860]/70">
                         Email Address
@@ -144,7 +214,9 @@ export default function Login() {
                     <div className="flex items-center gap-2 px-1">
                       <input
                         className="h-4 w-4 rounded border-[#5e7860]/20 bg-sand-50 text-[#5e7860] focus:ring-0 dark:border-white/10 dark:bg-[#101915]"
+                        checked={rememberMe}
                         id="remember"
+                        onChange={(event) => setRememberMe(event.target.checked)}
                         type="checkbox"
                       />
                       <label className="cursor-pointer text-sm text-gray-600 dark:text-sage-300" htmlFor="remember">

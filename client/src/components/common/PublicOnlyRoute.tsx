@@ -1,9 +1,16 @@
-import type { ReactNode } from 'react';
+import { useEffect, useMemo, type ReactNode } from 'react';
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/useAuth';
+import { clearPostLoginRedirectPath, readPostLoginRedirectPath } from '@/lib/postLoginRedirect';
 
 export default function PublicOnlyRoute({ children }: { children: ReactNode }) {
   const { isAuthenticated, loading } = useAuth();
+  const redirectPath = useMemo(() => (isAuthenticated ? readPostLoginRedirectPath() : null), [isAuthenticated]);
+
+  useEffect(() => {
+    if (!isAuthenticated || !redirectPath) return;
+    clearPostLoginRedirectPath();
+  }, [isAuthenticated, redirectPath]);
 
   if (loading) {
     return (
@@ -13,5 +20,5 @@ export default function PublicOnlyRoute({ children }: { children: ReactNode }) {
     );
   }
 
-  return isAuthenticated ? <Navigate replace to="/dashboard" /> : children;
+  return isAuthenticated ? <Navigate replace to={redirectPath || '/dashboard'} /> : children;
 }

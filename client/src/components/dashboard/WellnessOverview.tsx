@@ -16,6 +16,7 @@ import BrandLogo from '@/components/common/BrandLogo';
 import { useAuth } from '@/contexts/useAuth';
 import { useTheme } from '@/contexts/useTheme';
 import { dashboardQuotes } from '@/constants/dashboardQuotes';
+import { buildLoginReturnEntrySnapshot, updateLoginReturnContext } from '@/lib/loginReturnContext';
 import analyticsService from '@/services/analyticsService';
 import entryService from '@/services/entryService';
 import type { DailyEntry } from '@/types/entry';
@@ -156,21 +157,41 @@ export default function WellnessOverview() {
 
       if (cancelled) return;
 
+      const nextSummary: SummaryData = summaryResult.status === 'fulfilled'
+        ? unwrapEnvelope(summaryResult.value) as SummaryData
+        : emptySummary;
+      const nextRecentEntries: DailyEntry[] = entriesResult.status === 'fulfilled'
+        ? unwrapEnvelope(entriesResult.value) as DailyEntry[]
+        : [];
       let requestFailed = false;
 
       if (summaryResult.status === 'fulfilled') {
-        setSummary(unwrapEnvelope(summaryResult.value));
+        setSummary(nextSummary);
       } else {
         setSummary(emptySummary);
         requestFailed = true;
       }
 
       if (entriesResult.status === 'fulfilled') {
-        setRecentEntries(unwrapEnvelope(entriesResult.value));
+        setRecentEntries(nextRecentEntries);
       } else {
         setRecentEntries([]);
         requestFailed = true;
       }
+
+      updateLoginReturnContext({
+        email: user?.email || '',
+        firstName,
+        ...(summaryResult.status === 'fulfilled'
+          ? {
+              currentStreak: nextSummary.currentStreak,
+              completionRate: nextSummary.completionRate,
+            }
+          : {}),
+        ...(entriesResult.status === 'fulfilled'
+          ? buildLoginReturnEntrySnapshot(nextRecentEntries[0])
+          : {}),
+      });
 
       if (requestFailed) {
         setError('Some dashboard insights could not be loaded. Available data is still being shown.');
@@ -184,7 +205,7 @@ export default function WellnessOverview() {
     return () => {
       cancelled = true;
     };
-  }, [period]);
+  }, [firstName, period, user?.email]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return undefined;

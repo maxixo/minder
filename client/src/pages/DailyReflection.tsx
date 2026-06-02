@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState, type ChangeEvent, type PointerEve
 import { format, isToday } from 'date-fns';
 import clsx from 'clsx';
 import { toast } from 'sonner';
+import { useSearchParams } from 'react-router-dom';
 import BrandLogo from '@/components/common/BrandLogo';
 import { useAuth } from '@/contexts/useAuth';
 import { useDailyEntry } from '@/hooks/useDailyEntry';
@@ -136,6 +137,23 @@ const toReflectionWeather = (weather: EntryWeather): ReflectionWeather => (
 
 const toReflectionMood = (mood: number | null): ReflectionMood => (mood != null ? valueMoodMap[mood] || 'neutral' : 'neutral');
 const toEntryDateKey = (value?: string | null) => (typeof value === 'string' ? value.slice(0, 10) : '');
+const parseDateSearchParam = (value: string | null) => {
+  if (!value || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return null;
+
+  const [year, month, day] = value.split('-').map((part) => Number(part));
+  const parsedDate = new Date(year, month - 1, day);
+
+  if (
+    Number.isNaN(parsedDate.getTime())
+    || parsedDate.getFullYear() !== year
+    || parsedDate.getMonth() !== month - 1
+    || parsedDate.getDate() !== day
+  ) {
+    return null;
+  }
+
+  return parsedDate;
+};
 
 const normalizeEnergyLevels = (levels: EntryEnergyPoint[] | undefined): ReflectionEnergyPoint[] => {
   if (!levels?.length) return [];
@@ -168,6 +186,7 @@ const validateEnergyLevels = (levels: ReflectionEnergyPoint[]) => {
 };
 
 export default function DailyReflection() {
+  const [searchParams, setSearchParams] = useSearchParams();
   const { user } = useAuth();
   const {
     entry,
@@ -197,6 +216,7 @@ export default function DailyReflection() {
   const [entryInsight, setEntryInsight] = useState<EntryInsightResponse | null>(null);
   const [insightLoading, setInsightLoading] = useState(false);
   const [insightError, setInsightError] = useState('');
+  const requestedSearchDate = useMemo(() => parseDateSearchParam(searchParams.get('date')), [searchParams]);
 
   const firstName = user?.name?.split(' ')[0] || 'Sarah';
   const entryDateLabel = useMemo(
@@ -244,6 +264,21 @@ export default function DailyReflection() {
       toast.error(loadError?.response?.data?.message || 'Unable to load next reflection.');
     });
   };
+
+  useEffect(() => {
+    if (!requestedSearchDate) return;
+    if (format(requestedSearchDate, 'yyyy-MM-dd') === selectedDateInputValue) return;
+
+    void loadEntryByDate(requestedSearchDate).catch(() => undefined);
+  }, [loadEntryByDate, requestedSearchDate, selectedDateInputValue]);
+
+  useEffect(() => {
+    if (searchParams.get('date') === selectedDateInputValue) return;
+
+    const nextSearchParams = new URLSearchParams(searchParams);
+    nextSearchParams.set('date', selectedDateInputValue);
+    setSearchParams(nextSearchParams, { replace: true });
+  }, [searchParams, selectedDateInputValue, setSearchParams]);
 
   useEffect(() => {
     if (!entry || toEntryDateKey(entry.date) !== selectedDateInputValue) {
