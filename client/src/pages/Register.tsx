@@ -153,7 +153,7 @@ export default function Register() {
                   titleClassName="text-3xl text-[#141514] dark:text-sage-50 sm:text-[2.2rem]"
                   iconClassName="h-10 w-10 text-[#44604a] dark:text-sage-50"
                 />
-                <h1 className="mb-3 font-display text-3xl font-bold leading-tight tracking-tight text-[#141514] dark:text-white">
+                <h1 className="mb-3 font-sans text-2xl font-bold leading-tight tracking-tight text-[#5e7860] sm:text-3xl md:text-4xl">
                   Create Your Account
                 </h1>
                 <p className="text-lg leading-relaxed text-gray-500 dark:text-sage-300">

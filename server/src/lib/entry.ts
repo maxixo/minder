@@ -75,6 +75,10 @@ export const createEmptyEntry = (date = nowIso()) => ({
     calledFriend: false,
     journaled: false,
     drankWater: false,
+    readBook: false,
+    listenedToMusic: false,
+    meditated: false,
+    stretched: false,
   },
   emotionalGuidance: {
     whereAreYou: '',

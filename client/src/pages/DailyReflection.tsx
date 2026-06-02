@@ -471,7 +471,7 @@ export default function DailyReflection() {
   };
 
   return (
-    <div className="daily-reflection-scrollbar animate-fade-in pb-10 transition-colors text-[#3a523e] dark:text-sage-50">
+    <div className="daily-reflection-scrollbar animate-fade-in pb-10 transition-colors text-[#3a523e] [&_h1]:font-body [&_h2]:font-body [&_h3]:font-body [&_h4]:font-body [&_h5]:font-body [&_h6]:font-body dark:text-sage-50">
       <header className="sticky top-3 z-20 mb-6 rounded-[1.5rem] border border-[#e8ede8] bg-white/85 px-4 py-4 shadow-sm backdrop-blur-md dark:border-white/10 dark:bg-[#101915]/95 dark:shadow-none">
         <div className="flex w-full flex-col gap-4">
           <div className="flex items-start justify-between gap-4">

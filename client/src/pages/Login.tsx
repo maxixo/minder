@@ -82,7 +82,7 @@ export default function Login() {
                     iconClassName="h-10 w-10 text-[#44604a] dark:text-sage-50"
                   />
 
-                  <h1 className="mb-2 text-center font-display text-3xl font-semibold text-[#5e7860] sm:text-4xl md:text-5xl">
+                  <h1 className="mb-2 text-center font-sans text-2xl font-semibold text-[#5e7860] sm:text-3xl md:text-4xl">
                     Welcome Back
                   </h1>
                   <p className="mb-6 text-center text-gray-500 dark:text-sage-300 sm:mb-8">Continue your journey to wellness</p>

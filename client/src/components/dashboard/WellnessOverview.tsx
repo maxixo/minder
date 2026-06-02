@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import clsx from 'clsx';
-import { format, parseISO } from 'date-fns';
+import { eachDayOfInterval, format, parseISO, subDays } from 'date-fns';
 import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
 import {
@@ -31,9 +31,14 @@ interface SummaryData {
   completionRate: number;
 }
 
-interface MoodTrendPoint {
+interface DashboardChartPoint {
   date: string;
-  mood: number;
+  label: string;
+  fullDate: string;
+  mood: number | null;
+  moodLabel: string;
+  hasEntry: boolean;
+  entryCreatedTimeLabel: string | null;
 }
 
 const emptySummary: SummaryData = {
@@ -70,7 +75,14 @@ const QUOTE_TRANSITION_MS = 500;
 
 const unwrapEnvelope = <T,>(response: { data: T }) => response.data;
 
-const formatMoodLabel = (score: number) => {
+const toEntryDateKey = (value?: string | null) => (typeof value === 'string' ? value.slice(0, 10) : '');
+
+const formatEntryDateLabel = (value: string | null | undefined, pattern: string) => {
+  const dateKey = toEntryDateKey(value);
+  return dateKey ? format(parseISO(dateKey), pattern) : '';
+};
+
+const formatMoodLabel = (score: number | null | undefined) => {
   if (score >= 4.5) return 'Bright';
   if (score >= 3.5) return 'Good';
   if (score >= 2.5) return 'Steady';
@@ -120,7 +132,6 @@ export default function WellnessOverview() {
 
   const [period, setPeriod] = useState<DashboardPeriod>('7days');
   const [summary, setSummary] = useState<SummaryData>(emptySummary);
-  const [moodTrends, setMoodTrends] = useState<MoodTrendPoint[]>([]);
   const [recentEntries, setRecentEntries] = useState<DailyEntry[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
@@ -138,9 +149,8 @@ export default function WellnessOverview() {
       setError('');
 
       const recentDays = period === '7days' ? 7 : 30;
-      const [summaryResult, moodResult, entriesResult] = await Promise.allSettled([
+      const [summaryResult, entriesResult] = await Promise.allSettled([
         analyticsService.getSummary(period),
-        analyticsService.getMoodTrends(period),
         entryService.getRecentEntries(recentDays),
       ]);
 
@@ -155,15 +165,8 @@ export default function WellnessOverview() {
         requestFailed = true;
       }
 
-      if (moodResult.status === 'fulfilled') {
-        setMoodTrends(unwrapEnvelope(moodResult.value));
-      } else {
-        setMoodTrends([]);
-        requestFailed = true;
-      }
-
       if (entriesResult.status === 'fulfilled') {
-        setRecentEntries(unwrapEnvelope(entriesResult.value).slice(0, 4));
+        setRecentEntries(unwrapEnvelope(entriesResult.value));
       } else {
         setRecentEntries([]);
         requestFailed = true;
@@ -289,12 +292,32 @@ export default function WellnessOverview() {
     },
   ], [summary]);
 
-  const chartData = useMemo(() => moodTrends.map((point) => ({
-    date: point.date,
-    label: format(parseISO(point.date), 'EEE'),
-    mood: point.mood,
-    fullDate: format(parseISO(point.date), 'MMM d'),
-  })), [moodTrends]);
+  const chartData = useMemo<DashboardChartPoint[]>(() => {
+    const totalDays = period === '7days' ? 7 : 30;
+    const end = new Date();
+    const start = subDays(end, totalDays - 1);
+    const entriesByDate = new Map(recentEntries.map((entry) => [toEntryDateKey(entry.date), entry]));
+
+    return eachDayOfInterval({ start, end }).map((day) => {
+      const date = format(day, 'yyyy-MM-dd');
+      const entry = entriesByDate.get(date);
+
+      return {
+        date,
+        label: format(day, totalDays === 7 ? 'EEE' : 'MMM d'),
+        fullDate: format(day, 'MMM d, yyyy'),
+        mood: entry?.mood ?? null,
+        moodLabel: formatMoodLabel(entry?.mood),
+        hasEntry: Boolean(entry),
+        entryCreatedTimeLabel: entry?.createdAt ? format(parseISO(entry.createdAt), 'p') : null,
+      };
+    });
+  }, [period, recentEntries]);
+
+  const previewEntries = useMemo(() => recentEntries.slice(0, 4), [recentEntries]);
+  const chartHasEntries = useMemo(() => chartData.some((point) => point.hasEntry), [chartData]);
+  const chartHasMood = useMemo(() => chartData.some((point) => point.mood != null), [chartData]);
+  const loggedEntryCount = useMemo(() => chartData.filter((point) => point.hasEntry).length, [chartData]);
 
   const quoteSlides = useMemo(() => {
     if (!dashboardQuotes.length) return [];
@@ -368,7 +391,7 @@ export default function WellnessOverview() {
   };
 
   return (
-    <div className={clsx('animate-fade-in pb-10 transition-colors', isDarkMode && 'dark')}>
+    <div className={clsx('animate-fade-in pb-10 transition-colors [&_.font-display]:font-body [&_h1]:font-body [&_h2]:font-body [&_h3]:font-body [&_h4]:font-body [&_h5]:font-body [&_h6]:font-body', isDarkMode && 'dark')}>
       <div className="mb-8 flex flex-col gap-3 rounded-[2rem] border border-sage-200/80 bg-white/80 px-6 py-5 shadow-soft backdrop-blur-sm transition-colors sm:px-8 dark:border-white/10 dark:bg-[#15201a]/90">
         <div className="flex items-center justify-between gap-4">
           <p className="text-xs font-semibold uppercase tracking-[0.28em] text-sage-500 dark:text-sage-300">Wellness Dashboard</p>
@@ -393,7 +416,7 @@ export default function WellnessOverview() {
         </div>
         <div className="flex flex-col gap-2 lg:flex-row lg:items-end lg:justify-between">
           <div>
-            <h1 className="font-display text-4xl font-semibold text-sage-800 sm:text-5xl dark:text-sage-50">Welcome back, {firstName}.</h1>
+            <h1 className="font-body text-4xl font-semibold text-sage-800 sm:text-5xl dark:text-sage-50">Welcome back, {firstName}.</h1>
             <p className="mt-2 max-w-2xl text-sm leading-6 text-sage-700 sm:text-base dark:text-sage-200">
               Your emotional wellness snapshot brings together reflection, streaks, and the small rituals keeping you grounded this week.
             </p>
@@ -405,7 +428,7 @@ export default function WellnessOverview() {
         </div>
       </div>
 
-      <section className="mb-10 overflow-hidden rounded-[2rem] border border-sage-200 bg-gradient-to-br from-sage-100 via-sage-50 to-white p-6 shadow-soft transition-colors sm:p-8 lg:p-10 dark:border-white/10 dark:bg-gradient-to-br dark:from-[#1a261f] dark:via-[#121b16] dark:to-[#0e1511]">
+      <section className="mb-10 overflow-hidden rounded-[2rem] border border-sage-200 bg-gradient-to-br from-sage-100 via-sage-50 to-white p-6 shadow-soft transition-colors sm:p-8 lg:p-10 dark:border-white/10 dark:bg-gradient-to-br dark:from-sage-800 dark:via-sage-900 dark:to-sage-900">
         <div
           aria-label="Inspirational quote carousel"
           aria-roledescription="carousel"
@@ -444,7 +467,7 @@ export default function WellnessOverview() {
                     {quoteSlides.map((quote, index) => (
                       <div className="w-full shrink-0" key={`${quote.id}-${index + 1}`}>
                         <div className="mx-auto flex min-h-[180px] max-w-3xl flex-col items-center justify-center">
-                          <h2 className="font-display text-3xl italic leading-tight text-sage-900 sm:text-4xl lg:text-5xl dark:text-sage-50">
+                          <h2 className="!font-display text-3xl italic leading-tight text-sage-900 sm:text-4xl lg:text-5xl dark:text-sage-50">
                             &quot;{quote.text}&quot;
                           </h2>
                           <p className="mt-5 text-base font-semibold tracking-[0.24em] text-sage-700 dark:text-sage-200">
@@ -501,7 +524,7 @@ export default function WellnessOverview() {
               </div>
             ) : (
               <>
-                <h2 className="font-display text-3xl italic leading-tight text-sage-900 sm:text-4xl lg:text-5xl dark:text-sage-50">
+                <h2 className="!font-display text-3xl italic leading-tight text-sage-900 sm:text-4xl lg:text-5xl dark:text-sage-50">
                   &quot;Nature does not hurry, yet everything is accomplished.&quot;
                 </h2>
                 <p className="mt-5 text-base font-semibold tracking-[0.24em] text-sage-700 dark:text-sage-200">LAO TZU</p>
@@ -590,50 +613,104 @@ export default function WellnessOverview() {
             <div className="rounded-[1.75rem] border border-sage-100 bg-white p-6 shadow-soft sm:p-7 dark:border-white/10 dark:bg-white/5">
               {isLoading ? (
                 <div className="skeleton h-72 rounded-[1.5rem]" />
-              ) : chartData.length ? (
-                <div className="h-72">
-                  <ResponsiveContainer>
-                    <AreaChart data={chartData} margin={{ top: 12, right: 12, bottom: 6, left: -18 }}>
-                      <defs>
-                        <linearGradient id="dashboard-mood-fill" x1="0" x2="0" y1="0" y2="1">
-                          <stop offset="0%" stopColor="#5e7860" stopOpacity="0.28" />
-                          <stop offset="100%" stopColor="#5e7860" stopOpacity="0.04" />
-                        </linearGradient>
-                      </defs>
-                      <CartesianGrid stroke={isDarkMode ? '#314238' : '#e3e8e3'} strokeDasharray="4 4" vertical={false} />
-                      <XAxis axisLine={false} dataKey="label" tick={{ fill: isDarkMode ? '#b7c6b8' : '#7d937f', fontSize: 12, fontWeight: 700 }} tickLine={false} />
-                      <YAxis axisLine={false} domain={[1, 5]} tick={{ fill: isDarkMode ? '#b7c6b8' : '#7d937f', fontSize: 12, fontWeight: 700 }} tickLine={false} />
-                      <Tooltip
-                        content={({ active, payload }) => {
-                          if (!active || !payload?.length) return null;
-                          return (
-                            <div className={clsx(
-                              'rounded-2xl border px-4 py-3 shadow-soft',
-                              isDarkMode ? 'border-white/10 bg-[#101915] text-sage-50' : 'border-sage-100 bg-white text-slate-900'
-                            )}>
-                              <p className={clsx('text-xs font-semibold uppercase tracking-[0.2em]', isDarkMode ? 'text-sage-300' : 'text-sage-500')}>
-                                {payload[0].payload.fullDate}
-                              </p>
-                              <p className="mt-2 text-lg font-semibold">Mood: {payload[0].value} / 5</p>
-                            </div>
-                          );
-                        }}
-                      />
-                      <Area
-                        activeDot={{ fill: '#5e7860', r: 5, stroke: '#ffffff', strokeWidth: 2 }}
-                        dataKey="mood"
-                        fill="url(#dashboard-mood-fill)"
-                        stroke="#5e7860"
-                        strokeWidth={3}
-                        type="monotone"
-                      />
-                    </AreaChart>
-                  </ResponsiveContainer>
+              ) : chartHasEntries && chartHasMood ? (
+                <div>
+                  <div className="h-72">
+                    <ResponsiveContainer>
+                      <AreaChart data={chartData} margin={{ top: 12, right: 12, bottom: 6, left: -18 }}>
+                        <defs>
+                          <linearGradient id="dashboard-mood-fill" x1="0" x2="0" y1="0" y2="1">
+                            <stop offset="0%" stopColor="#5e7860" stopOpacity="0.28" />
+                            <stop offset="100%" stopColor="#5e7860" stopOpacity="0.04" />
+                          </linearGradient>
+                        </defs>
+                        <CartesianGrid stroke={isDarkMode ? '#314238' : '#e3e8e3'} strokeDasharray="4 4" vertical={false} />
+                        <XAxis
+                          axisLine={false}
+                          dataKey="label"
+                          minTickGap={period === '7days' ? 0 : 18}
+                          tick={{ fill: isDarkMode ? '#b7c6b8' : '#7d937f', fontSize: 12, fontWeight: 700 }}
+                          tickLine={false}
+                        />
+                        <YAxis axisLine={false} domain={[1, 5]} tick={{ fill: isDarkMode ? '#b7c6b8' : '#7d937f', fontSize: 12, fontWeight: 700 }} tickLine={false} />
+                        <Tooltip
+                          content={({ active, payload }) => {
+                            const point = payload?.[0]?.payload as DashboardChartPoint | undefined;
+
+                            if (!active || !point) return null;
+
+                            return (
+                              <div className={clsx(
+                                'rounded-2xl border px-4 py-3 shadow-soft',
+                                isDarkMode ? 'border-white/10 bg-[#101915] text-sage-50' : 'border-sage-100 bg-white text-slate-900'
+                              )}>
+                                <p className={clsx('text-xs font-semibold uppercase tracking-[0.2em]', isDarkMode ? 'text-sage-300' : 'text-sage-500')}>
+                                  {point.fullDate}
+                                </p>
+                                <p className="mt-2 text-lg font-semibold">
+                                  {point.mood != null ? `Mood: ${point.mood} / 5` : 'No mood rating'}
+                                </p>
+                                <p className={clsx('mt-1 text-sm', isDarkMode ? 'text-sage-200' : 'text-sage-600')}>
+                                  {point.moodLabel}
+                                </p>
+                                <p className={clsx('mt-1 text-xs', isDarkMode ? 'text-sage-400' : 'text-slate-400')}>
+                                  {point.hasEntry && point.entryCreatedTimeLabel
+                                    ? `Entry saved at ${point.entryCreatedTimeLabel}`
+                                    : 'No entry logged'}
+                                </p>
+                              </div>
+                            );
+                          }}
+                        />
+                        <Area
+                          activeDot={{ fill: '#5e7860', r: 5, stroke: '#ffffff', strokeWidth: 2 }}
+                          connectNulls={false}
+                          dataKey="mood"
+                          dot={({ cx, cy, payload }) => {
+                            if (
+                              payload.mood == null
+                              || typeof cx !== 'number'
+                              || typeof cy !== 'number'
+                            ) {
+                              return null;
+                            }
+
+                            return (
+                              <circle
+                                cx={cx}
+                                cy={cy}
+                                fill="#5e7860"
+                                opacity={payload.hasEntry ? 1 : 0.55}
+                                r={4}
+                                stroke="#ffffff"
+                                strokeWidth={2}
+                              />
+                            );
+                          }}
+                          fill="url(#dashboard-mood-fill)"
+                          stroke="#5e7860"
+                          strokeWidth={3}
+                          type="monotone"
+                        />
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  </div>
+                  <p className="mt-4 text-sm text-sage-600 dark:text-sage-300">
+                    {loggedEntryCount} {loggedEntryCount === 1 ? 'entry' : 'entries'} logged in this range. Hover over the chart to see the day and the time each entry was saved.
+                  </p>
+                </div>
+              ) : chartHasEntries ? (
+                <div className="flex h-72 flex-col items-center justify-center rounded-[1.5rem] border border-dashed border-sage-200 bg-sage-50/70 px-6 text-center dark:border-white/10 dark:bg-[#101915]">
+                  <span className="material-symbols-outlined text-4xl text-sage-400 dark:text-sage-300">edit_calendar</span>
+                  <p className="mt-4 font-body text-2xl font-semibold text-sage-800 dark:text-sage-50">Entries logged, but no mood ratings yet</p>
+                  <p className="mt-2 max-w-md text-sm leading-6 text-sage-600 dark:text-sage-300">
+                    {loggedEntryCount} {loggedEntryCount === 1 ? 'entry was' : 'entries were'} saved in this range. Add a mood to your reflection and the graph will begin tracing the pattern.
+                  </p>
                 </div>
               ) : (
                 <div className="flex h-72 flex-col items-center justify-center rounded-[1.5rem] border border-dashed border-sage-200 bg-sage-50/70 px-6 text-center dark:border-white/10 dark:bg-[#101915]">
                   <span className="material-symbols-outlined text-4xl text-sage-400 dark:text-sage-300">sentiment_neutral</span>
-                  <p className="mt-4 font-display text-2xl font-semibold text-sage-800 dark:text-sage-50">No weekly mood trend yet</p>
+                  <p className="mt-4 font-body text-2xl font-semibold text-sage-800 dark:text-sage-50">No weekly mood trend yet</p>
                   <p className="mt-2 max-w-md text-sm leading-6 text-sage-600 dark:text-sage-300">
                     A few saved reflections will turn this space into a clearer picture of your emotional rhythm.
                   </p>
@@ -656,8 +733,8 @@ export default function WellnessOverview() {
             <div className="space-y-4">
               {isLoading
                 ? Array.from({ length: 2 }, (_, index) => <div key={`dashboard-entry-skeleton-${index + 1}`} className="skeleton h-28 rounded-[1.75rem]" />)
-                : recentEntries.length
-                  ? recentEntries.map((entry) => {
+                : previewEntries.length
+                  ? previewEntries.map((entry) => {
                       const visual = getEntryVisual(entry);
 
                       return (
@@ -675,7 +752,7 @@ export default function WellnessOverview() {
                             </div>
                           </div>
                           <div className="flex items-center justify-between gap-3 sm:text-right">
-                            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400 dark:text-sage-400">{format(parseISO(entry.date), 'MMM d')}</p>
+                            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400 dark:text-sage-400">{formatEntryDateLabel(entry.date, 'MMM d')}</p>
                             <span className="material-symbols-outlined text-slate-300 transition-colors group-hover:text-sage-600 dark:text-sage-400 dark:group-hover:text-sage-200">chevron_right</span>
                           </div>
                         </article>
@@ -693,7 +770,7 @@ export default function WellnessOverview() {
 
         <div className="space-y-6">
           <section className="rounded-[1.75rem] border border-sage-200/80 bg-gradient-to-b from-sage-100/80 to-white p-8 text-center shadow-soft dark:border-white/10 dark:bg-gradient-to-b dark:from-[#18241d] dark:to-[#101915]">
-            <h2 className="font-display text-3xl font-semibold text-sage-700 dark:text-sage-50">How are you truly?</h2>
+            <h2 className="font-body text-3xl font-semibold text-sage-700 dark:text-sage-50">How are you truly?</h2>
             <p className="mx-auto mt-3 max-w-sm text-sm leading-7 text-slate-600 dark:text-sage-200">
               Taking a moment to check in with yourself is the first step toward steadiness and balance.
             </p>

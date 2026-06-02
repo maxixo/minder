@@ -89,6 +89,10 @@ test('entry payload validators accept a full entry payload', async () => {
         calledFriend: true,
         journaled: true,
         drankWater: true,
+        readBook: true,
+        listenedToMusic: true,
+        meditated: false,
+        stretched: true,
       },
       emotionalGuidance: {
         whereAreYou: 'At home and a bit scattered.',
@@ -160,6 +164,8 @@ test('entry payload validators accept payloads from each entry screen', async ()
         gotFreshAir: false,
         exercised: true,
         drankWater: true,
+        readBook: true,
+        meditated: true,
       },
     },
     {

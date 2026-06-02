@@ -99,7 +99,7 @@ export default function Review() {
   const energyLevel = entry?.ratings?.energyPoint ? `${entry.ratings.energyPoint * 20}%` : '0%';
 
   return (
-    <div className="daily-reflection-scrollbar animate-fade-in pb-10 transition-colors text-[#3a523e] dark:text-sage-50">
+    <div className="daily-reflection-scrollbar animate-fade-in pb-10 transition-colors text-[#3a523e] [&_h1]:font-body [&_h2]:font-body [&_h3]:font-body [&_h4]:font-body [&_h5]:font-body [&_h6]:font-body dark:text-sage-50">
       <header className="mb-6 border-b border-[#e8ede8] bg-white/80 px-4 py-4 backdrop-blur-md lg:sticky lg:top-0 lg:z-20 dark:border-white/10 dark:bg-[#15201a]/90">
         <div className="flex w-full flex-wrap items-center justify-between gap-4">
           <div>

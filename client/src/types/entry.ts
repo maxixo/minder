@@ -89,6 +89,10 @@ export interface DailyEntry {
     calledFriend: boolean;
     journaled: boolean;
     drankWater: boolean;
+    readBook: boolean;
+    listenedToMusic: boolean;
+    meditated: boolean;
+    stretched: boolean;
   };
   emotionalGuidance: {
     whereAreYou: string;
@@ -195,6 +199,10 @@ export const createEmptyDailyEntry = (date = nowIso()): DailyEntry => ({
     calledFriend: false,
     journaled: false,
     drankWater: false,
+    readBook: false,
+    listenedToMusic: false,
+    meditated: false,
+    stretched: false,
   },
   emotionalGuidance: {
     whereAreYou: '',

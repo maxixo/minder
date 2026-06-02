@@ -197,6 +197,10 @@ const validateEntryPayload = (payload: unknown) => {
     'calledFriend',
     'journaled',
     'drankWater',
+    'readBook',
+    'listenedToMusic',
+    'meditated',
+    'stretched',
   ]);
 
   if (payload.emotionalGuidance !== undefined && payload.emotionalGuidance !== null) {

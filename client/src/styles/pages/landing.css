@@ -13,9 +13,9 @@
 
 html.dark .landing-page-body {
   background:
-    radial-gradient(circle at top left, rgba(111, 161, 125, 0.16), transparent 32%),
-    radial-gradient(circle at bottom right, rgba(96, 122, 102, 0.2), transparent 26%),
-    linear-gradient(180deg, rgba(11, 16, 13, 0.1), rgba(11, 16, 13, 0)),
+    radial-gradient(circle at top left, rgba(174, 207, 181, 0.22), transparent 32%),
+    radial-gradient(circle at bottom right, rgba(134, 176, 143, 0.24), transparent 26%),
+    linear-gradient(180deg, rgba(71, 101, 80, 0.12), rgba(71, 101, 80, 0)),
     var(--app-bg) !important;
 }
 
@@ -32,7 +32,7 @@ html.dark .landing-page-body {
 
 html.dark .hero-bg {
   background-image:
-    linear-gradient(180deg, rgba(10, 15, 12, 0.28), rgba(10, 15, 12, 0.62)),
+    linear-gradient(180deg, rgba(71, 101, 80, 0.2), rgba(55, 85, 65, 0.46)),
     url('https://lh3.googleusercontent.com/aida-public/AB6AXuCzbQKQYMpsEbd3HiqHGMWRou-4rZKjqHZTujps4r8xs0lnkmUw-YowVaWAMXzZykUrN8WZM3dBcKmE-l44dsJWQKIXBCR_rE0vYdar_pY4JMbkc2JhalYRFcTVmIHlrsOwagY1Ub3Ks89sWszFKbW7HWKpeSHLyfmkArf_ffhBEIlysyR6uOf1ABpjJySyWYksLAxlLOF0CHN5kVVXwbop_lDVzlw0XNBZyi-O6pWvyGwP1EG5UPfKpqxSnYEGZRC9v_tQrk0ljTXk');
 }
 
@@ -60,9 +60,9 @@ html.dark .hero-bg {
 }
 
 html.dark .glass-hero {
-  background: rgba(20, 28, 23, 0.58);
-  border: 1px solid rgba(169, 189, 174, 0.18);
-  box-shadow: 0 24px 80px -38px rgba(0, 0, 0, 0.6);
+  background: rgba(95, 132, 104, 0.42);
+  border: 1px solid rgba(214, 235, 218, 0.22);
+  box-shadow: 0 24px 80px -38px rgba(0, 0, 0, 0.34);
 }
 
 .expressive-heading {
@@ -80,4 +80,411 @@ html.dark .glass-hero {
 .type-scale-p {
   font-size: clamp(1.125rem, 2vw, 1.375rem);
   line-height: 1.6;
+}
+
+.landing-preview-shell {
+  position: relative;
+}
+
+.landing-preview-shell::before {
+  content: '';
+  position: absolute;
+  inset: 24px -8px -20px 32px;
+  border-radius: 32px;
+  background:
+    radial-gradient(circle at top, rgba(174, 207, 181, 0.38), transparent 55%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0));
+  filter: blur(18px);
+  opacity: 0.9;
+}
+
+.landing-preview-frame {
+  position: relative;
+  display: grid;
+  gap: 18px;
+  padding: 24px;
+  border: 1px solid rgba(79, 109, 88, 0.16);
+  border-radius: 32px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.92), rgba(244, 247, 244, 0.9)),
+    rgba(255, 255, 255, 0.74);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  box-shadow: 0 28px 70px -42px rgba(54, 79, 61, 0.42);
+}
+
+.landing-preview-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.landing-preview-eyebrow,
+.landing-preview-card-label {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: #6b826f;
+}
+
+.landing-preview-title,
+.landing-preview-card-title {
+  margin-top: 6px;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 1.25rem;
+  line-height: 1.2;
+  font-weight: 700;
+  color: #2f4735;
+}
+
+.landing-preview-badge,
+.landing-preview-card-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  white-space: nowrap;
+  border-radius: 9999px;
+  padding: 8px 12px;
+  background: rgba(94, 120, 96, 0.12);
+  color: #48624f;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.landing-preview-stats {
+  display: grid;
+  gap: 14px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.landing-preview-stat-card,
+.landing-preview-chart-card,
+.landing-preview-insight {
+  border: 1px solid rgba(94, 120, 96, 0.12);
+  border-radius: 24px;
+  background: rgba(255, 255, 255, 0.78);
+  padding: 18px;
+}
+
+.landing-preview-stat-value {
+  margin-top: 12px;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 1.55rem;
+  line-height: 1.15;
+  font-weight: 800;
+  color: #2f4735;
+}
+
+.landing-preview-stat-label,
+.landing-preview-card-copy,
+.landing-preview-bar-label {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  color: #607565;
+}
+
+.landing-preview-stat-label {
+  margin-top: 4px;
+  font-size: 0.9rem;
+  line-height: 1.4;
+}
+
+.landing-preview-card-copy {
+  margin-top: 6px;
+  font-size: 0.92rem;
+  line-height: 1.6;
+}
+
+.landing-preview-bars {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 10px;
+  align-items: end;
+  min-height: 168px;
+}
+
+.landing-preview-bar-group {
+  display: grid;
+  justify-items: center;
+  gap: 10px;
+}
+
+.landing-preview-bar-track {
+  position: relative;
+  display: flex;
+  align-items: end;
+  width: 100%;
+  max-width: 28px;
+  height: 132px;
+  padding: 4px;
+  border-radius: 999px;
+  background:
+    linear-gradient(180deg, rgba(223, 232, 224, 0.95), rgba(239, 244, 239, 0.95));
+}
+
+.landing-preview-bar-fill {
+  width: 100%;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #89b08f 0%, #4f6d58 100%);
+  box-shadow: 0 10px 18px -12px rgba(79, 109, 88, 0.65);
+}
+
+.landing-preview-bar-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+html.dark .landing-preview-shell::before {
+  background:
+    radial-gradient(circle at top, rgba(174, 207, 181, 0.2), transparent 55%),
+    linear-gradient(180deg, rgba(71, 101, 80, 0.2), rgba(17, 26, 20, 0));
+}
+
+html.dark .landing-preview-frame {
+  border-color: rgba(226, 241, 228, 0.12);
+  background:
+    linear-gradient(180deg, rgba(22, 34, 27, 0.94), rgba(17, 26, 20, 0.92)),
+    rgba(20, 31, 24, 0.9);
+  box-shadow: 0 28px 70px -42px rgba(0, 0, 0, 0.6);
+}
+
+html.dark .landing-preview-eyebrow,
+html.dark .landing-preview-card-label,
+html.dark .landing-preview-stat-label,
+html.dark .landing-preview-card-copy,
+html.dark .landing-preview-bar-label {
+  color: #c1d2c3;
+}
+
+html.dark .landing-preview-title,
+html.dark .landing-preview-card-title,
+html.dark .landing-preview-stat-value {
+  color: #f4faf5;
+}
+
+html.dark .landing-preview-badge,
+html.dark .landing-preview-card-pill {
+  background: rgba(174, 207, 181, 0.12);
+  color: #d8e8da;
+}
+
+html.dark .landing-preview-stat-card,
+html.dark .landing-preview-chart-card,
+html.dark .landing-preview-insight {
+  border-color: rgba(226, 241, 228, 0.1);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+html.dark .landing-preview-bar-track {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.04));
+}
+
+@media (max-width: 640px) {
+  .landing-preview-frame {
+    padding: 18px;
+    border-radius: 26px;
+  }
+
+  .landing-preview-stats {
+    grid-template-columns: 1fr;
+  }
+
+  .landing-preview-bars {
+    min-height: 140px;
+  }
+
+  .landing-preview-bar-track {
+    height: 112px;
+  }
+}
+
+.landing-week-grid,
+.landing-plan-grid,
+.landing-testimonial-grid {
+  display: grid;
+  gap: 24px;
+}
+
+.landing-week-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.landing-week-card,
+.landing-plan-card,
+.landing-testimonial-card {
+  border: 1px solid rgba(79, 109, 88, 0.12);
+  border-radius: 28px;
+  background: rgba(255, 255, 255, 0.72);
+  padding: 24px;
+  box-shadow: 0 18px 50px -40px rgba(61, 86, 68, 0.42);
+}
+
+.landing-week-badge,
+.landing-plan-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  padding: 8px 12px;
+  background: rgba(94, 120, 96, 0.12);
+  color: #48624f;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.landing-week-title,
+.landing-plan-name {
+  margin-top: 18px;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 1.5rem;
+  line-height: 1.2;
+  font-weight: 700;
+  color: #2f4735;
+}
+
+.landing-week-copy,
+.landing-testimonial-copy {
+  margin-top: 10px;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 0.98rem;
+  line-height: 1.7;
+  color: #607565;
+}
+
+.landing-plan-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.landing-plan-card-featured {
+  border-color: rgba(79, 109, 88, 0.24);
+  background:
+    linear-gradient(180deg, rgba(238, 244, 238, 0.95), rgba(255, 255, 255, 0.88)),
+    rgba(255, 255, 255, 0.82);
+}
+
+.landing-plan-eyebrow,
+.landing-testimonial-author {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #6b826f;
+}
+
+.landing-plan-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 0.96rem;
+  line-height: 1.6;
+  color: #48624f;
+}
+
+.landing-plan-secondary {
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  padding: 16px 32px;
+  background: rgba(79, 109, 88, 0.08);
+  color: #48624f;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-weight: 700;
+  transition: all 0.3s ease;
+}
+
+.landing-plan-secondary:hover {
+  background: rgba(79, 109, 88, 0.14);
+  transform: translateY(-2px);
+}
+
+.landing-testimonial-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.landing-testimonial-card {
+  position: relative;
+  min-height: 100%;
+}
+
+.landing-testimonial-quote {
+  color: rgba(79, 109, 88, 0.22);
+  font-size: 2.4rem;
+}
+
+.landing-testimonial-copy {
+  margin-top: 6px;
+  font-size: 1rem;
+  color: #405744;
+}
+
+.landing-testimonial-author {
+  margin-top: 18px;
+}
+
+html.dark .landing-week-card,
+html.dark .landing-plan-card,
+html.dark .landing-testimonial-card {
+  border-color: rgba(226, 241, 228, 0.1);
+  background: rgba(255, 255, 255, 0.04);
+  box-shadow: none;
+}
+
+html.dark .landing-plan-card-featured {
+  border-color: rgba(174, 207, 181, 0.18);
+  background:
+    linear-gradient(180deg, rgba(32, 48, 39, 0.9), rgba(20, 30, 24, 0.92)),
+    rgba(255, 255, 255, 0.05);
+}
+
+html.dark .landing-week-badge,
+html.dark .landing-plan-pill {
+  background: rgba(174, 207, 181, 0.12);
+  color: #d8e8da;
+}
+
+html.dark .landing-week-title,
+html.dark .landing-plan-name,
+html.dark .landing-testimonial-copy {
+  color: #f4faf5;
+}
+
+html.dark .landing-week-copy,
+html.dark .landing-plan-item,
+html.dark .landing-plan-eyebrow,
+html.dark .landing-testimonial-author {
+  color: #c1d2c3;
+}
+
+html.dark .landing-plan-secondary {
+  background: rgba(255, 255, 255, 0.08);
+  color: #f4faf5;
+}
+
+html.dark .landing-plan-secondary:hover {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+html.dark .landing-testimonial-quote {
+  color: rgba(226, 241, 228, 0.18);
+}
+
+@media (max-width: 1024px) {
+  .landing-week-grid,
+  .landing-testimonial-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .landing-plan-grid {
+    grid-template-columns: 1fr;
+  }
 }

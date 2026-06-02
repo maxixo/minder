@@ -4,10 +4,12 @@ import clsx from 'clsx';
 import {
   addDays,
   differenceInCalendarWeeks,
+  eachDayOfInterval,
   eachMonthOfInterval,
   endOfWeek,
   format,
   parseISO,
+  subDays,
   startOfWeek,
 } from 'date-fns';
 import {
@@ -24,7 +26,9 @@ import {
 import { useAuth } from '@/contexts/useAuth';
 import { useTheme } from '@/contexts/useTheme';
 import analyticsService from '@/services/analyticsService';
+import entryService from '@/services/entryService';
 import type { AiSummaryResponse, ThemeTrendResponse } from '@/types/ai';
+import type { DailyEntry } from '@/types/entry';
 import '@/styles/pages/analytics.css';
 
 type Period = '7days' | '30days' | '90days' | 'year';
@@ -44,9 +48,14 @@ interface SummaryData {
   completionRate: number;
 }
 
-interface MoodTrendPoint {
+interface MoodChartPoint {
   date: string;
-  mood: number;
+  label: string;
+  fullDate: string;
+  mood: number | null;
+  moodLabel: string;
+  hasEntry: boolean;
+  entryCreatedTimeLabel: string | null;
 }
 
 interface EnergyPatternPoint {
@@ -78,6 +87,14 @@ const periodOptions: Array<{ value: Period; label: string }> = [
   { value: '90days', label: '90 Days' },
   { value: 'year', label: 'Year' },
 ];
+const periodDayMap: Record<Period, number> = {
+  '7days': 7,
+  '30days': 30,
+  '90days': 90,
+  year: 365,
+};
+const MIN_MOOD_WINDOW_DAYS = 3;
+const MAX_MOOD_WINDOW_DAYS = 365;
 
 const weekdayLabels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
@@ -120,7 +137,13 @@ const emptyThemeTrends: ThemeTrendResponse = {
 
 const unwrapEnvelope = <T,>(response: ApiEnvelope<T>) => response.data;
 
-const formatMoodLabel = (score: number) => {
+const toEntryDateKey = (value?: string | null) => (typeof value === 'string' ? value.slice(0, 10) : '');
+
+const clampMoodWindowDays = (value: number) => (
+  Math.min(MAX_MOOD_WINDOW_DAYS, Math.max(MIN_MOOD_WINDOW_DAYS, Math.round(value)))
+);
+
+const formatMoodLabel = (score: number | null | undefined) => {
   if (score >= 4.5) return 'Bright';
   if (score >= 3.5) return 'Good';
   if (score >= 2.5) return 'Steady';
@@ -140,6 +163,12 @@ const formatHourLabel = (hour: number) => {
 const formatFeelingLabel = (feeling: string) => {
   if (!feeling) return '';
   return feeling.replace(/_/g, ' ').replace(/\b\w/g, (letter) => letter.toUpperCase());
+};
+
+const formatMoodChartTick = (date: Date, days: number) => {
+  if (days <= 10) return format(date, 'EEE');
+  if (days <= 45) return format(date, 'MMM d');
+  return format(date, 'MMM');
 };
 
 const getCompletionMessage = (completionRate: number, streak: number) => {
@@ -214,16 +243,20 @@ export default function Analytics() {
   const yearOptions = Array.from({ length: 4 }, (_, index) => currentYear - index);
 
   const [period, setPeriod] = useState<Period>('30days');
+  const [customMoodWindowDays, setCustomMoodWindowDays] = useState(30);
+  const [isCustomMoodWindowActive, setIsCustomMoodWindowActive] = useState(false);
   const [year, setYear] = useState(currentYear);
   const [isLoading, setIsLoading] = useState(true);
+  const [isMoodLoading, setIsMoodLoading] = useState(true);
   const [error, setError] = useState('');
   const [summary, setSummary] = useState<SummaryData>(emptySummary);
-  const [moodTrends, setMoodTrends] = useState<MoodTrendPoint[]>([]);
+  const [moodEntries, setMoodEntries] = useState<DailyEntry[]>([]);
   const [energyPatterns, setEnergyPatterns] = useState<EnergyPatternPoint[]>([]);
   const [activityHeatmap, setActivityHeatmap] = useState<HeatmapDay[]>([]);
   const [weeklyReport, setWeeklyReport] = useState<WeeklyReportData>(emptyWeeklyReport);
   const [aiSummary, setAiSummary] = useState<AiSummaryResponse>(emptyAiSummary);
   const [themeTrends, setThemeTrends] = useState<ThemeTrendResponse>(emptyThemeTrends);
+  const moodWindowDays = isCustomMoodWindowActive ? customMoodWindowDays : periodDayMap[period];
 
   useEffect(() => {
     let cancelled = false;
@@ -232,11 +265,10 @@ export default function Analytics() {
       setIsLoading(true);
       setError('');
 
-      const [summaryResult, aiSummaryResult, themeTrendResult, moodResult, energyResult, heatmapResult, weeklyResult] = await Promise.allSettled([
+      const [summaryResult, aiSummaryResult, themeTrendResult, energyResult, heatmapResult, weeklyResult] = await Promise.allSettled([
         analyticsService.getSummary(period),
         analyticsService.getAiSummary(period),
         analyticsService.getThemeTrends(period),
-        analyticsService.getMoodTrends(period),
         analyticsService.getEnergyPatterns(),
         analyticsService.getActivityHeatmap(year),
         analyticsService.getWeeklyReport(),
@@ -251,13 +283,6 @@ export default function Analytics() {
       } else {
         requestFailed = true;
         setSummary(emptySummary);
-      }
-
-      if (moodResult.status === 'fulfilled') {
-        setMoodTrends(unwrapEnvelope(moodResult.value));
-      } else {
-        requestFailed = true;
-        setMoodTrends([]);
       }
 
       if (aiSummaryResult.status === 'fulfilled') {
@@ -309,15 +334,56 @@ export default function Analytics() {
     };
   }, [period, year]);
 
-  const moodChartData = useMemo(
-    () => moodTrends.map((item) => ({
-      ...item,
-      label: format(parseISO(item.date), period === '7days' ? 'EEE' : period === 'year' ? 'MMM' : 'MMM d'),
-      fullDate: format(parseISO(item.date), 'MMM d, yyyy'),
-      moodLabel: formatMoodLabel(item.mood),
-    })),
-    [moodTrends, period]
-  );
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadMoodEntries = async () => {
+      setIsMoodLoading(true);
+
+      try {
+        const response = await entryService.getRecentEntries(moodWindowDays);
+        if (!cancelled) {
+          setMoodEntries(unwrapEnvelope(response));
+        }
+      } catch {
+        if (!cancelled) {
+          setMoodEntries([]);
+          setError((current) => current || 'Some insights could not be loaded. The page is showing any data that was available.');
+        }
+      } finally {
+        if (!cancelled) {
+          setIsMoodLoading(false);
+        }
+      }
+    };
+
+    void loadMoodEntries();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [moodWindowDays]);
+
+  const moodChartData = useMemo<MoodChartPoint[]>(() => {
+    const end = new Date();
+    const start = subDays(end, moodWindowDays - 1);
+    const entriesByDate = new Map(moodEntries.map((entry) => [toEntryDateKey(entry.date), entry]));
+
+    return eachDayOfInterval({ start, end }).map((day) => {
+      const date = format(day, 'yyyy-MM-dd');
+      const entry = entriesByDate.get(date);
+
+      return {
+        date,
+        label: formatMoodChartTick(day, moodWindowDays),
+        fullDate: format(day, 'MMM d, yyyy'),
+        mood: entry?.mood ?? null,
+        moodLabel: formatMoodLabel(entry?.mood),
+        hasEntry: Boolean(entry),
+        entryCreatedTimeLabel: entry?.createdAt ? format(parseISO(entry.createdAt), 'p') : null,
+      };
+    });
+  }, [moodEntries, moodWindowDays]);
 
   const energyChartData = useMemo(
     () => energyPatterns.map((item) => ({
@@ -333,6 +399,10 @@ export default function Analytics() {
     if (!energyPatterns.length) return null;
     return energyPatterns.reduce((best, current) => (current.averageEnergy > best.averageEnergy ? current : best));
   }, [energyPatterns]);
+
+  const moodLoggedEntryCount = useMemo(() => moodChartData.filter((point) => point.hasEntry).length, [moodChartData]);
+  const moodChartHasEntries = useMemo(() => moodChartData.some((point) => point.hasEntry), [moodChartData]);
+  const moodChartHasRatings = useMemo(() => moodChartData.some((point) => point.mood != null), [moodChartData]);
 
   const summaryCards = useMemo(
     () => [
@@ -379,7 +449,7 @@ export default function Analytics() {
   const weeklyNarrative = getWeeklyNarrative(weeklyReport, summary, topEnergyWindow?.hour ?? null);
 
   return (
-    <div className="animate-fade-in pb-10 text-slate-900 dark:text-sage-50">
+    <div className="animate-fade-in pb-10 text-slate-900 [&_.font-display]:font-body [&_h1]:font-body [&_h2]:font-body [&_h3]:font-body [&_h4]:font-body [&_h5]:font-body [&_h6]:font-body dark:text-sage-50">
       <section className="overflow-hidden rounded-[2rem] border border-sage-200 bg-gradient-to-br from-white via-sage-50 to-sand-50 shadow-soft dark:border-white/10 dark:bg-gradient-to-br dark:from-[#18231d] dark:via-[#121b16] dark:to-[#0f1712]">
         <div className="flex flex-col gap-6 px-6 py-8 sm:px-8 lg:flex-row lg:items-end lg:justify-between lg:px-10">
           <div className="max-w-3xl">
@@ -414,13 +484,44 @@ export default function Analytics() {
                         ? 'bg-sage-700 text-white shadow-soft dark:bg-sage-500 dark:text-slate-950'
                         : 'border border-sage-200 bg-white text-sage-700 hover:bg-sage-50 dark:border-white/10 dark:bg-white/5 dark:text-sage-100 dark:hover:bg-white/10'
                     )}
-                    onClick={() => setPeriod(option.value)}
+                    onClick={() => {
+                      setPeriod(option.value);
+                      setIsCustomMoodWindowActive(false);
+                    }}
                     type="button"
                   >
                     {option.label}
                   </button>
                 );
               })}
+
+              {isCustomMoodWindowActive ? (
+                <label className="inline-flex items-center gap-2 rounded-full bg-sage-700 px-4 py-2 text-sm font-semibold text-white shadow-soft dark:bg-sage-500 dark:text-slate-950">
+                  <span>Days</span>
+                  <input
+                    autoFocus
+                    className="w-20 rounded-full border border-white/30 bg-white px-3 py-1 text-center text-sm font-semibold text-slate-900 outline-none focus:border-white dark:border-slate-900/10 dark:bg-[#101915] dark:text-sage-50"
+                    max={MAX_MOOD_WINDOW_DAYS}
+                    min={MIN_MOOD_WINDOW_DAYS}
+                    onChange={(event) => {
+                      const value = Number(event.target.value);
+                      if (Number.isFinite(value)) {
+                        setCustomMoodWindowDays(clampMoodWindowDays(value));
+                      }
+                    }}
+                    type="number"
+                    value={customMoodWindowDays}
+                  />
+                </label>
+              ) : (
+                <button
+                  className="rounded-full border border-sage-200 bg-white px-4 py-2 text-sm font-semibold text-sage-700 transition-all hover:bg-sage-50 dark:border-white/10 dark:bg-white/5 dark:text-sage-100 dark:hover:bg-white/10"
+                  onClick={() => setIsCustomMoodWindowActive(true)}
+                  type="button"
+                >
+                  Custom
+                </button>
+              )}
             </div>
 
             <div className="inline-flex items-center gap-2 rounded-full bg-white px-4 py-2 text-sm font-medium text-sage-700 shadow-sm dark:bg-white/5 dark:text-sage-100">
@@ -555,60 +656,104 @@ export default function Analytics() {
               <h2 className="mt-2 font-display text-3xl font-semibold text-sage-900 dark:text-sage-50">Emotional tone over time</h2>
             </div>
             <div className="rounded-full bg-sage-50 px-4 py-2 text-xs font-semibold uppercase tracking-[0.22em] text-sage-600 dark:bg-white/10 dark:text-sage-200">
-              {periodOptions.find((option) => option.value === period)?.label}
+              Last {moodWindowDays} days
             </div>
           </div>
 
-          {isLoading ? (
+          {isMoodLoading ? (
             <div className="skeleton h-80 rounded-[1.5rem]" />
-          ) : moodChartData.length ? (
-            <div className="h-80 w-full">
-              <ResponsiveContainer>
-                <AreaChart data={moodChartData} margin={{ top: 16, right: 16, bottom: 8, left: -16 }}>
-                  <defs>
-                    <linearGradient id="analytics-mood-fill" x1="0" x2="0" y1="0" y2="1">
-                      <stop offset="0%" stopColor="#5f7861" stopOpacity="0.28" />
-                      <stop offset="100%" stopColor="#5f7861" stopOpacity="0.03" />
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid stroke={isDarkMode ? '#314238' : '#e3e8e3'} strokeDasharray="4 4" vertical={false} />
-                  <XAxis
-                    axisLine={false}
-                    dataKey="label"
-                    tick={{ fill: isDarkMode ? '#b7c6b8' : '#7d937f', fontSize: 12, fontWeight: 600 }}
-                    tickLine={false}
-                  />
-                  <YAxis
-                    axisLine={false}
-                    domain={[1, 5]}
-                    tick={{ fill: isDarkMode ? '#b7c6b8' : '#7d937f', fontSize: 12, fontWeight: 600 }}
-                    tickFormatter={(value) => `${value}`}
-                    tickLine={false}
-                  />
-                  <Tooltip
-                    content={({ active, payload, label }) => {
-                      if (!active || !payload?.length) return null;
+          ) : moodChartHasEntries && moodChartHasRatings ? (
+            <div>
+              <div className="h-80 w-full">
+                <ResponsiveContainer>
+                  <AreaChart data={moodChartData} margin={{ top: 16, right: 16, bottom: 8, left: -16 }}>
+                    <defs>
+                      <linearGradient id="analytics-mood-fill" x1="0" x2="0" y1="0" y2="1">
+                        <stop offset="0%" stopColor="#5f7861" stopOpacity="0.28" />
+                        <stop offset="100%" stopColor="#5f7861" stopOpacity="0.03" />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid stroke={isDarkMode ? '#314238' : '#e3e8e3'} strokeDasharray="4 4" vertical={false} />
+                    <XAxis
+                      axisLine={false}
+                      dataKey="label"
+                      minTickGap={moodWindowDays <= 10 ? 0 : moodWindowDays <= 45 ? 18 : 28}
+                      tick={{ fill: isDarkMode ? '#b7c6b8' : '#7d937f', fontSize: 12, fontWeight: 600 }}
+                      tickLine={false}
+                    />
+                    <YAxis
+                      axisLine={false}
+                      domain={[1, 5]}
+                      tick={{ fill: isDarkMode ? '#b7c6b8' : '#7d937f', fontSize: 12, fontWeight: 600 }}
+                      tickFormatter={(value) => `${value}`}
+                      tickLine={false}
+                    />
+                    <Tooltip
+                      content={({ active, payload }) => {
+                        const point = payload?.[0]?.payload as MoodChartPoint | undefined;
 
-                      return (
-                        <div className={clsx('rounded-2xl border px-4 py-3 shadow-soft', isDarkMode ? 'border-white/10 bg-[#101915]' : 'border-sage-100 bg-white')}>
-                          <p className={clsx('text-xs font-semibold uppercase tracking-[0.2em]', isDarkMode ? 'text-sage-300' : 'text-sage-500')}>{label}</p>
-                          <p className={clsx('mt-2 text-lg font-semibold', isDarkMode ? 'text-sage-50' : 'text-slate-900')}>Mood: {payload[0].value} / 5</p>
-                          <p className={clsx('mt-1 text-sm', isDarkMode ? 'text-sage-200' : 'text-sage-600')}>{payload[0].payload.moodLabel}</p>
-                          <p className={clsx('mt-1 text-xs', isDarkMode ? 'text-sage-400' : 'text-slate-400')}>{payload[0].payload.fullDate}</p>
-                        </div>
-                      );
-                    }}
-                  />
-                  <Area
-                    activeDot={{ fill: '#5f7861', r: 5, stroke: '#ffffff', strokeWidth: 2 }}
-                    dataKey="mood"
-                    fill="url(#analytics-mood-fill)"
-                    stroke="#5f7861"
-                    strokeWidth={3}
-                    type="monotone"
-                  />
-                </AreaChart>
-              </ResponsiveContainer>
+                        if (!active || !point) return null;
+
+                        return (
+                          <div className={clsx('rounded-2xl border px-4 py-3 shadow-soft', isDarkMode ? 'border-white/10 bg-[#101915]' : 'border-sage-100 bg-white')}>
+                            <p className={clsx('text-xs font-semibold uppercase tracking-[0.2em]', isDarkMode ? 'text-sage-300' : 'text-sage-500')}>{point.fullDate}</p>
+                            <p className={clsx('mt-2 text-lg font-semibold', isDarkMode ? 'text-sage-50' : 'text-slate-900')}>
+                              {point.mood != null ? `Mood: ${point.mood} / 5` : 'No mood rating'}
+                            </p>
+                            <p className={clsx('mt-1 text-sm', isDarkMode ? 'text-sage-200' : 'text-sage-600')}>{point.moodLabel}</p>
+                            <p className={clsx('mt-1 text-xs', isDarkMode ? 'text-sage-400' : 'text-slate-400')}>
+                              {point.hasEntry && point.entryCreatedTimeLabel
+                                ? `Entry saved at ${point.entryCreatedTimeLabel}`
+                                : 'No entry logged'}
+                            </p>
+                          </div>
+                        );
+                      }}
+                    />
+                    <Area
+                      activeDot={{ fill: '#5f7861', r: 5, stroke: '#ffffff', strokeWidth: 2 }}
+                      connectNulls={false}
+                      dataKey="mood"
+                      dot={({ cx, cy, payload }) => {
+                        if (
+                          payload.mood == null
+                          || typeof cx !== 'number'
+                          || typeof cy !== 'number'
+                        ) {
+                          return null;
+                        }
+
+                        return (
+                          <circle
+                            cx={cx}
+                            cy={cy}
+                            fill="#5f7861"
+                            opacity={payload.hasEntry ? 1 : 0.55}
+                            r={4}
+                            stroke="#ffffff"
+                            strokeWidth={2}
+                          />
+                        );
+                      }}
+                      fill="url(#analytics-mood-fill)"
+                      stroke="#5f7861"
+                      strokeWidth={3}
+                      type="monotone"
+                    />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </div>
+              <p className="mt-4 text-sm text-sage-600 dark:text-sage-200">
+                {moodLoggedEntryCount} {moodLoggedEntryCount === 1 ? 'entry' : 'entries'} logged in the last {moodWindowDays} days. Hover over the chart to see the day and the time each entry was saved.
+              </p>
+            </div>
+          ) : moodChartHasEntries ? (
+            <div className="flex h-80 flex-col items-center justify-center rounded-[1.5rem] border border-dashed border-sage-200 bg-sage-50/70 px-6 text-center dark:border-white/10 dark:bg-[#101915]">
+              <span className="material-symbols-outlined text-4xl text-sage-400 dark:text-sage-300">edit_calendar</span>
+              <p className="mt-4 font-display text-2xl font-semibold text-sage-800 dark:text-sage-50">Entries logged, but no mood ratings yet</p>
+              <p className="mt-2 max-w-md text-sm leading-6 text-sage-600 dark:text-sage-200">
+                {moodLoggedEntryCount} {moodLoggedEntryCount === 1 ? 'entry was' : 'entries were'} saved in the last {moodWindowDays} days. Add a mood to your reflections and the graph will start tracing the pattern.
+              </p>
             </div>
           ) : (
             <div className="flex h-80 flex-col items-center justify-center rounded-[1.5rem] border border-dashed border-sage-200 bg-sage-50/70 px-6 text-center dark:border-white/10 dark:bg-[#101915]">

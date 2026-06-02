@@ -35,11 +35,21 @@ const ratingConfig = [
 ] as const;
 
 const checklistConfig = [
-  { key: 'nutritiousMeals', icon: 'restaurant', label: 'Nutritious Meals', fields: ['ateBreakfast', 'ateLunch', 'ateDinner'] },
-  { key: 'dailyExercise', icon: 'fitness_center', label: 'Daily Exercise', fields: ['exercised'] },
-  { key: 'hydration', icon: 'water_drop', label: 'Hydration (8 glasses)', fields: ['drankWater'] },
-  { key: 'sleep', icon: 'bedtime', label: '8 Hours Sleep', fields: ['slept7to9Hours'] },
-  { key: 'outdoorWalk', icon: 'nature', label: 'Outdoor Walk', fields: ['gotFreshAir'] },
+  { key: 'ateBreakfast', icon: 'breakfast_dining', label: 'Eat breakfast', detail: 'Start the day with something nourishing.', fields: ['ateBreakfast'] },
+  { key: 'ateLunch', icon: 'lunch_dining', label: 'Eat lunch', detail: 'Pause and refuel in the middle of the day.', fields: ['ateLunch'] },
+  { key: 'ateDinner', icon: 'dinner_dining', label: 'Eat dinner', detail: 'Close the day with a proper meal.', fields: ['ateDinner'] },
+  { key: 'drankWater', icon: 'water_drop', label: 'Drink enough water', detail: 'Aim for steady hydration through the day.', fields: ['drankWater'] },
+  { key: 'slept7to9Hours', icon: 'bedtime', label: 'Sleep 7 to 9 hours', detail: 'Protect a full night of recovery.', fields: ['slept7to9Hours'] },
+  { key: 'exercised', icon: 'fitness_center', label: 'Move your body', detail: 'Exercise, stretch, or take a purposeful walk.', fields: ['exercised'] },
+  { key: 'gotFreshAir', icon: 'nature', label: 'Get fresh air', detail: 'Step outside for a reset, even briefly.', fields: ['gotFreshAir'] },
+  { key: 'readBook', icon: 'menu_book', label: 'Read a book', detail: 'Spend a few quiet minutes reading.', fields: ['readBook'] },
+  { key: 'listenedToMusic', icon: 'headphones', label: 'Listen to music', detail: 'Play something that helps you reset.', fields: ['listenedToMusic'] },
+  { key: 'meditated', icon: 'self_improvement', label: 'Meditate or breathe', detail: 'Take a mindful pause to slow things down.', fields: ['meditated'] },
+  { key: 'stretched', icon: 'accessibility_new', label: 'Stretch', detail: 'Loosen tension in your body.', fields: ['stretched'] },
+  { key: 'journaled', icon: 'edit_note', label: 'Journal', detail: 'Write down what you are carrying.', fields: ['journaled'] },
+  { key: 'calledFriend', icon: 'call', label: 'Call or text a friend', detail: 'Reach out instead of staying isolated.', fields: ['calledFriend'] },
+  { key: 'tookNap', icon: 'hotel', label: 'Take a nap', detail: 'Rest if your energy is running low.', fields: ['tookNap'] },
+  { key: 'watchedMovie', icon: 'movie', label: 'Watch something comforting', detail: 'Choose a calming, familiar watch.', fields: ['watchedMovie'] },
 ] as const;
 
 type ActivityKey = (typeof activityConfig)[number]['key'];
@@ -47,6 +57,7 @@ type RatingKey = (typeof ratingConfig)[number]['key'];
 type MoodKey = (typeof moodOptions)[number]['key'];
 type ChecklistKey = (typeof checklistConfig)[number]['key'];
 type ChecklistField = (typeof checklistConfig)[number]['fields'][number];
+const SELF_CARE_MOOD_PREFIX = 'selfcare:mood:';
 
 const feelingByMoodKey: Record<MoodKey, Exclude<EntryFeeling, null>> = moodOptions.reduce((accumulator, option) => {
   accumulator[option.key] = option.feeling;
@@ -61,12 +72,33 @@ const moodKeyByFeeling = moodOptions.reduce((accumulator, option) => {
 }, {} as Record<Exclude<EntryFeeling, null>, MoodKey>);
 
 const emptyChecklist = (): Record<ChecklistKey, boolean> => ({
-  nutritiousMeals: false,
-  dailyExercise: false,
-  hydration: false,
-  sleep: false,
-  outdoorWalk: false,
+  ateBreakfast: false,
+  ateLunch: false,
+  ateDinner: false,
+  drankWater: false,
+  slept7to9Hours: false,
+  exercised: false,
+  gotFreshAir: false,
+  readBook: false,
+  listenedToMusic: false,
+  meditated: false,
+  stretched: false,
+  journaled: false,
+  calledFriend: false,
+  tookNap: false,
+  watchedMovie: false,
 });
+
+const isMoodKey = (value: string): value is MoodKey => (
+  moodOptions.some((option) => option.key === value)
+);
+
+const getSavedSelfCareMood = (value?: string | null): MoodKey | null => {
+  if (typeof value !== 'string' || !value.startsWith(SELF_CARE_MOOD_PREFIX)) return null;
+
+  const moodKey = value.slice(SELF_CARE_MOOD_PREFIX.length);
+  return isMoodKey(moodKey) ? moodKey : null;
+};
 
 export default function SelfCare() {
   const { entry, error, loading, saveEntryPatch, saving } = useDailyEntry();
@@ -90,7 +122,10 @@ export default function SelfCare() {
   useEffect(() => {
     if (!entry) return;
 
-    setSelectedMood(entry.feeling ? moodKeyByFeeling[entry.feeling] || null : null);
+    setSelectedMood(
+      getSavedSelfCareMood(entry.selfAssessmentNote)
+      || (entry.feeling ? moodKeyByFeeling[entry.feeling] || null : null)
+    );
     setThoughts(entry.mindThoughts || '');
     setActivities({
       reading: entry.activities?.reading || 0,
@@ -103,11 +138,21 @@ export default function SelfCare() {
       overallDay: entry.ratings?.overall || 0,
     });
     setChecklist({
-      nutritiousMeals: Boolean(entry.selfCareChecklist?.ateBreakfast || entry.selfCareChecklist?.ateLunch || entry.selfCareChecklist?.ateDinner),
-      dailyExercise: Boolean(entry.selfCareChecklist?.exercised),
-      hydration: Boolean(entry.selfCareChecklist?.drankWater),
-      sleep: Boolean(entry.selfCareChecklist?.slept7to9Hours),
-      outdoorWalk: Boolean(entry.selfCareChecklist?.gotFreshAir),
+      ateBreakfast: Boolean(entry.selfCareChecklist?.ateBreakfast),
+      ateLunch: Boolean(entry.selfCareChecklist?.ateLunch),
+      ateDinner: Boolean(entry.selfCareChecklist?.ateDinner),
+      drankWater: Boolean(entry.selfCareChecklist?.drankWater),
+      slept7to9Hours: Boolean(entry.selfCareChecklist?.slept7to9Hours),
+      exercised: Boolean(entry.selfCareChecklist?.exercised),
+      gotFreshAir: Boolean(entry.selfCareChecklist?.gotFreshAir),
+      readBook: Boolean(entry.selfCareChecklist?.readBook),
+      listenedToMusic: Boolean(entry.selfCareChecklist?.listenedToMusic),
+      meditated: Boolean(entry.selfCareChecklist?.meditated),
+      stretched: Boolean(entry.selfCareChecklist?.stretched),
+      journaled: Boolean(entry.selfCareChecklist?.journaled),
+      calledFriend: Boolean(entry.selfCareChecklist?.calledFriend),
+      tookNap: Boolean(entry.selfCareChecklist?.tookNap),
+      watchedMovie: Boolean(entry.selfCareChecklist?.watchedMovie),
     });
   }, [entry]);
 
@@ -138,6 +183,7 @@ export default function SelfCare() {
 
     const patch: DailyEntryPatch = {
       feeling: selectedMood ? feelingByMoodKey[selectedMood] : null,
+      selfAssessmentNote: selectedMood ? `${SELF_CARE_MOOD_PREFIX}${selectedMood}` : '',
       activities: {
         reading: activities.reading,
         music: activities.music,
@@ -161,7 +207,7 @@ export default function SelfCare() {
   };
 
   return (
-    <div className="animate-fade-in pb-10 transition-colors">
+    <div className="animate-fade-in pb-10 transition-colors [&_h1]:font-body [&_h2]:font-body [&_h3]:font-body [&_h4]:font-body [&_h5]:font-body [&_h6]:font-body">
       <div className="relative flex min-h-full w-full flex-col">
         <header className="sticky top-4 z-20 flex items-center justify-between whitespace-nowrap border-b border-solid border-sage-100 bg-white px-6 py-3 shadow-sm sm:px-8 dark:border-white/10 dark:bg-[#15201a]/90">
           <div className="flex items-center gap-4 text-sage-600 dark:text-sage-100">
@@ -348,21 +394,28 @@ export default function SelfCare() {
                     <div className="h-full rounded-full bg-[#13ec25]" style={{ width: `${completionRate}%` }} />
                   </div>
 
-                  <ul className="flex flex-col gap-4">
+                  <p className="mb-5 text-sm leading-6 text-sage-500 dark:text-sage-300">
+                    Track the small restorative actions that make the day feel steadier.
+                  </p>
+
+                  <ul className="flex flex-col gap-3">
                     {checklistConfig.map((item) => (
                       <li
                         key={item.key}
-                        className="group flex items-center justify-between rounded-lg bg-sage-50/50 p-3 transition-colors hover:bg-sage-50 dark:bg-white/5 dark:hover:bg-white/10"
+                        className="group flex items-start justify-between gap-3 rounded-xl border border-sage-100 bg-sage-50/50 p-3 transition-colors hover:border-[#13ec25]/40 hover:bg-sage-50 dark:border-white/10 dark:bg-white/5 dark:hover:bg-white/10"
                       >
                         <div className="flex items-center gap-3">
-                          <span className="material-symbols-outlined text-sage-400 transition-colors group-hover:text-[#13ec25]">
+                          <span className="material-symbols-outlined mt-0.5 text-sage-400 transition-colors group-hover:text-[#13ec25]">
                             {item.icon}
                           </span>
-                          <span className="text-sm font-medium dark:text-sage-100">{item.label}</span>
+                          <div>
+                            <p className="text-sm font-medium text-sage-900 dark:text-sage-100">{item.label}</p>
+                            <p className="mt-1 text-xs leading-5 text-sage-500 dark:text-sage-300">{item.detail}</p>
+                          </div>
                         </div>
                         <input
                           checked={checklist[item.key]}
-                          className="h-5 w-5 rounded border-sage-300 text-[#13ec25] focus:ring-[#13ec25]"
+                          className="mt-1 h-5 w-5 rounded border-sage-300 text-[#13ec25] focus:ring-[#13ec25]"
                           onChange={() => toggleChecklistItem(item.key)}
                           type="checkbox"
                         />

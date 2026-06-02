@@ -94,6 +94,10 @@ export const serializeEntry = (entry: any) => normalizeEntry({
     calledFriend: false,
     journaled: false,
     drankWater: false,
+    readBook: false,
+    listenedToMusic: false,
+    meditated: false,
+    stretched: false,
   }),
   emotionalGuidance: asObject(entry.emotionalGuidance, {
     whereAreYou: '',

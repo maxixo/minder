@@ -21,6 +21,12 @@ const copingStrategies = [
   { icon: 'music_note', label: 'Listen to Music' },
   { icon: 'self_improvement', label: '5-Min Meditation' },
   { icon: 'local_cafe', label: 'Mindful Tea' },
+  { icon: 'call', label: 'Call or Text a Friend' },
+  { icon: 'menu_book', label: 'Journaling' },
+  { icon: 'bedtime', label: 'Short Rest' },
+  { icon: 'spa', label: 'Stretching' },
+  { icon: 'wb_sunny', label: 'Step Outside for Sunlight' },
+  { icon: 'headphones', label: 'Noise-Canceling Break' },
 ];
 
 type WeekKey = (typeof weekConfig)[number]['key'];
@@ -46,6 +52,11 @@ const weekdayKeyByIndex: Record<number, WeekKey> = {
 };
 
 const sanitizeNotes = (notes: string[]) => notes.map((note) => note.trim()).filter(Boolean).slice(0, 6);
+const parseCopingMethods = (value?: string | null) => (
+  typeof value === 'string'
+    ? value.split(',').map((item) => item.trim()).filter(Boolean)
+    : []
+);
 
 export default function EmotionalGuidance() {
   const { user } = useAuth();
@@ -54,7 +65,7 @@ export default function EmotionalGuidance() {
   const [whereYouAre, setWhereYouAre] = useState('');
   const [feelings, setFeelings] = useState('');
   const [thoughts, setThoughts] = useState('');
-  const [selectedStrategy, setSelectedStrategy] = useState('');
+  const [selectedStrategies, setSelectedStrategies] = useState<string[]>([]);
   const [notes, setNotes] = useState<string[]>([]);
 
   const firstName = user?.name?.split(' ')[0] || 'Friend';
@@ -77,7 +88,7 @@ export default function EmotionalGuidance() {
     setWhereYouAre(entry.emotionalGuidance?.whereAreYou || '');
     setFeelings(entry.emotionalGuidance?.howYoureFeeling || '');
     setThoughts(entry.emotionalGuidance?.whatYoureThinking || '');
-    setSelectedStrategy(entry.emotionalGuidance?.copingMethod || '');
+    setSelectedStrategies(parseCopingMethods(entry.emotionalGuidance?.copingMethod));
     setNotes(entry.todayNotes || []);
   }, [entry]);
 
@@ -88,13 +99,21 @@ export default function EmotionalGuidance() {
     }));
   };
 
+  const toggleStrategy = (label: string) => {
+    setSelectedStrategies((current) => (
+      current.includes(label)
+        ? current.filter((item) => item !== label)
+        : [...current, label]
+    ));
+  };
+
   const handleSave = async () => {
     const patch: DailyEntryPatch = {
       emotionalGuidance: {
         whereAreYou: whereYouAre.trim(),
         howYoureFeeling: feelings.trim(),
         whatYoureThinking: thoughts.trim(),
-        copingMethod: selectedStrategy.trim(),
+        copingMethod: selectedStrategies.join(', '),
       },
       selfCarePlanDays: week,
       todayNotes: sanitizeNotes(notes),
@@ -109,8 +128,8 @@ export default function EmotionalGuidance() {
   };
 
   const handleAddNote = () => {
-    const note = selectedStrategy
-      ? `Support plan for today: lean on ${selectedStrategy.toLowerCase()} when the day feels heavy.`
+    const note = selectedStrategies.length
+      ? `Support plan for today: lean on ${selectedStrategies.join(', ').toLowerCase()} when the day feels heavy.`
       : 'Pause, soften your shoulders, and return to one calm breath.';
 
     setNotes((current) => [note, ...current].slice(0, 6));
@@ -118,7 +137,7 @@ export default function EmotionalGuidance() {
   };
 
   return (
-    <div className="-mx-4 min-h-full bg-[#f6f8f7] px-4 text-slate-900 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8 dark:bg-[#0f1712] dark:text-sage-50">
+    <div className="-mx-4 min-h-full bg-[#f6f8f7] px-4 text-slate-900 [&_.font-display]:font-body [&_h1]:font-body [&_h2]:font-body [&_h3]:font-body [&_h4]:font-body [&_h5]:font-body [&_h6]:font-body sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8 dark:bg-[#0f1712] dark:text-sage-50">
       <div className="mx-auto flex w-full max-w-7xl flex-col gap-8 py-2 animate-fade-in">
         <section className="overflow-hidden rounded-[2rem] border border-sage-100 bg-gradient-to-br from-white via-sand-50 to-sage-50 shadow-soft dark:border-white/10 dark:bg-gradient-to-br dark:from-[#18231d] dark:via-[#121b16] dark:to-[#0f1712]">
           <div className="flex flex-col gap-6 px-6 py-8 sm:px-8 lg:flex-row lg:items-end lg:justify-between lg:px-10">
@@ -269,7 +288,7 @@ export default function EmotionalGuidance() {
               <div className="mb-5 flex items-center justify-between gap-4">
                 <div>
                   <h3 className="font-display text-2xl font-semibold text-sage-900 dark:text-sage-50">Coping Strategies</h3>
-                  <p className="mt-2 text-sm text-sage-600 dark:text-sage-200">Pick one supportive action to return to if your emotions start to swell.</p>
+                  <p className="mt-2 text-sm text-sage-600 dark:text-sage-200">Pick as many supportive actions as you want to return to if your emotions start to swell.</p>
                 </div>
                 <div className="rounded-full bg-white/70 px-4 py-2 text-xs font-semibold uppercase tracking-[0.24em] text-sage-500 dark:bg-white/10 dark:text-sage-300">
                   Grounding Tools
@@ -278,10 +297,11 @@ export default function EmotionalGuidance() {
 
               <div className="flex flex-wrap gap-3">
                 {copingStrategies.map((strategy) => {
-                  const isSelected = strategy.label === selectedStrategy;
+                  const isSelected = selectedStrategies.includes(strategy.label);
 
                   return (
                     <button
+                      aria-pressed={isSelected}
                       key={strategy.label}
                       className={clsx(
                         'inline-flex items-center gap-2 rounded-full border px-5 py-2.5 text-sm font-medium transition-all',
@@ -289,7 +309,7 @@ export default function EmotionalGuidance() {
                           ? 'border-sage-300 bg-white text-sage-800 shadow-sm dark:border-sage-400/30 dark:bg-white/10 dark:text-sage-50'
                           : 'border-sand-300 bg-sand-50 text-sage-700 hover:border-sage-200 hover:bg-white dark:border-white/10 dark:bg-[#101915] dark:text-sage-200 dark:hover:bg-white/10'
                       )}
-                      onClick={() => setSelectedStrategy(strategy.label)}
+                      onClick={() => toggleStrategy(strategy.label)}
                       type="button"
                     >
                       <span className="material-symbols-outlined text-[18px]">{strategy.icon}</span>
@@ -301,7 +321,9 @@ export default function EmotionalGuidance() {
 
               <div className="mt-6 rounded-[1.5rem] border border-white/70 bg-white/70 p-5 dark:border-white/10 dark:bg-white/5">
                 <p className="text-xs font-semibold uppercase tracking-[0.24em] text-sage-500 dark:text-sage-300">Chosen support</p>
-                <p className="mt-2 font-display text-2xl font-semibold text-sage-800 dark:text-sage-50">{selectedStrategy || 'Choose a grounding tool'}</p>
+                <p className="mt-2 font-display text-2xl font-semibold text-sage-800 dark:text-sage-50">
+                  {selectedStrategies.length ? selectedStrategies.join(', ') : 'Choose one or more grounding tools'}
+                </p>
                 <p className="mt-2 text-sm leading-6 text-sage-600 dark:text-sage-200">
                   Let this be your next kind action, not another task to perform perfectly.
                 </p>
