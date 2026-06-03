@@ -11,6 +11,8 @@ import PublicOnlyRoute  from '@/components/common/PublicOnlyRoute';
 const Landing = lazy(() => import('@/pages/Landing'));
 const Login = lazy(() => import('@/pages/Login'));
 const Register = lazy(() => import('@/pages/Register'));
+const Onboarding = lazy(() => import('@/pages/Onboarding'));
+const Welcome = lazy(() => import('@/pages/Welcome'));
 const Home = lazy(() => import('@/pages/Home'));
 const DailyReflection = lazy(() => import('@/pages/DailyReflection'));
 const SelfCare = lazy(() => import('@/pages/SelfCare'));
@@ -36,6 +38,8 @@ export default function App() {
               <Route path="/" element={<Landing />} />
               <Route path="/login" element={<PublicOnlyRoute><Login /></PublicOnlyRoute>} />
               <Route path="/register" element={<PublicOnlyRoute><Register /></PublicOnlyRoute>} />
+              <Route path="/onboarding" element={<ProtectedRoute><Onboarding /></ProtectedRoute>} />
+              <Route path="/welcome" element={<ProtectedRoute><Welcome /></ProtectedRoute>} />
               <Route element={<ProtectedRoute><Layout /></ProtectedRoute>}>
                 <Route path="/dashboard" element={<Home />} />
                 <Route path="/reflection" element={<DailyReflection />} />

@@ -6,6 +6,7 @@ import { useSearchParams } from 'react-router-dom';
 import BrandLogo from '@/components/common/BrandLogo';
 import { useAuth } from '@/contexts/useAuth';
 import { useDailyEntry } from '@/hooks/useDailyEntry';
+import { clearOnboardingFlowState, readOnboardingFlowState } from '@/lib/onboardingFlow';
 import ProfileMenu from '@/components/common/ProfileMenu';
 import entryService from '@/services/entryService';
 import type { EntryInsightResponse } from '@/types/ai';
@@ -216,7 +217,9 @@ export default function DailyReflection() {
   const [entryInsight, setEntryInsight] = useState<EntryInsightResponse | null>(null);
   const [insightLoading, setInsightLoading] = useState(false);
   const [insightError, setInsightError] = useState('');
+  const [onboardingFlow, setOnboardingFlow] = useState(() => readOnboardingFlowState());
   const requestedSearchDate = useMemo(() => parseDateSearchParam(searchParams.get('date')), [searchParams]);
+  const isOnboardingEntry = searchParams.get('source') === 'onboarding';
 
   const firstName = user?.name?.split(' ')[0] || 'Sarah';
   const entryDateLabel = useMemo(
@@ -499,6 +502,13 @@ export default function DailyReflection() {
     try {
       await saveEntryPatch(patch, 'reflection');
       setEnergyError('');
+      clearOnboardingFlowState();
+      setOnboardingFlow(null);
+      if (isOnboardingEntry) {
+        const nextSearchParams = new URLSearchParams(searchParams);
+        nextSearchParams.delete('source');
+        setSearchParams(nextSearchParams, { replace: true });
+      }
       toast.success('Reflection saved');
     } catch (saveError: any) {
       toast.error(saveError?.response?.data?.message || 'Unable to save reflection');
@@ -585,6 +595,36 @@ export default function DailyReflection() {
             How are you feeling today, {firstName}? Capture gratitude, intention, and the small signals shaping your energy.
           </p>
         </div>
+
+        {isOnboardingEntry && onboardingFlow ? (
+          <div className="rounded-xl border border-[#dce8dd] bg-[#eef6ee] px-6 py-5 shadow-sm dark:border-white/10 dark:bg-[#15201a]">
+            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[#638869] dark:text-sage-300">First-entry flow</p>
+            <h2 className="mt-2 text-lg font-bold text-[#3a523e] dark:text-sage-50">
+              Start with one honest check-in.
+            </h2>
+            <p className="mt-2 text-sm leading-6 text-[#4f6b55] dark:text-sage-200">
+              {onboardingFlow.focusAreas.length
+                ? (
+                  <>
+                    You said you want to focus on <span className="font-semibold">{onboardingFlow.focusAreas.map((item) => item.replace(/-/g, ' ')).join(', ')}</span>.
+                    Save this first reflection and the rest of the app will have a real starting point.
+                  </>
+                )
+                : (
+                  <>
+                    Save this first reflection and the rest of the app will have a real starting point.
+                  </>
+                )}
+            </p>
+            {onboardingFlow.dailyReminder !== undefined ? (
+              <p className="mt-2 text-sm leading-6 text-[#4f6b55] dark:text-sage-200">
+                {onboardingFlow.dailyReminder
+                  ? `Your reminder is set for ${onboardingFlow.reminderTime}.`
+                  : 'You can turn reminders on later in settings if you want a stronger habit loop.'}
+              </p>
+            ) : null}
+          </div>
+        ) : null}
 
         {loading ? (
           <div className="rounded-xl border border-[#e8ede8] bg-[#f4f7f4] px-6 py-4 text-sm font-medium text-[#638869] shadow-sm dark:border-white/10 dark:bg-white/5 dark:text-sage-200">

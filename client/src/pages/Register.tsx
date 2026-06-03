@@ -71,7 +71,13 @@ export default function Register() {
 
     try {
       await register({ name: trimmedName, email: trimmedEmail, password });
-      navigate('/login', { replace: true });
+      navigate('/login', {
+        replace: true,
+        state: {
+          newlyRegistered: true,
+          registeredEmail: trimmedEmail,
+        },
+      });
     } catch (err: any) {
       const apiError = err.response?.data;
       const validationMessage = apiError?.errors?.[0]?.message;
@@ -157,7 +163,7 @@ export default function Register() {
                   Create Your Account
                 </h1>
                 <p className="text-lg leading-relaxed text-gray-500 dark:text-sage-300">
-                  Begin your journey towards emotional wellness and mindful reflection.
+                  Set up your account, choose your reflection rhythm, and reach your first entry in a few minutes.
                 </p>
               </div>
 
@@ -249,6 +255,10 @@ export default function Register() {
                 >
                   {isSubmitting ? 'Creating Account...' : 'Create Account'}
                 </button>
+
+                <div className="rounded-xl border border-[#d8e4d8] bg-[#f4f8f4] px-4 py-3 text-sm leading-6 text-[#4f6b55] dark:border-white/10 dark:bg-[#101915] dark:text-sage-200">
+                  Basic reflection, reminder setup, and your first habit loop are free. Upgrade later only if you want deeper analytics and richer summaries.
+                </div>
               </form>
 
               <div className="mt-8 border-t border-[#e0e1e0] pt-6 text-center dark:border-[#2d2f2d]">

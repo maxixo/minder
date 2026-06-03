@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import { format, parseISO } from 'date-fns';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import AuthThemeToggle from '@/components/common/AuthThemeToggle';
 import BrandLogo from '@/components/common/BrandLogo';
 import { useAuth } from '@/contexts/useAuth';
@@ -14,8 +14,17 @@ import {
 import { clearPostLoginRedirectPath, setPostLoginRedirectPath } from '@/lib/postLoginRedirect';
 import '@/styles/pages/login.css';
 
+interface LoginLocationState {
+  newlyRegistered?: boolean;
+  registeredEmail?: string;
+}
+
 export default function Login() {
+  const location = useLocation();
   const { login } = useAuth();
+  const locationState = location.state as LoginLocationState | null;
+  const isNewlyRegistered = Boolean(locationState?.newlyRegistered);
+  const registeredEmail = typeof locationState?.registeredEmail === 'string' ? locationState.registeredEmail : '';
   const [returnContext, setReturnContext] = useState(() => readLoginReturnContext());
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -32,9 +41,14 @@ export default function Login() {
   }, []);
 
   useEffect(() => {
-    if (!returnContext?.email || email) return;
+    if (email) return;
+    if (registeredEmail) {
+      setEmail(registeredEmail);
+      return;
+    }
+    if (!returnContext?.email) return;
     setEmail(returnContext.email);
-  }, [email, returnContext?.email]);
+  }, [email, registeredEmail, returnContext?.email]);
 
   const lastEntryDate = useMemo(
     () => (returnContext?.lastEntryDate ? parseISO(returnContext.lastEntryDate) : null),
@@ -45,8 +59,13 @@ export default function Login() {
   const resumePath = useMemo(() => getLoginResumePath(returnContext?.lastEntryDate), [returnContext?.lastEntryDate]);
 
   useEffect(() => {
+    if (isNewlyRegistered) {
+      setPostLoginPath('/onboarding');
+      return;
+    }
+
     setPostLoginPath(returnContext?.lastEntryDate ? resumePath : '/dashboard');
-  }, [resumePath, returnContext?.lastEntryDate]);
+  }, [isNewlyRegistered, resumePath, returnContext?.lastEntryDate]);
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -128,35 +147,37 @@ export default function Login() {
                   <p className="mb-6 text-center text-gray-500 dark:text-sage-300 sm:mb-8">Continue your journey to wellness</p>
 
                   <form className="w-full space-y-6" onSubmit={handleSubmit}>
-                    <div className="rounded-2xl border border-[#5e7860]/12 bg-[#eef3ec] p-1 dark:border-white/10 dark:bg-[#101915]">
-                      <div className="grid grid-cols-2 gap-1">
-                        <button
-                          className={`inline-flex items-center justify-center rounded-[1rem] px-3 py-3 text-sm font-semibold transition-all ${
-                            postLoginPath === '/dashboard'
-                              ? 'bg-white text-[#24402d] shadow-sm dark:bg-[#18231d] dark:text-sage-50'
-                              : 'text-[#5a725d] hover:bg-white/60 dark:text-sage-300 dark:hover:bg-white/5'
-                          }`}
-                          onClick={() => setPostLoginPath('/dashboard')}
-                          type="button"
-                        >
-                          Dashboard
-                        </button>
-                        <button
-                          className={`inline-flex items-center justify-center rounded-[1rem] px-3 py-3 text-sm font-semibold transition-all ${
-                            postLoginPath === resumePath && hasRecentResume
-                              ? 'bg-[#35513c] text-white shadow-sm'
-                              : hasRecentResume
-                                ? 'text-[#35513c] hover:bg-white/60 dark:text-sage-100 dark:hover:bg-white/5'
-                                : 'cursor-not-allowed text-[#9aac9b] dark:text-sage-500'
-                          }`}
-                          disabled={!hasRecentResume}
-                          onClick={() => setPostLoginPath(resumePath)}
-                          type="button"
-                        >
-                          {hasRecentResume ? `Resume ${resumeDateLabel}` : 'Recent Reflection'}
-                        </button>
+                    {!isNewlyRegistered ? (
+                      <div className="rounded-2xl border border-[#5e7860]/12 bg-[#eef3ec] p-1 dark:border-white/10 dark:bg-[#101915]">
+                        <div className="grid grid-cols-2 gap-1">
+                          <button
+                            className={`inline-flex items-center justify-center rounded-[1rem] px-3 py-3 text-sm font-semibold transition-all ${
+                              postLoginPath === '/dashboard'
+                                ? 'bg-white text-[#24402d] shadow-sm dark:bg-[#18231d] dark:text-sage-50'
+                                : 'text-[#5a725d] hover:bg-white/60 dark:text-sage-300 dark:hover:bg-white/5'
+                            }`}
+                            onClick={() => setPostLoginPath('/dashboard')}
+                            type="button"
+                          >
+                            Dashboard
+                          </button>
+                          <button
+                            className={`inline-flex items-center justify-center rounded-[1rem] px-3 py-3 text-sm font-semibold transition-all ${
+                              postLoginPath === resumePath && hasRecentResume
+                                ? 'bg-[#35513c] text-white shadow-sm'
+                                : hasRecentResume
+                                  ? 'text-[#35513c] hover:bg-white/60 dark:text-sage-100 dark:hover:bg-white/5'
+                                  : 'cursor-not-allowed text-[#9aac9b] dark:text-sage-500'
+                            }`}
+                            disabled={!hasRecentResume}
+                            onClick={() => setPostLoginPath(resumePath)}
+                            type="button"
+                          >
+                            {hasRecentResume ? `Resume ${resumeDateLabel}` : 'Recent Reflection'}
+                          </button>
+                        </div>
                       </div>
-                    </div>
+                    ) : null}
 
                     <div className="relative">
                       <label className="mb-2 ml-1 block text-xs font-semibold uppercase tracking-wider text-[#5e7860]/70">

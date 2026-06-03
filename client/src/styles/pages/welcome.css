@@ -1,0 +1,51 @@
+.welcome-page .material-symbols-outlined {
+  font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+}
+
+.welcome-filled-icon {
+  font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+}
+
+.welcome-canvas-entrance {
+  animation: welcome-fade-in-scale 1.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.welcome-leaf-float {
+  animation: welcome-float 10s ease-in-out infinite;
+}
+
+.welcome-botanical-bg {
+  background-image: url("https://lh3.googleusercontent.com/aida/AP1WRLuYhQ0escJqcBvq3RpJ9dlWvIGbudnO68nOA7yAXNfM2d-bwTRYGBMXCQexpkNaAN2GQn71NXcDm5dsgdigCd1QCJEPAursR1m9naBMgxiDvp-6yGOGuIKE0kgC_0nllpAeYkfoxiPtWGcd1eZ2orEYzWOpRV9ofoQZR7H3XzXkBddn-thNOOloDYxPMuD46uY9DOadbBP3oPONL1Gy2Pj-hJytALvkrhJeUoaM9oPv5CTT9YaoZkG9lpU");
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: cover;
+}
+
+.welcome-cursor-glow {
+  left: 50%;
+  opacity: 0.55;
+  top: 50%;
+}
+
+@keyframes welcome-fade-in-scale {
+  0% {
+    opacity: 0;
+    transform: scale(0.98) translateY(10px);
+  }
+
+  100% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+@keyframes welcome-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+
+  50% {
+    transform: translateY(-20px);
+  }
+}
