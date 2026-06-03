@@ -9,6 +9,7 @@ const authService = {
     const res = await api.post('/auth/login', data);
     return res.data;
   },
+  acknowledgeDashboardWelcome: async () => (await api.post('/auth/dashboard-welcome/ack')).data,
   logout: async () => (await api.post('/auth/logout')).data,
   getCurrentUser: async () => (await api.get('/auth/me')).data,
   updateProfile:  async (d: any) => (await api.put('/auth/profile', d)).data,

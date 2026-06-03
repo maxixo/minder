@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import clsx from 'clsx';
 import { eachDayOfInterval, format, parseISO, subDays } from 'date-fns';
 import { Link } from 'react-router-dom';
@@ -18,6 +18,7 @@ import { useTheme } from '@/contexts/useTheme';
 import { dashboardQuotes } from '@/constants/dashboardQuotes';
 import { buildLoginReturnEntrySnapshot, updateLoginReturnContext } from '@/lib/loginReturnContext';
 import analyticsService from '@/services/analyticsService';
+import authService from '@/services/authService';
 import entryService from '@/services/entryService';
 import type { DailyEntry } from '@/types/entry';
 
@@ -126,10 +127,11 @@ const getEntryVisual = (entry: DailyEntry) => {
 };
 
 export default function WellnessOverview() {
-  const { user } = useAuth();
+  const { syncUser, user } = useAuth();
   const { isDarkMode, toggleTheme } = useTheme();
   const firstName = user?.name?.split(' ')[0] || 'there';
   const hasMultipleQuotes = dashboardQuotes.length > 1;
+  const hasRequestedWelcomeAckRef = useRef(false);
 
   const [period, setPeriod] = useState<DashboardPeriod>('7days');
   const [summary, setSummary] = useState<SummaryData>(emptySummary);
@@ -141,6 +143,7 @@ export default function WellnessOverview() {
   const [favoriteQuoteIds, setFavoriteQuoteIds] = useState<string[]>([]);
   const [isTransitionEnabled, setIsTransitionEnabled] = useState(hasMultipleQuotes);
   const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
+  const [showFirstDashboardWelcome, setShowFirstDashboardWelcome] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -222,6 +225,38 @@ export default function WellnessOverview() {
       mediaQuery.removeEventListener('change', handleMotionChange);
     };
   }, []);
+
+  useEffect(() => {
+    if (user?.hasSeenDashboardWelcome === false) {
+      setShowFirstDashboardWelcome(true);
+    }
+  }, [user?.hasSeenDashboardWelcome]);
+
+  useEffect(() => {
+    if (!user?.id || user.hasSeenDashboardWelcome !== false || hasRequestedWelcomeAckRef.current) return undefined;
+
+    hasRequestedWelcomeAckRef.current = true;
+    let cancelled = false;
+
+    void authService.acknowledgeDashboardWelcome()
+      .then((response) => {
+        if (cancelled) return;
+
+        const updatedUser = response.data?.user;
+        if (updatedUser) {
+          syncUser(updatedUser);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          hasRequestedWelcomeAckRef.current = false;
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [syncUser, user?.hasSeenDashboardWelcome, user?.id]);
 
   useEffect(() => {
     if (!hasMultipleQuotes) {
@@ -437,7 +472,9 @@ export default function WellnessOverview() {
         </div>
         <div className="flex flex-col gap-2 lg:flex-row lg:items-end lg:justify-between">
           <div>
-            <h1 className="font-body text-4xl font-semibold text-sage-800 sm:text-5xl dark:text-sage-50">Welcome back, {firstName}.</h1>
+            <h1 className="font-body text-4xl font-semibold text-sage-800 sm:text-5xl dark:text-sage-50">
+              {showFirstDashboardWelcome ? `Welcome, ${firstName}.` : `Welcome back, ${firstName}.`}
+            </h1>
             <p className="mt-2 max-w-2xl text-sm leading-6 text-sage-700 sm:text-base dark:text-sage-200">
               Your emotional wellness snapshot brings together reflection, streaks, and the small rituals keeping you grounded this week.
             </p>

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type FormEvent } from 'react';
+import { useMemo, useState, type FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import AuthThemeToggle from '@/components/common/AuthThemeToggle';
 import BrandLogo from '@/components/common/BrandLogo';
@@ -7,7 +7,7 @@ import '@/styles/pages/login.css';
 
 export default function Register() {
   const navigate = useNavigate();
-  const { register, isAuthenticated } = useAuth();
+  const { register } = useAuth();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -33,12 +33,6 @@ export default function Register() {
       totalFields: checks.length,
     };
   }, [confirmPassword, email, name, password, privacyAccepted]);
-
-  useEffect(() => {
-    if (isAuthenticated) {
-      navigate('/dashboard', { replace: true });
-    }
-  }, [isAuthenticated, navigate]);
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();

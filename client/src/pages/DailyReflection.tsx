@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState, type ChangeEvent, type PointerEve
 import { format, isToday } from 'date-fns';
 import clsx from 'clsx';
 import { toast } from 'sonner';
-import { useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import BrandLogo from '@/components/common/BrandLogo';
 import { useAuth } from '@/contexts/useAuth';
 import { useDailyEntry } from '@/hooks/useDailyEntry';
@@ -47,6 +47,11 @@ const defaultMealsState = {
   lunch: false,
   dinner: false,
 } as const;
+const cadenceLabelMap: Record<string, string> = {
+  daily: 'daily',
+  'three-times-week': 'about three times a week',
+  flexible: 'flexibly',
+};
 
 type ReflectionWeather = (typeof weatherOptions)[number]['key'];
 type ReflectionMood = (typeof moodOptions)[number]['key'];
@@ -187,6 +192,7 @@ const validateEnergyLevels = (levels: ReflectionEnergyPoint[]) => {
 };
 
 export default function DailyReflection() {
+  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const { user } = useAuth();
   const {
@@ -505,9 +511,9 @@ export default function DailyReflection() {
       clearOnboardingFlowState();
       setOnboardingFlow(null);
       if (isOnboardingEntry) {
-        const nextSearchParams = new URLSearchParams(searchParams);
-        nextSearchParams.delete('source');
-        setSearchParams(nextSearchParams, { replace: true });
+        toast.success('Reflection saved');
+        navigate('/dashboard', { replace: true });
+        return;
       }
       toast.success('Reflection saved');
     } catch (saveError: any) {
@@ -603,10 +609,11 @@ export default function DailyReflection() {
               Start with one honest check-in.
             </h2>
             <p className="mt-2 text-sm leading-6 text-[#4f6b55] dark:text-sage-200">
-              {onboardingFlow.focusAreas.length
+              {onboardingFlow.goal
                 ? (
                   <>
-                    You said you want to focus on <span className="font-semibold">{onboardingFlow.focusAreas.map((item) => item.replace(/-/g, ' ')).join(', ')}</span>.
+                    You&apos;re starting with <span className="font-semibold">{onboardingFlow.goal.replace(/-/g, ' ')}</span> and a plan to reflect{' '}
+                    <span className="font-semibold">{cadenceLabelMap[onboardingFlow.cadence || ''] || 'consistently'}</span>.
                     Save this first reflection and the rest of the app will have a real starting point.
                   </>
                 )

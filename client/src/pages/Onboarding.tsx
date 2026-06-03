@@ -7,7 +7,6 @@ import authService from '@/services/authService';
 import { getSafeAvatarUrl } from '@/lib/avatar';
 import { readOnboardingFlowState, updateOnboardingFlowState } from '@/lib/onboardingFlow';
 import { getBrowserTimeZone } from '@/services/pushService';
-import userService from '@/services/userService';
 import '@/styles/pages/onboarding.css';
 
 const ACCEPTED_AVATAR_FILE_TYPES = ['image/png', 'image/jpeg', 'image/webp', 'image/gif'];
@@ -21,11 +20,16 @@ const AM_PM_OPTIONS = ['AM', 'PM'] as const;
 const HOUR_OPTIONS = Array.from({ length: 12 }, (_, index) => String(index + 1).padStart(2, '0'));
 const MINUTE_OPTIONS = Array.from({ length: 12 }, (_, index) => String(index * 5).padStart(2, '0'));
 const WHEEL_ITEM_HEIGHT = 56;
-const focusAreaOptions = [
+const goalOptions = [
   { value: 'better-sleep', label: 'Better Sleep', icon: 'bedtime' },
   { value: 'reduce-stress', label: 'Reduce Stress', icon: 'air' },
   { value: 'daily-focus', label: 'Daily Focus', icon: 'center_focus_strong' },
   { value: 'emotional-balance', label: 'Emotional Balance', icon: 'balance' },
+] as const;
+const cadenceOptions = [
+  { value: 'daily', label: 'Daily', description: 'Build a steady daily check-in habit.' },
+  { value: 'three-times-week', label: '3x per week', description: 'Keep a consistent rhythm without aiming for every day.' },
+  { value: 'flexible', label: 'Flexible', description: 'Check in when you need support or clarity.' },
 ] as const;
 
 const readFileAsDataUrl = (file: File) => new Promise<string>((resolve, reject) => {
@@ -88,7 +92,8 @@ export default function Onboarding() {
   const [name, setName] = useState('');
   const [avatarUrl, setAvatarUrl] = useState('');
   const [avatarPreview, setAvatarPreview] = useState('');
-  const [focusAreas, setFocusAreas] = useState<string[]>(() => readOnboardingFlowState()?.focusAreas || []);
+  const [goal, setGoal] = useState(() => readOnboardingFlowState()?.goal || '');
+  const [cadence, setCadence] = useState(() => readOnboardingFlowState()?.cadence || '');
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isCompletingSetup, setIsCompletingSetup] = useState(false);
@@ -118,6 +123,11 @@ export default function Onboarding() {
     setSelectedMinuteIndex(parsedReminderTime.minuteIndex >= 0 ? parsedReminderTime.minuteIndex : parseReminderTime(DEFAULT_REMINDER_TIME).minuteIndex);
     setSelectedPeriodIndex(parsedReminderTime.periodIndex >= 0 ? parsedReminderTime.periodIndex : 0);
   }, [storedFlow?.reminderTime, user?.preferences?.notifications?.reminderTime]);
+
+  useEffect(() => {
+    setGoal(storedFlow?.goal || user?.goal || '');
+    setCadence(storedFlow?.cadence || user?.cadence || '');
+  }, [storedFlow?.cadence, storedFlow?.goal, user?.cadence, user?.goal]);
 
   const persistedAvatar = getSafeAvatarUrl(avatarUrl);
   const displayAvatar = avatarPreview || persistedAvatar;
@@ -200,23 +210,17 @@ export default function Onboarding() {
     }
   };
 
-  const toggleFocusArea = (value: string) => {
-    setFocusAreas((current) => (
-      current.includes(value)
-        ? current.filter((item) => item !== value)
-        : [...current, value]
-    ));
-  };
-
   const handleSecondStepContinue = () => {
-    if (!focusAreas.length) {
+    if (!goal || !cadence) {
       return;
     }
 
     const nextFlow = updateOnboardingFlowState({
       profileName: name.trim() || user?.name || storedFlow?.profileName || '',
       profileAvatar: avatarUrl || persistedAvatar || storedFlow?.profileAvatar || null,
-      focusAreas,
+      focusAreas: [goal],
+      goal,
+      cadence,
     });
 
     setStoredFlow(nextFlow);
@@ -232,32 +236,47 @@ export default function Onboarding() {
   };
 
   const persistReminderPreferences = async (dailyReminder: boolean) => {
+    const selectedGoal = goal || storedFlow?.goal || user?.goal || '';
+    const selectedCadence = cadence || storedFlow?.cadence || user?.cadence || '';
+
+    if (!selectedGoal || !selectedCadence) {
+      toast.error('Choose a goal and reflection cadence before continuing.');
+      setSearchParams({ step: '2' }, { replace: true });
+      return;
+    }
+
     setIsCompletingSetup(true);
 
     try {
       const timezone = getBrowserTimeZone();
-      const response = await userService.updatePreferences({
-        notifications: {
-          dailyReminder,
-          reminderTime: selectedReminderTime,
-          weeklyReport: user?.preferences?.notifications?.weeklyReport ?? true,
-          timezone,
+      const response = await authService.updateProfile({
+        goal: selectedGoal,
+        cadence: selectedCadence,
+        preferences: {
+          notifications: {
+            dailyReminder,
+            reminderTime: selectedReminderTime,
+            weeklyReport: user?.preferences?.notifications?.weeklyReport ?? true,
+            timezone,
+          },
         },
       });
 
       const nextFlow = updateOnboardingFlowState({
         profileName: name.trim() || user?.name || storedFlow?.profileName || '',
         profileAvatar: avatarUrl || persistedAvatar || storedFlow?.profileAvatar || null,
-        focusAreas,
+        focusAreas: [selectedGoal],
+        goal: selectedGoal,
+        cadence: selectedCadence,
         dailyReminder,
         reminderTime: selectedReminderTime,
       });
 
       setStoredFlow(nextFlow);
-      syncUser({ preferences: response.data });
-      navigate('/welcome?source=onboarding', { replace: true });
+      syncUser(response.data);
+      navigate('/reflection?source=onboarding', { replace: true });
     } catch (error: any) {
-      toast.error(error?.response?.data?.message || 'Unable to save reminder preferences.');
+      toast.error(error?.response?.data?.message || 'Unable to save your onboarding setup.');
     } finally {
       setIsCompletingSetup(false);
     }
@@ -354,41 +373,74 @@ export default function Onboarding() {
                 What brings you here today?
               </h1>
               <p className="mx-auto max-w-md font-body-lg text-secondary">
-                Select the focus areas you&apos;d like to cultivate in your daily practice.
+                Choose the first result you want from MindfulLife and the rhythm you can realistically keep.
               </p>
             </div>
 
-            <div className="grid grid-cols-2 gap-gutter md:grid-cols-2">
-              {focusAreaOptions.map((option) => {
-                const isSelected = focusAreas.includes(option.value);
+            <div className="space-y-stack-lg">
+              <div>
+                <p className="mb-4 text-center font-label-md text-label-md text-primary md:text-left">Primary goal</p>
+                <div className="grid grid-cols-2 gap-gutter md:grid-cols-2">
+                  {goalOptions.map((option) => {
+                    const isSelected = goal === option.value;
 
-                return (
-                  <button
-                    key={option.value}
-                    className={`onboarding-glass-card group relative flex flex-col items-center justify-center rounded-[24px] border-2 p-stack-lg shadow-sm transition-all duration-300 hover:shadow-md ${
-                      isSelected ? 'onboarding-focus-card-active' : 'border-transparent'
-                    }`}
-                    onClick={() => toggleFocusArea(option.value)}
-                    type="button"
-                  >
-                    <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-secondary-fixed text-primary transition-transform group-hover:scale-110">
-                      <span className="material-symbols-outlined text-4xl">{option.icon}</span>
-                    </div>
-                    <span className="text-center font-label-md text-label-md text-on-surface">{option.label}</span>
-                    <div className={`absolute right-4 top-4 transition-opacity ${isSelected ? 'opacity-100' : 'opacity-0'}`}>
-                      <span className="material-symbols-outlined text-primary" style={FILLED_ICON_STYLE}>check_circle</span>
-                    </div>
-                  </button>
-                );
-              })}
+                    return (
+                      <button
+                        key={option.value}
+                        className={`onboarding-glass-card group relative flex flex-col items-center justify-center rounded-[24px] border-2 p-stack-lg shadow-sm transition-all duration-300 hover:shadow-md ${
+                          isSelected ? 'onboarding-focus-card-active' : 'border-transparent'
+                        }`}
+                        onClick={() => setGoal(option.value)}
+                        type="button"
+                      >
+                        <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-secondary-fixed text-primary transition-transform group-hover:scale-110">
+                          <span className="material-symbols-outlined text-4xl">{option.icon}</span>
+                        </div>
+                        <span className="text-center font-label-md text-label-md text-on-surface">{option.label}</span>
+                        <div className={`absolute right-4 top-4 transition-opacity ${isSelected ? 'opacity-100' : 'opacity-0'}`}>
+                          <span className="material-symbols-outlined text-primary" style={FILLED_ICON_STYLE}>check_circle</span>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div>
+                <p className="mb-4 text-center font-label-md text-label-md text-primary md:text-left">Preferred cadence</p>
+                <div className="grid gap-3">
+                  {cadenceOptions.map((option) => {
+                    const isSelected = cadence === option.value;
+
+                    return (
+                      <button
+                        key={option.value}
+                        className={`onboarding-glass-card flex items-start justify-between rounded-[20px] border-2 px-5 py-4 text-left transition-all duration-300 hover:shadow-md ${
+                          isSelected ? 'onboarding-focus-card-active' : 'border-transparent'
+                        }`}
+                        onClick={() => setCadence(option.value)}
+                        type="button"
+                      >
+                        <span>
+                          <span className="block font-label-md text-label-md text-on-surface">{option.label}</span>
+                          <span className="mt-1 block text-sm text-secondary">{option.description}</span>
+                        </span>
+                        <span className={`material-symbols-outlined text-primary transition-opacity ${isSelected ? 'opacity-100' : 'opacity-0'}`} style={FILLED_ICON_STYLE}>
+                          check_circle
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
             </div>
 
             <div className="mt-section-gap flex flex-col items-center gap-stack-md">
               <button
                 className={`w-full max-w-sm rounded-full bg-primary px-12 py-4 font-label-md text-label-md text-on-primary shadow-xl transition-all hover:opacity-90 active:scale-95 ${
-                  focusAreas.length ? '' : 'cursor-not-allowed opacity-50'
+                  goal && cadence ? '' : 'cursor-not-allowed opacity-50'
                 }`}
-                disabled={!focusAreas.length}
+                disabled={!goal || !cadence}
                 onClick={handleSecondStepContinue}
                 type="button"
               >
@@ -539,7 +591,7 @@ export default function Onboarding() {
                   onClick={() => void persistReminderPreferences(true)}
                   type="button"
                 >
-                  {isCompletingSetup ? 'Saving...' : 'Complete Setup'}
+                  {isCompletingSetup ? 'Saving...' : 'Start First Reflection'}
                   <span className="material-symbols-outlined text-[18px]">arrow_forward</span>
                 </button>
                 <p className="mt-stack-md text-center font-metadata text-metadata text-outline/80">

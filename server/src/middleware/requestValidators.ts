@@ -10,6 +10,8 @@ const ENTRY_SECTION_VALUES = ['reflection', 'selfcare', 'emotional', 'review'];
 const WEATHER_VALUES = ['sunny', 'partly_cloudy', 'cloudy', 'rainy', 'stormy', 'snowy'];
 const SLEEP_QUALITY_VALUES = ['poor', 'fair', 'good', 'great', 'excellent'];
 const FEELING_VALUES = ['happy', 'peace', 'sad', 'worried', 'excited', 'bored', 'relaxed', 'lonely', 'tired', 'angry', 'overwhelmed'];
+const GOAL_VALUES = ['better-sleep', 'reduce-stress', 'daily-focus', 'emotional-balance'];
+const CADENCE_VALUES = ['daily', 'three-times-week', 'flexible'];
 
 const isPlainObject = (value: unknown): value is Record<string, unknown> => (
   Boolean(value) && typeof value === 'object' && !Array.isArray(value)
@@ -277,6 +279,14 @@ export const profileUpdateValidators: ValidationChain[] = [
     .withMessage('Avatar URL must be 2048 characters or fewer.')
     .custom((value) => !value || isAllowedAvatarUrl(value))
     .withMessage('Avatar URL must use HTTPS, or HTTP on localhost.'),
+  body('goal')
+    .optional({ nullable: true })
+    .isIn(GOAL_VALUES)
+    .withMessage(`Goal must be one of ${GOAL_VALUES.join(', ')}.`),
+  body('cadence')
+    .optional({ nullable: true })
+    .isIn(CADENCE_VALUES)
+    .withMessage(`Cadence must be one of ${CADENCE_VALUES.join(', ')}.`),
   body('preferences.theme')
     .optional()
     .isIn(THEME_VALUES)

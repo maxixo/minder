@@ -23,3 +23,5 @@ server/.env.*
 !server/.env.*.example
 vapid.md
 landing.html
+server/test/auth-controller.test.ts
+server/test/entry-helpers.test.ts

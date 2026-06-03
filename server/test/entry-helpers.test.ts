@@ -18,9 +18,15 @@ test('serializeUser returns nested preferences and omits passwordHash', () => {
     timezone: 'America/New_York',
     shareStats: true,
     lastReminderSentAt: new Date('2026-05-24T10:00:00.000Z'),
+    createdAt: new Date('2026-05-20T08:00:00.000Z'),
+    hasSeenDashboardWelcome: true,
   });
 
   assert.equal('passwordHash' in user, false);
+  assert.equal(user.goal, null);
+  assert.equal(user.cadence, null);
+  assert.equal(user.createdAt, '2026-05-20T08:00:00.000Z');
+  assert.equal(user.hasSeenDashboardWelcome, true);
   assert.deepEqual(user.preferences, {
     theme: 'dark',
     notifications: {

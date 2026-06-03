@@ -1,0 +1,3 @@
+ALTER TABLE "users"
+ADD COLUMN "goal" TEXT,
+ADD COLUMN "cadence" TEXT;

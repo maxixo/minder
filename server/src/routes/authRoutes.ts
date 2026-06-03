@@ -5,6 +5,7 @@ import {
   login,
   logout,
   getMe,
+  acknowledgeDashboardWelcome,
   updateProfile,
   updatePassword,
   uploadProfileAvatar,
@@ -35,6 +36,7 @@ router.post('/login', [
 router.post('/logout', logout);
 
 router.get('/me',       protect, getMe);
+router.post('/dashboard-welcome/ack', protect, acknowledgeDashboardWelcome);
 router.put('/profile',  protect, profileUpdateValidators, validate, updateProfile);
 router.post('/profile/avatar', protect, avatarUploadValidators, validate, uploadProfileAvatar);
 router.delete('/profile/avatar', protect, deleteProfileAvatar);

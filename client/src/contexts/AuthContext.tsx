@@ -5,29 +5,56 @@ import { updateLoginReturnContext } from '@/lib/loginReturnContext';
 import { getBrowserTimeZone, getExistingPushSubscription } from '@/services/pushService';
 import { toast } from 'sonner';
 
+export interface AuthUserPreferences {
+  theme: string;
+  notifications: {
+    dailyReminder: boolean;
+    reminderTime: string;
+    weeklyReport: boolean;
+    timezone: string;
+    lastReminderSentAt: string | null;
+  };
+  privacy: {
+    shareStats: boolean;
+  };
+}
+
+export interface AuthUser {
+  id: string;
+  name: string;
+  email: string;
+  avatar: string | null;
+  avatarUrl: string | null;
+  goal: string | null;
+  cadence: string | null;
+  createdAt: string | null;
+  hasSeenDashboardWelcome: boolean;
+  preferences: AuthUserPreferences;
+}
+
 export interface AuthContextValue {
-  user: any;
+  user: AuthUser | null;
   loading: boolean;
   isAuthenticated: boolean;
   register: (data: any) => Promise<any>;
-  login: (credentials: any) => Promise<any>;
+  login: (credentials: any, options?: { welcomeMessage?: string }) => Promise<any>;
   logout: () => void;
   updateProfile: (data: any) => Promise<any>;
-  syncUser: (nextUser: any) => void;
+  syncUser: (nextUser: Partial<AuthUser> | AuthUser | null) => void;
 }
 
 export const AuthContext = createContext<AuthContextValue | null>(null);
 
-const mergeUserState = (currentUser: any, nextUser: any, submittedData?: any) => {
+const mergeUserState = (currentUser: AuthUser | null, nextUser: Partial<AuthUser> | AuthUser | null, submittedData?: any) => {
   if (!currentUser) {
     if (submittedData?.avatar !== undefined) {
       return {
         ...(nextUser || {}),
         avatar: submittedData.avatar,
-      };
+      } as AuthUser;
     }
 
-    return nextUser;
+    return nextUser as AuthUser | null;
   }
 
   return {
@@ -48,11 +75,11 @@ const mergeUserState = (currentUser: any, nextUser: any, submittedData?: any) =>
         ...(nextUser?.preferences?.privacy || {}),
       },
     },
-  };
+  } as AuthUser;
 };
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
-  const [user,            setUser]            = useState<any>(null);
+  const [user,            setUser]            = useState<AuthUser | null>(null);
   const [loading,         setLoading]         = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const isSyncingTimeZoneRef = useRef(false);
@@ -68,7 +95,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     });
   }, []);
 
-  const syncTimeZoneToCurrentDevice = useCallback(async (targetUser: any) => {
+  const syncTimeZoneToCurrentDevice = useCallback(async (targetUser: AuthUser | null) => {
     if (!targetUser || isSyncingTimeZoneRef.current) return;
 
     const browserTimeZone = getBrowserTimeZone();
@@ -92,7 +119,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       });
 
       await syncSubscriptionTimeZoneToCurrentDevice(browserTimeZone);
-      setUser((currentUser: any) => mergeUserState(currentUser, response.data));
+      setUser((currentUser) => mergeUserState(currentUser, response.data));
       lastSyncedTimeZoneRef.current = browserTimeZone;
     } catch {
       lastSyncedTimeZoneRef.current = null;
@@ -144,7 +171,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     return res;
   };
 
-  const login = async (credentials: any) => {
+  const login = async (credentials: any, options?: { welcomeMessage?: string }) => {
     const res = await authService.login(credentials);
     setUser(res.data.user);
     setIsAuthenticated(true);
@@ -152,7 +179,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       email: res.data?.user?.email || credentials?.email || '',
       firstName: res.data?.user?.name?.split(' ')[0] || '',
     });
-    toast.success('Welcome back!');
+    toast.success(options?.welcomeMessage || 'Welcome back!');
     return res;
   };
 
@@ -163,13 +190,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const syncUser = (nextUser: any) => {
-    setUser((currentUser: any) => mergeUserState(currentUser, nextUser));
+    setUser((currentUser) => mergeUserState(currentUser, nextUser));
     setIsAuthenticated(Boolean(nextUser));
   };
 
   const updateProfile = async (data: any) => {
     const res = await authService.updateProfile(data);
-    setUser((currentUser: any) => mergeUserState(currentUser, res.data, data));
+    setUser((currentUser) => mergeUserState(currentUser, res.data, data));
     toast.success('Profile updated');
     return res;
   };

@@ -13,6 +13,8 @@ model User {
   email              String             @unique
   passwordHash       String
   avatar             String?
+  goal               String?
+  cadence            String?
   theme              String             @default("light")
   dailyReminder      Boolean            @default(true)
   reminderTime       String             @default("20:00")
@@ -20,6 +22,7 @@ model User {
   timezone           String             @default("UTC")
   lastReminderSentAt DateTime?
   shareStats         Boolean            @default(false)
+  hasSeenDashboardWelcome Boolean       @default(false)
   pushSubscriptions  PushSubscription[]
   entries            Entry[]
   entryInsights      EntryInsight[]

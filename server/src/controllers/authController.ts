@@ -81,9 +81,23 @@ export const getMe = async (req: AuthRequest, res: Response) => {
   }
 };
 
+export const acknowledgeDashboardWelcome = async (req: AuthRequest, res: Response) => {
+  try {
+    const user = await prisma.user.update({
+      where: { id: req.user.id },
+      data: { hasSeenDashboardWelcome: true },
+    });
+
+    setNoStore(res);
+    res.json({ success: true, data: { user: serializeUser(user) } });
+  } catch (err: any) {
+    return sendInternalServerError(res, err, 'Acknowledge dashboard welcome failed');
+  }
+};
+
 export const updateProfile = async (req: AuthRequest, res: Response) => {
   try {
-    const { name, avatar, preferences } = req.body;
+    const { name, avatar, goal, cadence, preferences } = req.body;
     const currentUser = await prisma.user.findUnique({ where: { id: req.user.id } });
 
     if (!currentUser) {
@@ -91,6 +105,8 @@ export const updateProfile = async (req: AuthRequest, res: Response) => {
     }
 
     const normalizedAvatar = avatar === '' ? null : avatar;
+    const currentGoal = (currentUser as any).goal;
+    const currentCadence = (currentUser as any).cadence;
 
     if (normalizedAvatar === null && currentUser.avatar && isCloudinaryConfigured()) {
       await deleteAvatarImage(req.user.id);
@@ -101,13 +117,15 @@ export const updateProfile = async (req: AuthRequest, res: Response) => {
       data: {
         name: name ?? currentUser.name,
         avatar: normalizedAvatar !== undefined ? normalizedAvatar : currentUser.avatar,
+        goal: goal ?? currentGoal,
+        cadence: cadence ?? currentCadence,
         theme: preferences?.theme ?? currentUser.theme,
         dailyReminder: preferences?.notifications?.dailyReminder ?? currentUser.dailyReminder,
         reminderTime: preferences?.notifications?.reminderTime ?? currentUser.reminderTime,
         weeklyReport: preferences?.notifications?.weeklyReport ?? currentUser.weeklyReport,
         timezone: preferences?.notifications?.timezone ?? currentUser.timezone,
         shareStats: preferences?.privacy?.shareStats ?? currentUser.shareStats,
-      },
+      } as any,
     });
 
     res.json({ success: true, data: serializeUser(user) });

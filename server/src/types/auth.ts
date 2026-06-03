@@ -6,6 +6,10 @@ export interface AuthenticatedUser {
   email: string;
   avatar: string | null;
   avatarUrl: string | null;
+  goal: string | null;
+  cadence: string | null;
+  createdAt: string | null;
+  hasSeenDashboardWelcome: boolean;
   preferences: {
     theme: string;
     notifications: {
