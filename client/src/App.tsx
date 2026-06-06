@@ -19,6 +19,8 @@ const SelfCare = lazy(() => import('@/pages/SelfCare'));
 const EmotionalGuidance = lazy(() => import('@/pages/EmotionalGuidance'));
 const Review = lazy(() => import('@/pages/Review'));
 const Analytics = lazy(() => import('@/pages/Analytics'));
+const Inspiration = lazy(() => import('@/pages/Inspiration'));
+const Share = lazy(() => import('@/pages/Share'));
 const Settings = lazy(() => import('@/pages/Settings'));
 
 const RouteLoader = () => (
@@ -36,6 +38,8 @@ export default function App() {
           <Suspense fallback={<RouteLoader />}>
             <Routes>
               <Route path="/" element={<Landing />} />
+              <Route path="/share" element={<Share />} />
+              <Route path="/export" element={<Share />} />
               <Route path="/login" element={<PublicOnlyRoute><Login /></PublicOnlyRoute>} />
               <Route path="/register" element={<PublicOnlyRoute><Register /></PublicOnlyRoute>} />
               <Route path="/onboarding" element={<ProtectedRoute><Onboarding /></ProtectedRoute>} />
@@ -47,6 +51,7 @@ export default function App() {
                 <Route path="/emotional" element={<EmotionalGuidance />} />
                 <Route path="/review" element={<Review />} />
                 <Route path="/analytics" element={<Analytics />} />
+                <Route path="/inspiration" element={<Inspiration />} />
                 <Route path="/settings" element={<Settings />} />
               </Route>
               <Route path="*" element={<Navigate to="/" replace />} />

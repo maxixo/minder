@@ -34,6 +34,7 @@ const routeTitleLookup: Record<string, string> = {
   '/emotional': 'Emotional Guidance',
   '/review': 'Journal Review',
   '/analytics': 'Analytics',
+  '/inspiration': 'Inspiration',
   '/settings': 'Settings',
 };
 

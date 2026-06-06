@@ -25,3 +25,5 @@ vapid.md
 landing.html
 server/test/auth-controller.test.ts
 server/test/entry-helpers.test.ts
+export.html
+server/test/inspiration-service.test.ts

@@ -1,898 +1,114 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import clsx from 'clsx';
-import { eachDayOfInterval, format, parseISO, subDays } from 'date-fns';
+import { differenceInCalendarDays, eachDayOfInterval, format, parseISO, subDays } from 'date-fns';
 import { Link } from 'react-router-dom';
-import { toast } from 'sonner';
-import {
-  Area,
-  AreaChart,
-  CartesianGrid,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from 'recharts';
-import BrandLogo from '@/components/common/BrandLogo';
+import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
+import { dashboardQuotes } from '@/constants/dashboardQuotes';
 import { useAuth } from '@/contexts/useAuth';
 import { useTheme } from '@/contexts/useTheme';
-import { dashboardQuotes } from '@/constants/dashboardQuotes';
+import { getDailyQuote } from '@/lib/inspiration';
 import { buildLoginReturnEntrySnapshot, updateLoginReturnContext } from '@/lib/loginReturnContext';
 import analyticsService from '@/services/analyticsService';
 import authService from '@/services/authService';
 import entryService from '@/services/entryService';
+import type { AiSummaryResponse, ThemeTrendResponse } from '@/types/ai';
 import type { DailyEntry } from '@/types/entry';
 
 type DashboardPeriod = '7days' | '30days';
+type SummaryData = { totalEntries: number; currentStreak: number; averageMood: number; averageWaterIntake: number; averageSleepHours: number; completionRate: number; };
+type WeeklyReportData = { daysLogged: number; averageMood: number; averageWaterIntake: number; averageSleepHours: number; topFeelings: Array<{ feeling: string; count: number }>; };
+type DashboardChartPoint = { date: string; label: string; fullDate: string; mood: number | null; moodLabel: string; hasEntry: boolean; entryCreatedTimeLabel: string | null; };
 
-interface SummaryData {
-  totalEntries: number;
-  currentStreak: number;
-  averageMood: number;
-  averageWaterIntake: number;
-  averageSleepHours: number;
-  completionRate: number;
-}
-
-interface DashboardChartPoint {
-  date: string;
-  label: string;
-  fullDate: string;
-  mood: number | null;
-  moodLabel: string;
-  hasEntry: boolean;
-  entryCreatedTimeLabel: string | null;
-}
-
-const emptySummary: SummaryData = {
-  totalEntries: 0,
-  currentStreak: 0,
-  averageMood: 0,
-  averageWaterIntake: 0,
-  averageSleepHours: 0,
-  completionRate: 0,
-};
-
-const quickActions = [
-  {
-    label: "Today's Reflection",
-    icon: 'edit_note',
-    to: '/reflection',
-    className: 'bg-sage-600 text-white shadow-lg shadow-sage-600/20 hover:bg-sage-700 hover:shadow-sage-600/30 dark:bg-sage-500 dark:text-slate-950 dark:hover:bg-sage-400 dark:hover:shadow-sage-500/30',
-  },
-  {
-    label: 'Self-Care Check',
-    icon: 'self_care',
-    to: '/selfcare',
-    className: 'border border-sage-200 bg-white text-sage-700 hover:bg-sage-50 dark:border-white/10 dark:bg-white/5 dark:text-sage-100 dark:hover:bg-white/10',
-  },
-];
-
-const periodOptions: Array<{ value: DashboardPeriod; label: string }> = [
-  { value: '7days', label: 'This Week' },
-  { value: '30days', label: 'Last 30 Days' },
-];
-
-const QUOTE_AUTO_ADVANCE_MS = 6000;
-const QUOTE_TRANSITION_MS = 500;
-
+const emptySummary: SummaryData = { totalEntries: 0, currentStreak: 0, averageMood: 0, averageWaterIntake: 0, averageSleepHours: 0, completionRate: 0 };
+const emptyWeekly: WeeklyReportData = { daysLogged: 0, averageMood: 0, averageWaterIntake: 0, averageSleepHours: 0, topFeelings: [] };
+const emptyAi: AiSummaryResponse = { period: '7days', narrative: 'There are not enough analyzed reflections in this period yet to build an AI summary.', recurringThemes: [], commonStressors: [], positiveAnchors: [], suggestedFocusAreas: [], languageShift: { direction: 'insufficient_data', explanation: 'There is not enough scored text yet to estimate a language shift.' } };
+const emptyThemes: ThemeTrendResponse = { period: '7days', recurringThemes: [], commonStressors: [], positiveAnchors: [] };
+const periodOptions: Array<{ value: DashboardPeriod; label: string }> = [{ value: '7days', label: 'This Week' }, { value: '30days', label: 'Last 30 Days' }];
+const goalLabels: Record<string, string> = { 'better-sleep': 'Better Sleep', 'reduce-stress': 'Reduce Stress', 'daily-focus': 'Daily Focus', 'emotional-balance': 'Emotional Balance' };
+const cadenceLabels: Record<string, string> = { daily: 'Daily', 'three-times-week': '3x per week', flexible: 'Flexible' };
 const unwrapEnvelope = <T,>(response: { data: T }) => response.data;
-
 const toEntryDateKey = (value?: string | null) => (typeof value === 'string' ? value.slice(0, 10) : '');
-
-const formatEntryDateLabel = (value: string | null | undefined, pattern: string) => {
-  const dateKey = toEntryDateKey(value);
-  return dateKey ? format(parseISO(dateKey), pattern) : '';
-};
-
-const formatMoodLabel = (score: number | null | undefined) => {
-  if (score >= 4.5) return 'Bright';
-  if (score >= 3.5) return 'Good';
-  if (score >= 2.5) return 'Steady';
-  if (score >= 1.5) return 'Tender';
-  if (score > 0) return 'Heavy';
-  return 'No mood data';
-};
-
-const getCompletionMessage = (summary: SummaryData) => {
-  if (summary.currentStreak >= 7) return `${summary.currentStreak}-day streak and building.`;
-  if (summary.completionRate >= 80) return 'Your recent check-ins have stayed remarkably consistent.';
-  if (summary.completionRate > 0) return 'Steady progress is making your patterns easier to read.';
-  return 'Your first few reflections will start shaping this card.';
-};
-
-const getEntryTitle = (entry: DailyEntry) => {
-  if (entry.focus) return entry.focus;
-  if (entry.expectations) return entry.expectations;
-  if (entry.emotionalGuidance?.howYoureFeeling) return 'Emotional Check-In';
-  if (entry.gratitude?.[0]) return `Gratitude: ${entry.gratitude[0]}`;
-  return 'Daily Reflection';
-};
-
-const getEntryExcerpt = (entry: DailyEntry) => {
-  const source = entry.positiveNotes?.[0]
-    || entry.mindThoughts
-    || entry.emotionalGuidance?.whatYoureThinking
-    || entry.mindfulnessNotes
-    || entry.gratitude?.[0]
-    || 'A quiet moment was captured in this entry.';
-
-  return source.length > 88 ? `${source.slice(0, 85)}...` : source;
-};
-
-const getEntryVisual = (entry: DailyEntry) => {
-  if (entry.weather === 'sunny') return { icon: 'wb_sunny', accentClassName: 'bg-amber-50 text-amber-600' };
-  if (entry.weather === 'rainy') return { icon: 'rainy', accentClassName: 'bg-blue-50 text-blue-600' };
-  if (entry.emotionalGuidance?.howYoureFeeling) return { icon: 'favorite', accentClassName: 'bg-rose-50 text-rose-600' };
-  return { icon: 'menu_book', accentClassName: 'bg-sage-50 text-sage-700' };
-};
+const formatMoodLabel = (score: number | null | undefined) => score >= 4.5 ? 'Bright' : score >= 3.5 ? 'Good' : score >= 2.5 ? 'Steady' : score >= 1.5 ? 'Tender' : score && score > 0 ? 'Heavy' : 'No mood data';
+const trimCopy = (value: string, max = 160) => value.length > max ? `${value.slice(0, max - 3).trimEnd()}...` : value;
+const entryTitle = (entry: DailyEntry) => entry.focus || entry.expectations || (entry.emotionalGuidance?.howYoureFeeling ? 'Emotional Check-In' : entry.gratitude?.[0] ? `Gratitude: ${entry.gratitude[0]}` : 'Daily Reflection');
+const entryExcerpt = (entry: DailyEntry) => { const text = entry.positiveNotes?.[0] || entry.mindThoughts || entry.emotionalGuidance?.whatYoureThinking || entry.mindfulnessNotes || entry.gratitude?.[0] || 'A quiet moment was captured in this entry.'; return text.length > 88 ? `${text.slice(0, 85)}...` : text; };
 
 export default function WellnessOverview() {
   const { syncUser, user } = useAuth();
   const { isDarkMode, toggleTheme } = useTheme();
   const firstName = user?.name?.split(' ')[0] || 'there';
-  const hasMultipleQuotes = dashboardQuotes.length > 1;
   const hasRequestedWelcomeAckRef = useRef(false);
-
   const [period, setPeriod] = useState<DashboardPeriod>('7days');
-  const [summary, setSummary] = useState<SummaryData>(emptySummary);
+  const [summary, setSummary] = useState(emptySummary);
+  const [weeklyReport, setWeeklyReport] = useState(emptyWeekly);
+  const [aiSummary, setAiSummary] = useState(emptyAi);
+  const [themeTrends, setThemeTrends] = useState(emptyThemes);
   const [recentEntries, setRecentEntries] = useState<DailyEntry[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
-  const [trackIndex, setTrackIndex] = useState(hasMultipleQuotes ? 1 : 0);
-  const [isQuoteHovered, setIsQuoteHovered] = useState(false);
-  const [favoriteQuoteIds, setFavoriteQuoteIds] = useState<string[]>([]);
-  const [isTransitionEnabled, setIsTransitionEnabled] = useState(hasMultipleQuotes);
-  const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
   const [showFirstDashboardWelcome, setShowFirstDashboardWelcome] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
-
     const loadDashboard = async () => {
       setIsLoading(true);
       setError('');
-
-      const recentDays = period === '7days' ? 7 : 30;
-      const [summaryResult, entriesResult] = await Promise.allSettled([
-        analyticsService.getSummary(period),
-        entryService.getRecentEntries(recentDays),
-      ]);
-
+      const [summaryResult, entriesResult, weeklyResult, aiResult, themeResult] = await Promise.allSettled([analyticsService.getSummary(period), entryService.getRecentEntries(30), analyticsService.getWeeklyReport(), analyticsService.getAiSummary('7days'), analyticsService.getThemeTrends('7days')]);
       if (cancelled) return;
-
-      const nextSummary: SummaryData = summaryResult.status === 'fulfilled'
-        ? unwrapEnvelope(summaryResult.value) as SummaryData
-        : emptySummary;
-      const nextRecentEntries: DailyEntry[] = entriesResult.status === 'fulfilled'
-        ? unwrapEnvelope(entriesResult.value) as DailyEntry[]
-        : [];
-      let requestFailed = false;
-
-      if (summaryResult.status === 'fulfilled') {
-        setSummary(nextSummary);
-      } else {
-        setSummary(emptySummary);
-        requestFailed = true;
-      }
-
-      if (entriesResult.status === 'fulfilled') {
-        setRecentEntries(nextRecentEntries);
-      } else {
-        setRecentEntries([]);
-        requestFailed = true;
-      }
-
-      updateLoginReturnContext({
-        email: user?.email || '',
-        firstName,
-        ...(summaryResult.status === 'fulfilled'
-          ? {
-              currentStreak: nextSummary.currentStreak,
-              completionRate: nextSummary.completionRate,
-            }
-          : {}),
-        ...(entriesResult.status === 'fulfilled'
-          ? buildLoginReturnEntrySnapshot(nextRecentEntries[0])
-          : {}),
-      });
-
-      if (requestFailed) {
-        setError('Some dashboard insights could not be loaded. Available data is still being shown.');
-      }
-
+      const nextSummary = summaryResult.status === 'fulfilled' ? unwrapEnvelope(summaryResult.value) as SummaryData : emptySummary;
+      const nextEntries = entriesResult.status === 'fulfilled' ? unwrapEnvelope(entriesResult.value) as DailyEntry[] : [];
+      let failed = false;
+      if (summaryResult.status === 'fulfilled') setSummary(nextSummary); else { setSummary(emptySummary); failed = true; }
+      if (entriesResult.status === 'fulfilled') setRecentEntries(nextEntries); else { setRecentEntries([]); failed = true; }
+      if (weeklyResult.status === 'fulfilled') setWeeklyReport(unwrapEnvelope(weeklyResult.value) as WeeklyReportData); else { setWeeklyReport(emptyWeekly); failed = true; }
+      if (aiResult.status === 'fulfilled') setAiSummary(unwrapEnvelope(aiResult.value) as AiSummaryResponse); else { setAiSummary(emptyAi); failed = true; }
+      if (themeResult.status === 'fulfilled') setThemeTrends(unwrapEnvelope(themeResult.value) as ThemeTrendResponse); else { setThemeTrends(emptyThemes); failed = true; }
+      updateLoginReturnContext({ email: user?.email || '', firstName, ...(summaryResult.status === 'fulfilled' ? { currentStreak: nextSummary.currentStreak, completionRate: nextSummary.completionRate } : {}), ...(entriesResult.status === 'fulfilled' ? buildLoginReturnEntrySnapshot(nextEntries[0]) : {}) });
+      if (failed) setError('Some dashboard insights could not be loaded. Available data is still being shown.');
       setIsLoading(false);
     };
-
     void loadDashboard();
-
-    return () => {
-      cancelled = true;
-    };
+    return () => { cancelled = true; };
   }, [firstName, period, user?.email]);
 
-  useEffect(() => {
-    if (typeof window === 'undefined') return undefined;
-
-    const mediaQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
-    const handleMotionChange = () => {
-      setPrefersReducedMotion(mediaQuery.matches);
-    };
-
-    handleMotionChange();
-    mediaQuery.addEventListener('change', handleMotionChange);
-
-    return () => {
-      mediaQuery.removeEventListener('change', handleMotionChange);
-    };
-  }, []);
-
-  useEffect(() => {
-    if (user?.hasSeenDashboardWelcome === false) {
-      setShowFirstDashboardWelcome(true);
-    }
-  }, [user?.hasSeenDashboardWelcome]);
-
+  useEffect(() => { if (user?.hasSeenDashboardWelcome === false) setShowFirstDashboardWelcome(true); }, [user?.hasSeenDashboardWelcome]);
   useEffect(() => {
     if (!user?.id || user.hasSeenDashboardWelcome !== false || hasRequestedWelcomeAckRef.current) return undefined;
-
     hasRequestedWelcomeAckRef.current = true;
     let cancelled = false;
-
-    void authService.acknowledgeDashboardWelcome()
-      .then((response) => {
-        if (cancelled) return;
-
-        const updatedUser = response.data?.user;
-        if (updatedUser) {
-          syncUser(updatedUser);
-        }
-      })
-      .catch(() => {
-        if (!cancelled) {
-          hasRequestedWelcomeAckRef.current = false;
-        }
-      });
-
-    return () => {
-      cancelled = true;
-    };
+    void authService.acknowledgeDashboardWelcome().then((response) => { if (!cancelled && response.data?.user) syncUser(response.data.user); }).catch(() => { if (!cancelled) hasRequestedWelcomeAckRef.current = false; });
+    return () => { cancelled = true; };
   }, [syncUser, user?.hasSeenDashboardWelcome, user?.id]);
-
-  useEffect(() => {
-    if (!hasMultipleQuotes) {
-      setTrackIndex(0);
-      setIsTransitionEnabled(false);
-      return;
-    }
-
-    setTrackIndex(1);
-    setIsTransitionEnabled(!prefersReducedMotion);
-  }, [hasMultipleQuotes, prefersReducedMotion]);
-
-  useEffect(() => {
-    if (!hasMultipleQuotes || prefersReducedMotion || isQuoteHovered) return undefined;
-
-    const intervalId = window.setInterval(() => {
-      setIsTransitionEnabled(true);
-      setTrackIndex((current) => current + 1);
-    }, QUOTE_AUTO_ADVANCE_MS);
-
-    return () => {
-      window.clearInterval(intervalId);
-    };
-  }, [hasMultipleQuotes, isQuoteHovered, prefersReducedMotion, trackIndex]);
-
-  useEffect(() => {
-    if (!hasMultipleQuotes) return undefined;
-
-    if (prefersReducedMotion) {
-      if (trackIndex === 0) {
-        setTrackIndex(dashboardQuotes.length);
-      } else if (trackIndex === dashboardQuotes.length + 1) {
-        setTrackIndex(1);
-      }
-      return undefined;
-    }
-
-    if (trackIndex !== 0 && trackIndex !== dashboardQuotes.length + 1) return undefined;
-
-    const timeoutId = window.setTimeout(() => {
-      setIsTransitionEnabled(false);
-      setTrackIndex(trackIndex === 0 ? dashboardQuotes.length : 1);
-    }, QUOTE_TRANSITION_MS);
-
-    return () => {
-      window.clearTimeout(timeoutId);
-    };
-  }, [hasMultipleQuotes, prefersReducedMotion, trackIndex]);
-
-  useEffect(() => {
-    if (prefersReducedMotion || !hasMultipleQuotes || isTransitionEnabled) return undefined;
-
-    const timeoutId = window.setTimeout(() => {
-      setIsTransitionEnabled(true);
-    }, 40);
-
-    return () => {
-      window.clearTimeout(timeoutId);
-    };
-  }, [hasMultipleQuotes, isTransitionEnabled, prefersReducedMotion]);
-
-  const statCards = useMemo(() => [
-    {
-      title: 'Current Streak',
-      value: `${summary.currentStreak} ${summary.currentStreak === 1 ? 'Day' : 'Days'}`,
-      icon: 'local_fire_department',
-      iconClassName: 'text-orange-500',
-      detail: getCompletionMessage(summary),
-      trendIcon: summary.currentStreak > 0 ? 'trending_up' : null,
-      trendClassName: summary.currentStreak > 0 ? 'text-emerald-600' : 'text-slate-400',
-    },
-    {
-      title: 'Mood Average',
-      value: formatMoodLabel(summary.averageMood),
-      icon: 'sentiment_satisfied',
-      iconClassName: 'text-blue-400',
-      detail: summary.averageMood ? `${summary.averageMood.toFixed(1)} out of 5 across ${summary.totalEntries} entries.` : 'Log a few reflections to reveal your overall tone.',
-      trendIcon: null,
-      trendClassName: 'text-slate-400',
-    },
-    {
-      title: 'Completion',
-      value: `${summary.completionRate}%`,
-      icon: 'task_alt',
-      iconClassName: 'text-sage-600',
-      detail: summary.totalEntries ? `${summary.totalEntries} reflection${summary.totalEntries === 1 ? '' : 's'} recorded in this window.` : 'No entries have been completed yet.',
-      trendIcon: summary.completionRate >= 60 ? 'trending_up' : null,
-      trendClassName: summary.completionRate >= 60 ? 'text-emerald-600' : 'text-slate-400',
-    },
-  ], [summary]);
 
   const chartData = useMemo<DashboardChartPoint[]>(() => {
     const totalDays = period === '7days' ? 7 : 30;
     const end = new Date();
     const start = subDays(end, totalDays - 1);
     const entriesByDate = new Map(recentEntries.map((entry) => [toEntryDateKey(entry.date), entry]));
-
     return eachDayOfInterval({ start, end }).map((day) => {
       const date = format(day, 'yyyy-MM-dd');
       const entry = entriesByDate.get(date);
-
-      return {
-        date,
-        label: format(day, totalDays === 7 ? 'EEE' : 'MMM d'),
-        fullDate: format(day, 'MMM d, yyyy'),
-        mood: entry?.mood ?? null,
-        moodLabel: formatMoodLabel(entry?.mood),
-        hasEntry: Boolean(entry),
-        entryCreatedTimeLabel: entry?.createdAt ? format(parseISO(entry.createdAt), 'p') : null,
-      };
+      return { date, label: format(day, totalDays === 7 ? 'EEE' : 'MMM d'), fullDate: format(day, 'MMM d, yyyy'), mood: entry?.mood ?? null, moodLabel: formatMoodLabel(entry?.mood), hasEntry: Boolean(entry), entryCreatedTimeLabel: entry?.createdAt ? format(parseISO(entry.createdAt), 'p') : null };
     });
   }, [period, recentEntries]);
 
-  const previewEntries = useMemo(() => recentEntries.slice(0, 4), [recentEntries]);
-  const chartHasEntries = useMemo(() => chartData.some((point) => point.hasEntry), [chartData]);
-  const chartHasMood = useMemo(() => chartData.some((point) => point.mood != null), [chartData]);
-  const loggedEntryCount = useMemo(() => chartData.filter((point) => point.hasEntry).length, [chartData]);
-
-  const quoteSlides = useMemo(() => {
-    if (!dashboardQuotes.length) return [];
-    if (!hasMultipleQuotes) return dashboardQuotes;
-    return [dashboardQuotes[dashboardQuotes.length - 1], ...dashboardQuotes, dashboardQuotes[0]];
-  }, [hasMultipleQuotes]);
-
-  const activeQuoteIndex = useMemo(() => {
-    if (!dashboardQuotes.length) return -1;
-    if (!hasMultipleQuotes) return 0;
-    if (trackIndex === 0) return dashboardQuotes.length - 1;
-    if (trackIndex === dashboardQuotes.length + 1) return 0;
-    return trackIndex - 1;
-  }, [hasMultipleQuotes, trackIndex]);
-
-  const activeQuote = activeQuoteIndex >= 0 ? dashboardQuotes[activeQuoteIndex] : null;
-  const isFavoriteQuote = activeQuote ? favoriteQuoteIds.includes(activeQuote.id) : false;
-
-  const goToNextQuote = () => {
-    if (!hasMultipleQuotes) return;
-    setIsTransitionEnabled(!prefersReducedMotion);
-    setTrackIndex((current) => current + 1);
-  };
-
-  const goToPreviousQuote = () => {
-    if (!hasMultipleQuotes) return;
-    setIsTransitionEnabled(!prefersReducedMotion);
-    setTrackIndex((current) => current - 1);
-  };
-
-  const goToQuote = (index: number) => {
-    if (!hasMultipleQuotes) return;
-    setIsTransitionEnabled(!prefersReducedMotion);
-    setTrackIndex(index + 1);
-  };
-
-  const toggleFavoriteQuote = () => {
-    if (!activeQuote) return;
-
-    const isFavorite = favoriteQuoteIds.includes(activeQuote.id);
-
-    setFavoriteQuoteIds((current) => (
-      isFavorite ? current.filter((quoteId) => quoteId !== activeQuote.id) : [...current, activeQuote.id]
-    ));
-    toast.success(isFavorite ? 'Quote removed from favorites' : 'Quote saved to favorites');
-  };
-
-  const shareQuote = async () => {
-    if (!activeQuote) return;
-
-    const shareText = `"${activeQuote.text}" - ${activeQuote.author}`;
-
-    try {
-      if (navigator.share) {
-        await navigator.share({ text: shareText, title: 'MindfulLife Quote' });
-        toast.success('Quote shared');
-        return;
-      }
-
-      if (navigator.clipboard?.writeText) {
-        await navigator.clipboard.writeText(shareText);
-        toast.success('Quote copied to clipboard');
-        return;
-      }
-
-      throw new Error('Sharing is not supported');
-    } catch (shareError: any) {
-      if (shareError?.name === 'AbortError') return;
-      toast.error('Unable to share quote');
-    }
-  };
+  const todayDateKey = format(new Date(), 'yyyy-MM-dd');
+  const todayEntry = recentEntries.find((entry) => toEntryDateKey(entry.date) === todayDateKey);
+  const daysSinceLastEntry = recentEntries[0] ? differenceInCalendarDays(new Date(), parseISO(toEntryDateKey(recentEntries[0].date))) : null;
+  const goalLabel = user?.goal ? (goalLabels[user.goal] || user.goal) : 'Emotional Balance';
+  const cadenceLabel = user?.cadence ? (cadenceLabels[user.cadence] || user.cadence) : 'Flexible';
+  const quote = getDailyQuote(dashboardQuotes) || { id: 'fallback', text: 'A steady practice begins with one honest moment of attention.', author: 'MindfulLife' };
+  const recap = aiSummary.languageShift.direction !== 'insufficient_data' ? trimCopy(aiSummary.narrative) : weeklyReport.daysLogged ? `${weeklyReport.daysLogged}/7 days logged this week. A few more check-ins will make the pattern clearer.` : 'Your first few entries will turn this space into a weekly read of your mood, recovery, and habits.';
+  const nextAction = !summary.totalEntries ? { title: 'Start your first reflection', detail: `You set ${goalLabel} as your focus. One short ${cadenceLabel.toLowerCase()} check-in is enough to start turning that into a real habit.`, cta: '/reflection', ctaLabel: 'Begin reflection' } : !todayEntry ? { title: daysSinceLastEntry && daysSinceLastEntry > 1 ? 'Begin again today' : "Complete today's reflection", detail: daysSinceLastEntry && daysSinceLastEntry > 1 ? `You have been away for ${daysSinceLastEntry} days. One honest entry is enough to restart your ${goalLabel.toLowerCase()} rhythm.` : `A quick reflection today will keep your ${cadenceLabel.toLowerCase()} practice moving and make this week's patterns easier to read.`, cta: '/reflection', ctaLabel: 'Reflect now' } : { title: summary.currentStreak >= 7 ? 'Turn momentum into insight' : 'Keep the loop going', detail: summary.currentStreak >= 7 ? `You already checked in today. Use that ${summary.currentStreak}-day streak to spot what is helping your ${goalLabel.toLowerCase()}.` : `Today's reflection is in. A quick review or self-care check will help your ${cadenceLabel.toLowerCase()} rhythm stay light enough to repeat tomorrow.`, cta: summary.currentStreak >= 7 ? '/analytics' : `/reflection?date=${todayDateKey}`, ctaLabel: summary.currentStreak >= 7 ? 'Open analytics' : 'Review today' };
+  const momentum = summary.currentStreak >= 7 ? `${summary.currentStreak}-day streak` : daysSinceLastEntry && daysSinceLastEntry > 1 ? `Away for ${daysSinceLastEntry} days` : summary.completionRate >= 80 ? 'Strong completion' : 'Habit forming';
 
   return (
-    <div className={clsx('animate-fade-in pb-10 transition-colors [&_.font-display]:font-body [&_h1]:font-body [&_h2]:font-body [&_h3]:font-body [&_h4]:font-body [&_h5]:font-body [&_h6]:font-body', isDarkMode && 'dark')}>
-      <div className="mb-8 flex flex-col gap-3 rounded-[2rem] border border-sage-200/80 bg-white/80 px-6 py-5 shadow-soft backdrop-blur-sm transition-colors sm:px-8 dark:border-white/10 dark:bg-[#15201a]/90">
-        <div className="flex items-center justify-between gap-4">
-          <p className="text-xs font-semibold uppercase tracking-[0.28em] text-sage-500 dark:text-sage-300">Wellness Dashboard</p>
-          <button
-            aria-label={`Current dashboard theme: ${isDarkMode ? 'dark' : 'light'} mode. Switch to ${isDarkMode ? 'light' : 'dark'} mode`}
-            className="inline-flex items-center gap-3 rounded-full border border-sage-200 bg-sage-50 px-3 py-2 text-sm font-semibold text-sage-700 transition-all hover:border-sage-300 hover:bg-white dark:border-white/10 dark:bg-white/5 dark:text-sage-100 dark:hover:bg-white/10"
-            onClick={toggleTheme}
-            type="button"
-          >
-            <span className="material-symbols-outlined text-[18px]">{isDarkMode ? 'dark_mode' : 'light_mode'}</span>
-            <span>{isDarkMode ? 'Dark mode' : 'Light mode'}</span>
-            <span className={clsx(
-              'relative inline-flex h-6 w-11 rounded-full transition-colors',
-              isDarkMode ? 'bg-sage-500' : 'bg-sage-300'
-            )}>
-              <span className={clsx(
-                'absolute top-0.5 h-5 w-5 rounded-full bg-white shadow-sm transition-all',
-                isDarkMode ? 'left-5' : 'left-0.5'
-              )} />
-            </span>
-          </button>
-        </div>
-        <div className="flex flex-col gap-2 lg:flex-row lg:items-end lg:justify-between">
-          <div>
-            <h1 className="font-body text-4xl font-semibold text-sage-800 sm:text-5xl dark:text-sage-50">
-              {showFirstDashboardWelcome ? `Welcome, ${firstName}.` : `Welcome back, ${firstName}.`}
-            </h1>
-            <p className="mt-2 max-w-2xl text-sm leading-6 text-sage-700 sm:text-base dark:text-sage-200">
-              Your emotional wellness snapshot brings together reflection, streaks, and the small rituals keeping you grounded this week.
-            </p>
-          </div>
-          <div className="inline-flex items-center gap-2 rounded-full bg-sage-100 px-4 py-2 text-sm font-medium text-sage-700 dark:bg-white/5 dark:text-sage-100">
-            <span className="material-symbols-outlined text-base">air</span>
-            Breathe. Notice. Begin again.
-          </div>
-        </div>
-      </div>
-
-      <section className="mb-10 overflow-hidden rounded-[2rem] border border-sage-200 bg-gradient-to-br from-sage-100 via-sage-50 to-white p-6 shadow-soft transition-colors sm:p-8 lg:p-10 dark:border-white/10 dark:bg-gradient-to-br dark:from-sage-800 dark:via-sage-900 dark:to-sage-900">
-        <div
-          aria-label="Inspirational quote carousel"
-          aria-roledescription="carousel"
-          className="relative overflow-hidden rounded-[1.75rem] border border-sage-200/80 bg-sage-600/10 px-6 py-12 text-center sm:px-10 dark:border-white/10 dark:bg-white/5"
-          onBlurCapture={() => setIsQuoteHovered(false)}
-          onFocusCapture={() => setIsQuoteHovered(true)}
-          onMouseEnter={() => setIsQuoteHovered(true)}
-          onMouseLeave={() => setIsQuoteHovered(false)}
-        >
-          <div
-            aria-hidden="true"
-            className="pointer-events-none absolute inset-0 opacity-20"
-            style={{
-              backgroundImage: 'radial-gradient(circle at 2px 2px, rgba(94, 120, 96, 0.95) 1px, transparent 0)',
-              backgroundSize: '24px 24px',
-            }}
-          />
-
-          <div className="relative z-10 mx-auto flex max-w-3xl flex-col items-center">
-            <span className="material-symbols-outlined mb-4 text-4xl text-sage-600/70 dark:text-sage-200/70">format_quote</span>
-
-            {quoteSlides.length ? (
-              <div className="w-full">
-                <div className="overflow-hidden">
-                  <div
-                    aria-atomic="true"
-                    aria-live={prefersReducedMotion ? 'off' : 'polite'}
-                    className="flex"
-                    style={{
-                      transform: `translateX(-${trackIndex * 100}%)`,
-                      transitionDuration: prefersReducedMotion || !isTransitionEnabled ? '0ms' : `${QUOTE_TRANSITION_MS}ms`,
-                      transitionProperty: 'transform',
-                      transitionTimingFunction: 'ease-in-out',
-                    }}
-                  >
-                    {quoteSlides.map((quote, index) => (
-                      <div className="w-full shrink-0" key={`${quote.id}-${index + 1}`}>
-                        <div className="mx-auto flex min-h-[180px] max-w-3xl flex-col items-center justify-center">
-                          <h2 className="!font-display text-3xl italic leading-tight text-sage-900 sm:text-4xl lg:text-5xl dark:text-sage-50">
-                            &quot;{quote.text}&quot;
-                          </h2>
-                          <p className="mt-5 text-base font-semibold tracking-[0.24em] text-sage-700 dark:text-sage-200">
-                            {quote.author.toUpperCase()}
-                          </p>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {hasMultipleQuotes ? (
-                  <div className="mt-8 flex items-center justify-center gap-3">
-                    <button
-                      aria-label="Show previous quote"
-                      className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-sage-200 bg-white/80 text-sage-700 transition-all hover:border-sage-300 hover:bg-white dark:border-white/10 dark:bg-white/5 dark:text-sage-100 dark:hover:bg-white/10"
-                      onClick={goToPreviousQuote}
-                      type="button"
-                    >
-                      <span className="material-symbols-outlined">arrow_back</span>
-                    </button>
-
-                    <div className="flex items-center gap-2">
-                      {dashboardQuotes.map((quote, index) => {
-                        const isActive = index === activeQuoteIndex;
-                        return (
-                          <button
-                            aria-label={`Show quote ${index + 1} by ${quote.author}`}
-                            aria-pressed={isActive}
-                            className={clsx(
-                              'h-2.5 rounded-full transition-all',
-                              isActive
-                                ? 'w-8 bg-sage-700 dark:bg-sage-100'
-                                : 'w-2.5 bg-sage-300 hover:bg-sage-400 dark:bg-sage-500/50 dark:hover:bg-sage-300'
-                            )}
-                            key={quote.id}
-                            onClick={() => goToQuote(index)}
-                            type="button"
-                          />
-                        );
-                      })}
-                    </div>
-
-                    <button
-                      aria-label="Show next quote"
-                      className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-sage-200 bg-white/80 text-sage-700 transition-all hover:border-sage-300 hover:bg-white dark:border-white/10 dark:bg-white/5 dark:text-sage-100 dark:hover:bg-white/10"
-                      onClick={goToNextQuote}
-                      type="button"
-                    >
-                      <span className="material-symbols-outlined">arrow_forward</span>
-                    </button>
-                  </div>
-                ) : null}
-              </div>
-            ) : (
-              <>
-                <h2 className="!font-display text-3xl italic leading-tight text-sage-900 sm:text-4xl lg:text-5xl dark:text-sage-50">
-                  &quot;Nature does not hurry, yet everything is accomplished.&quot;
-                </h2>
-                <p className="mt-5 text-base font-semibold tracking-[0.24em] text-sage-700 dark:text-sage-200">LAO TZU</p>
-              </>
-            )}
-
-            <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-              <button
-                className={clsx(
-                  'inline-flex items-center justify-center gap-2 rounded-full px-6 py-3 text-sm font-bold transition-all',
-                  isFavoriteQuote
-                    ? 'bg-rose-100 text-rose-700 hover:-translate-y-0.5 hover:bg-rose-200 hover:shadow-lifted dark:bg-rose-500/15 dark:text-rose-100 dark:hover:bg-rose-500/25'
-                    : 'bg-sage-600 text-white hover:-translate-y-0.5 hover:bg-sage-700 hover:shadow-lifted'
-                )}
-                onClick={toggleFavoriteQuote}
-                type="button"
-              >
-                <span className="material-symbols-outlined text-lg">{isFavoriteQuote ? 'favorite' : 'favorite_border'}</span>
-                {isFavoriteQuote ? 'Saved to Favorites' : 'Save to Favorites'}
-              </button>
-              <button
-                className="inline-flex items-center justify-center gap-2 rounded-full border border-sage-200 bg-white px-6 py-3 text-sm font-bold text-sage-700 transition-all hover:bg-sage-50 dark:border-white/10 dark:bg-white/5 dark:text-sage-100 dark:hover:bg-white/10"
-                onClick={shareQuote}
-                type="button"
-              >
-                <span className="material-symbols-outlined text-lg">share</span>
-                Share
-              </button>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {error ? (
-        <div className="mb-8 rounded-[1.5rem] border border-amber-200 bg-amber-50 px-5 py-4 text-sm leading-6 text-amber-800 shadow-sm">
-          {error}
-        </div>
-      ) : null}
-
-      <section className="mb-10 grid grid-cols-1 gap-6 md:grid-cols-3">
-        {isLoading
-          ? Array.from({ length: 3 }, (_, index) => <div key={`dashboard-stat-skeleton-${index + 1}`} className="skeleton h-44 rounded-[1.75rem]" />)
-          : statCards.map((card) => (
-              <article
-                key={card.title}
-                className="rounded-[1.75rem] border border-sage-100 bg-white p-7 shadow-soft transition-shadow hover:shadow-lifted dark:border-white/10 dark:bg-white/5"
-              >
-                <div className="flex items-start justify-between">
-                  <p className="text-sm font-semibold uppercase tracking-[0.24em] text-sage-500 dark:text-sage-300">{card.title}</p>
-                  <span className={`material-symbols-outlined text-2xl ${card.iconClassName}`}>{card.icon}</span>
-                </div>
-                <p className="mt-4 text-4xl font-semibold text-slate-900 dark:text-sage-50">{card.value}</p>
-                {card.trendIcon ? (
-                  <div className={`mt-3 flex items-center gap-1 text-sm font-bold ${card.trendClassName}`}>
-                    <span className="material-symbols-outlined text-base">{card.trendIcon}</span>
-                    <span>{card.detail}</span>
-                  </div>
-                ) : (
-                  <p className={`mt-3 text-sm font-medium ${card.trendClassName}`}>{card.detail}</p>
-                )}
-              </article>
-            ))}
-      </section>
-
-      <div className="grid grid-cols-1 gap-8 xl:grid-cols-[minmax(0,2fr)_minmax(320px,1fr)]">
-        <div className="space-y-8">
-          <section>
-            <div className="mb-5 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                <h2 className="text-2xl font-semibold tracking-tight text-slate-900 dark:text-sage-50">Weekly Emotional Wellness</h2>
-                <p className="mt-1 text-sm text-sage-600 dark:text-sage-300">A soft snapshot of the rhythms shaping your week.</p>
-              </div>
-              <select
-                className="rounded-full border border-sage-200 bg-white px-4 py-2 text-sm text-sage-700 focus:border-sage-500 focus:outline-none focus:ring-2 focus:ring-sage-100 dark:border-white/10 dark:bg-white/5 dark:text-sage-100 dark:focus:ring-white/10"
-                onChange={(event) => setPeriod(event.target.value as DashboardPeriod)}
-                value={period}
-              >
-                {periodOptions.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div className="rounded-[1.75rem] border border-sage-100 bg-white p-6 shadow-soft sm:p-7 dark:border-white/10 dark:bg-white/5">
-              {isLoading ? (
-                <div className="skeleton h-72 rounded-[1.5rem]" />
-              ) : chartHasEntries && chartHasMood ? (
-                <div>
-                  <div className="h-72">
-                    <ResponsiveContainer>
-                      <AreaChart data={chartData} margin={{ top: 12, right: 12, bottom: 6, left: -18 }}>
-                        <defs>
-                          <linearGradient id="dashboard-mood-fill" x1="0" x2="0" y1="0" y2="1">
-                            <stop offset="0%" stopColor="#5e7860" stopOpacity="0.28" />
-                            <stop offset="100%" stopColor="#5e7860" stopOpacity="0.04" />
-                          </linearGradient>
-                        </defs>
-                        <CartesianGrid stroke={isDarkMode ? '#314238' : '#e3e8e3'} strokeDasharray="4 4" vertical={false} />
-                        <XAxis
-                          axisLine={false}
-                          dataKey="label"
-                          minTickGap={period === '7days' ? 0 : 18}
-                          tick={{ fill: isDarkMode ? '#b7c6b8' : '#7d937f', fontSize: 12, fontWeight: 700 }}
-                          tickLine={false}
-                        />
-                        <YAxis axisLine={false} domain={[1, 5]} tick={{ fill: isDarkMode ? '#b7c6b8' : '#7d937f', fontSize: 12, fontWeight: 700 }} tickLine={false} />
-                        <Tooltip
-                          content={({ active, payload }) => {
-                            const point = payload?.[0]?.payload as DashboardChartPoint | undefined;
-
-                            if (!active || !point) return null;
-
-                            return (
-                              <div className={clsx(
-                                'rounded-2xl border px-4 py-3 shadow-soft',
-                                isDarkMode ? 'border-white/10 bg-[#101915] text-sage-50' : 'border-sage-100 bg-white text-slate-900'
-                              )}>
-                                <p className={clsx('text-xs font-semibold uppercase tracking-[0.2em]', isDarkMode ? 'text-sage-300' : 'text-sage-500')}>
-                                  {point.fullDate}
-                                </p>
-                                <p className="mt-2 text-lg font-semibold">
-                                  {point.mood != null ? `Mood: ${point.mood} / 5` : 'No mood rating'}
-                                </p>
-                                <p className={clsx('mt-1 text-sm', isDarkMode ? 'text-sage-200' : 'text-sage-600')}>
-                                  {point.moodLabel}
-                                </p>
-                                <p className={clsx('mt-1 text-xs', isDarkMode ? 'text-sage-400' : 'text-slate-400')}>
-                                  {point.hasEntry && point.entryCreatedTimeLabel
-                                    ? `Entry saved at ${point.entryCreatedTimeLabel}`
-                                    : 'No entry logged'}
-                                </p>
-                              </div>
-                            );
-                          }}
-                        />
-                        <Area
-                          activeDot={{ fill: '#5e7860', r: 5, stroke: '#ffffff', strokeWidth: 2 }}
-                          connectNulls={false}
-                          dataKey="mood"
-                          dot={({ cx, cy, payload }) => {
-                            if (
-                              payload.mood == null
-                              || typeof cx !== 'number'
-                              || typeof cy !== 'number'
-                            ) {
-                              return null;
-                            }
-
-                            return (
-                              <circle
-                                cx={cx}
-                                cy={cy}
-                                fill="#5e7860"
-                                opacity={payload.hasEntry ? 1 : 0.55}
-                                r={4}
-                                stroke="#ffffff"
-                                strokeWidth={2}
-                              />
-                            );
-                          }}
-                          fill="url(#dashboard-mood-fill)"
-                          stroke="#5e7860"
-                          strokeWidth={3}
-                          type="monotone"
-                        />
-                      </AreaChart>
-                    </ResponsiveContainer>
-                  </div>
-                  <p className="mt-4 text-sm text-sage-600 dark:text-sage-300">
-                    {loggedEntryCount} {loggedEntryCount === 1 ? 'entry' : 'entries'} logged in this range. Hover over the chart to see the day and the time each entry was saved.
-                  </p>
-                </div>
-              ) : chartHasEntries ? (
-                <div className="flex h-72 flex-col items-center justify-center rounded-[1.5rem] border border-dashed border-sage-200 bg-sage-50/70 px-6 text-center dark:border-white/10 dark:bg-[#101915]">
-                  <span className="material-symbols-outlined text-4xl text-sage-400 dark:text-sage-300">edit_calendar</span>
-                  <p className="mt-4 font-body text-2xl font-semibold text-sage-800 dark:text-sage-50">Entries logged, but no mood ratings yet</p>
-                  <p className="mt-2 max-w-md text-sm leading-6 text-sage-600 dark:text-sage-300">
-                    {loggedEntryCount} {loggedEntryCount === 1 ? 'entry was' : 'entries were'} saved in this range. Add a mood to your reflection and the graph will begin tracing the pattern.
-                  </p>
-                </div>
-              ) : (
-                <div className="flex h-72 flex-col items-center justify-center rounded-[1.5rem] border border-dashed border-sage-200 bg-sage-50/70 px-6 text-center dark:border-white/10 dark:bg-[#101915]">
-                  <span className="material-symbols-outlined text-4xl text-sage-400 dark:text-sage-300">sentiment_neutral</span>
-                  <p className="mt-4 font-body text-2xl font-semibold text-sage-800 dark:text-sage-50">No weekly mood trend yet</p>
-                  <p className="mt-2 max-w-md text-sm leading-6 text-sage-600 dark:text-sage-300">
-                    A few saved reflections will turn this space into a clearer picture of your emotional rhythm.
-                  </p>
-                </div>
-              )}
-            </div>
-          </section>
-
-          <section>
-            <div className="mb-5 flex items-center justify-between">
-              <div>
-                <h2 className="text-2xl font-semibold tracking-tight text-slate-900 dark:text-sage-50">Recent Journal Entries</h2>
-                <p className="mt-1 text-sm text-sage-600 dark:text-sage-300">Return to the moments that shaped your recent reflections.</p>
-              </div>
-              <Link className="text-sm font-semibold text-sage-700 transition-colors hover:text-sage-900 dark:text-sage-200 dark:hover:text-white" to="/review">
-                View all
-              </Link>
-            </div>
-
-            <div className="space-y-4">
-              {isLoading
-                ? Array.from({ length: 2 }, (_, index) => <div key={`dashboard-entry-skeleton-${index + 1}`} className="skeleton h-28 rounded-[1.75rem]" />)
-                : previewEntries.length
-                  ? previewEntries.map((entry) => {
-                      const visual = getEntryVisual(entry);
-
-                      return (
-                        <article
-                          key={entry.id}
-                          className="group flex flex-col justify-between gap-4 rounded-[1.75rem] border border-sage-100 bg-white p-5 shadow-soft transition-all hover:border-sage-300 hover:shadow-lifted sm:flex-row sm:items-center dark:border-white/10 dark:bg-white/5 dark:hover:border-sage-400/40"
-                        >
-                          <div className="flex items-center gap-4">
-                            <div className={`flex h-12 w-12 items-center justify-center rounded-full ${visual.accentClassName}`}>
-                              <span className="material-symbols-outlined">{visual.icon}</span>
-                            </div>
-                            <div>
-                              <h3 className="font-semibold text-slate-800 dark:text-sage-50">{getEntryTitle(entry)}</h3>
-                              <p className="text-sm text-slate-500 dark:text-sage-300">{getEntryExcerpt(entry)}</p>
-                            </div>
-                          </div>
-                          <div className="flex items-center justify-between gap-3 sm:text-right">
-                            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400 dark:text-sage-400">{formatEntryDateLabel(entry.date, 'MMM d')}</p>
-                            <span className="material-symbols-outlined text-slate-300 transition-colors group-hover:text-sage-600 dark:text-sage-400 dark:group-hover:text-sage-200">chevron_right</span>
-                          </div>
-                        </article>
-                      );
-                    })
-                  : (
-                    <div className="rounded-[1.75rem] border border-dashed border-sage-200 bg-sage-50/70 px-6 py-8 text-center dark:border-white/10 dark:bg-[#101915]">
-                      <p className="font-semibold text-sage-800 dark:text-sage-50">No recent entries yet</p>
-                      <p className="mt-2 text-sm leading-6 text-sage-600 dark:text-sage-300">Your saved reflections, self-care check-ins, and reviews will appear here.</p>
-                    </div>
-                  )}
-            </div>
-          </section>
-        </div>
-
-        <div className="space-y-6">
-          <section className="rounded-[1.75rem] border border-sage-200/80 bg-gradient-to-b from-sage-100/80 to-white p-8 text-center shadow-soft dark:border-white/10 dark:bg-gradient-to-b dark:from-[#18241d] dark:to-[#101915]">
-            <h2 className="font-body text-3xl font-semibold text-sage-700 dark:text-sage-50">How are you truly?</h2>
-            <p className="mx-auto mt-3 max-w-sm text-sm leading-7 text-slate-600 dark:text-sage-200">
-              Taking a moment to check in with yourself is the first step toward steadiness and balance.
-            </p>
-
-            <div className="mt-8 space-y-4">
-              {quickActions.map((action) => (
-                <Link
-                  key={action.label}
-                  className={`flex w-full items-center justify-center gap-3 rounded-2xl px-5 py-4 text-base font-bold transition-all ${action.className}`}
-                  to={action.to}
-                >
-                  <span className="material-symbols-outlined">{action.icon}</span>
-                  {action.label}
-                </Link>
-              ))}
-            </div>
-          </section>
-
-          <section className="rounded-[1.75rem] border border-sage-100 bg-white p-6 shadow-soft dark:border-white/10 dark:bg-white/5">
-            <h2 className="mb-4 text-lg font-semibold text-slate-900 dark:text-sage-50">Daily Mindful Tip</h2>
-            <div className="flex gap-4">
-              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-sage-100 text-sage-700 dark:bg-white/10 dark:text-sage-100">
-                <span className="material-symbols-outlined text-xl">air</span>
-              </div>
-              <p className="text-sm italic leading-7 text-slate-700 dark:text-sage-200">
-                &quot;Try the 4-7-8 breathing technique before starting your next task to reset your nervous system.&quot;
-              </p>
-            </div>
-          </section>
-
-          <section className="group relative aspect-[4/3] overflow-hidden rounded-[1.75rem] bg-slate-200 shadow-soft">
-            <img
-              alt="Sunlight streaming through a dense green forest"
-              className="absolute inset-0 h-full w-full scale-105 object-cover transition-transform duration-700 group-hover:scale-100"
-              src="https://lh3.googleusercontent.com/aida-public/AB6AXuBItI64Ljuqq5JnU3kiSCpUF0IV-eva6CMFskI_cQx5KYA_2S3KLM1LmsI4_YKSEwjOykN0gejCOUA7dA2ReO3psRI-ZBhhg7Q92EmpgEMxC6uHjcADzP_DItbGPvtGpxIFMT4Xl_4RVGLb-w6gsHMAxW2RKShGfy7SosiMWi1cO7OnusJDUX9y-o44sdRa0aDdxg2GS5xiqmmD9iZxscYq8TwrBXcXUINVCLemEFATy8ZbKGmwP3deMwOoeDNd3NreKdP_Be3VqCXY"
-            />
-            <div className="absolute inset-0 z-10 flex flex-col justify-end bg-gradient-to-t from-black/70 via-black/20 to-transparent p-6 text-white">
-              <p className="text-lg font-bold leading-tight">Guided Meditation: Forest Path</p>
-              <p className="mt-1 text-xs uppercase tracking-[0.22em] text-white/80">12 min - Sage Greenwood</p>
-            </div>
-          </section>
-        </div>
-      </div>
-
-      <footer className="mt-12 rounded-[1.75rem] border border-sage-200/80 bg-white/80 px-6 py-8 shadow-soft backdrop-blur-sm sm:px-8 dark:border-white/10 dark:bg-[#15201a]/90">
-        <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
-          <BrandLogo
-            titleClassName="text-xl text-sage-700 dark:text-sage-50"
-            iconClassName="h-9 w-9 text-[#44604a] dark:text-sage-50"
-          />
-          <p className="text-sm text-slate-500 dark:text-sage-300">Copyright 2024 MindfulLife App. Cultivating peace, one breath at a time.</p>
-          <div className="flex gap-4 text-slate-400 dark:text-sage-300">
-            <button className="rounded-full p-2 transition-colors hover:bg-sage-50 hover:text-sage-700 dark:hover:bg-white/10 dark:hover:text-white" type="button">
-              <span className="material-symbols-outlined">language</span>
-            </button>
-            <button className="rounded-full p-2 transition-colors hover:bg-sage-50 hover:text-sage-700 dark:hover:bg-white/10 dark:hover:text-white" type="button">
-              <span className="material-symbols-outlined">share</span>
-            </button>
-            <Link className="rounded-full p-2 transition-colors hover:bg-sage-50 hover:text-sage-700 dark:hover:bg-white/10 dark:hover:text-white" to="/settings">
-              <span className="material-symbols-outlined">settings</span>
-            </Link>
-          </div>
-        </div>
-      </footer>
+    <div className={clsx('animate-fade-in pb-10 [&_.font-display]:font-body [&_h1]:font-body [&_h2]:font-body [&_h3]:font-body', isDarkMode && 'dark')}>
+      <div className="mb-8 rounded-[2rem] border border-sage-200/80 bg-white/80 px-6 py-5 shadow-soft backdrop-blur-sm dark:border-white/10 dark:bg-[#15201a]/90"><div className="flex items-center justify-between gap-4"><p className="text-xs font-semibold uppercase tracking-[0.28em] text-sage-500 dark:text-sage-300">Wellness Dashboard</p><button className="inline-flex items-center gap-3 rounded-full border border-sage-200 bg-sage-50 px-3 py-2 text-sm font-semibold text-sage-700 dark:border-white/10 dark:bg-white/5 dark:text-sage-100" onClick={toggleTheme} type="button"><span className="material-symbols-outlined text-[18px]">{isDarkMode ? 'dark_mode' : 'light_mode'}</span><span>{isDarkMode ? 'Dark mode' : 'Light mode'}</span></button></div><div className="mt-3 flex flex-col gap-2 lg:flex-row lg:items-end lg:justify-between"><div><h1 className="text-4xl font-semibold text-sage-800 sm:text-5xl dark:text-sage-50">{showFirstDashboardWelcome ? `Welcome, ${firstName}.` : `Welcome back, ${firstName}.`}</h1><p className="mt-2 max-w-2xl text-sm leading-6 text-sage-700 sm:text-base dark:text-sage-200">Your dashboard is now built to guide the next honest step, not distract from it.</p></div><div className="inline-flex items-center gap-2 rounded-full bg-sage-100 px-4 py-2 text-sm font-medium text-sage-700 dark:bg-white/5 dark:text-sage-100"><span className="material-symbols-outlined text-base">air</span>Breathe. Notice. Begin again.</div></div></div>
+      {error ? <div className="mb-8 rounded-[1.5rem] border border-amber-200 bg-amber-50 px-5 py-4 text-sm leading-6 text-amber-800 shadow-sm">{error}</div> : null}
+      <section className="mb-10 grid grid-cols-1 gap-6 md:grid-cols-3">{isLoading ? Array.from({ length: 3 }, (_, index) => <div key={index} className="skeleton h-44 rounded-[1.75rem]" />) : [{ title: 'Current Streak', value: `${summary.currentStreak} ${summary.currentStreak === 1 ? 'Day' : 'Days'}`, detail: summary.currentStreak >= 7 ? `${summary.currentStreak}-day streak and building.` : 'Momentum starts with one return.', icon: 'local_fire_department', iconClassName: 'text-orange-500' }, { title: 'Mood Average', value: formatMoodLabel(summary.averageMood), detail: summary.averageMood ? `${summary.averageMood.toFixed(1)} out of 5 across ${summary.totalEntries} entries.` : 'Log a few reflections to reveal your overall tone.', icon: 'sentiment_satisfied', iconClassName: 'text-blue-400' }, { title: 'Completion', value: `${summary.completionRate}%`, detail: summary.totalEntries ? `${summary.totalEntries} reflection${summary.totalEntries === 1 ? '' : 's'} recorded in this window.` : 'No entries have been completed yet.', icon: 'task_alt', iconClassName: 'text-sage-600' }].map((card) => <article key={card.title} className="rounded-[1.75rem] border border-sage-100 bg-white p-7 shadow-soft dark:border-white/10 dark:bg-white/5"><div className="flex items-start justify-between"><p className="text-sm font-semibold uppercase tracking-[0.24em] text-sage-500 dark:text-sage-300">{card.title}</p><span className={`material-symbols-outlined text-2xl ${card.iconClassName}`}>{card.icon}</span></div><p className="mt-4 text-4xl font-semibold text-slate-900 dark:text-sage-50">{card.value}</p><p className="mt-3 text-sm text-slate-500 dark:text-sage-300">{card.detail}</p></article>)}</section>
+      <section className="mb-10 grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)_minmax(0,0.95fr)]">{isLoading ? <><div className="skeleton h-72 rounded-[1.75rem]" /><div className="skeleton h-72 rounded-[1.75rem]" /><div className="skeleton h-72 rounded-[1.75rem]" /></> : <><section className="rounded-[1.75rem] border border-sage-200 bg-gradient-to-br from-sage-700 via-sage-600 to-[#516c55] p-7 text-white shadow-soft"><p className="text-xs font-semibold uppercase tracking-[0.24em] text-white/70">Next Action</p><h2 className="mt-3 text-3xl font-semibold tracking-tight">{nextAction.title}</h2><p className="mt-4 text-sm leading-7 text-white/85">{nextAction.detail}</p><div className="mt-8 flex flex-col gap-3 sm:flex-row"><Link className="inline-flex items-center justify-center gap-2 rounded-full bg-white px-5 py-3 text-sm font-bold text-sage-800" to={nextAction.cta}><span className="material-symbols-outlined text-[18px]">arrow_forward</span>{nextAction.ctaLabel}</Link><Link className="inline-flex items-center justify-center gap-2 rounded-full border border-white/20 bg-white/10 px-5 py-3 text-sm font-semibold text-white" to="/selfcare"><span className="material-symbols-outlined text-[18px]">self_care</span>Quick self-care</Link></div></section><section className="rounded-[1.75rem] border border-sage-100 bg-white p-7 shadow-soft dark:border-white/10 dark:bg-white/5"><p className="text-xs font-semibold uppercase tracking-[0.24em] text-sage-500 dark:text-sage-300">Weekly Recap</p><h2 className="mt-3 text-3xl font-semibold tracking-tight text-slate-900 dark:text-sage-50">{weeklyReport.daysLogged}/7 days logged</h2><p className="mt-4 text-sm leading-7 text-sage-700 dark:text-sage-200">{recap}</p><div className="mt-6 grid grid-cols-2 gap-3"><div className="rounded-[1.25rem] bg-sage-50 px-4 py-3 dark:bg-white/5"><p className="text-xs font-semibold uppercase tracking-[0.18em] text-sage-500 dark:text-sage-300">Mood</p><p className="mt-2 text-xl font-semibold text-slate-900 dark:text-sage-50">{weeklyReport.averageMood ? weeklyReport.averageMood.toFixed(1) : '0.0'} / 5</p></div><div className="rounded-[1.25rem] bg-sand-50 px-4 py-3 dark:bg-[#101915]"><p className="text-xs font-semibold uppercase tracking-[0.18em] text-sage-500 dark:text-sage-300">Theme</p><p className="mt-2 text-xl font-semibold text-slate-900 dark:text-sage-50">{themeTrends.recurringThemes[0]?.theme || 'Building'}</p></div></div><div className="mt-6"><Link className="inline-flex items-center gap-2 text-sm font-semibold text-sage-700 dark:text-sage-200" to="/analytics">Open deeper analytics<span className="material-symbols-outlined text-[18px]">arrow_forward</span></Link></div></section><section className="rounded-[1.75rem] border border-sage-100 bg-sage-50/90 p-7 shadow-soft dark:border-white/10 dark:bg-white/5"><p className="text-xs font-semibold uppercase tracking-[0.24em] text-sage-500 dark:text-sage-300">Momentum</p><h2 className="mt-3 text-3xl font-semibold tracking-tight text-slate-900 dark:text-sage-50">{momentum}</h2><p className="mt-4 text-sm leading-7 text-sage-700 dark:text-sage-200">{daysSinceLastEntry && daysSinceLastEntry > 1 ? 'Missed days do not erase progress. Restart with the smallest possible entry.' : summary.currentStreak >= 7 ? 'You have enough consistency now for trends to start standing out.' : 'Short, honest check-ins beat perfect ones. The fastest way forward is simply returning tomorrow.'}</p><div className="mt-6"><Link className="inline-flex items-center gap-2 text-sm font-semibold text-sage-700 dark:text-sage-200" to={summary.currentStreak >= 7 ? '/analytics' : '/reflection'}>{summary.currentStreak >= 7 ? 'Read your week' : 'Add next entry'}<span className="material-symbols-outlined text-[18px]">arrow_forward</span></Link></div></section></>}</section>
+      <div className="grid grid-cols-1 gap-8 xl:grid-cols-[minmax(0,2fr)_minmax(320px,1fr)]"><div className="space-y-8"><section><div className="mb-5 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between"><div><h2 className="text-2xl font-semibold tracking-tight text-slate-900 dark:text-sage-50">Weekly Emotional Wellness</h2><p className="mt-1 text-sm text-sage-600 dark:text-sage-300">A soft snapshot of the rhythms shaping your week.</p></div><select className="rounded-full border border-sage-200 bg-white px-4 py-2 text-sm text-sage-700 dark:border-white/10 dark:bg-white/5 dark:text-sage-100" onChange={(event) => setPeriod(event.target.value as DashboardPeriod)} value={period}>{periodOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select></div><div className="rounded-[1.75rem] border border-sage-100 bg-white p-6 shadow-soft sm:p-7 dark:border-white/10 dark:bg-white/5">{isLoading ? <div className="skeleton h-72 rounded-[1.5rem]" /> : chartData.some((point) => point.hasEntry) && chartData.some((point) => point.mood != null) ? <div><div className="h-72"><ResponsiveContainer><AreaChart data={chartData} margin={{ top: 12, right: 12, bottom: 6, left: -18 }}><defs><linearGradient id="dashboard-mood-fill" x1="0" x2="0" y1="0" y2="1"><stop offset="0%" stopColor="#5e7860" stopOpacity="0.28" /><stop offset="100%" stopColor="#5e7860" stopOpacity="0.04" /></linearGradient></defs><CartesianGrid stroke={isDarkMode ? '#314238' : '#e3e8e3'} strokeDasharray="4 4" vertical={false} /><XAxis axisLine={false} dataKey="label" minTickGap={period === '7days' ? 0 : 18} tick={{ fill: isDarkMode ? '#b7c6b8' : '#7d937f', fontSize: 12, fontWeight: 700 }} tickLine={false} /><YAxis axisLine={false} domain={[1, 5]} tick={{ fill: isDarkMode ? '#b7c6b8' : '#7d937f', fontSize: 12, fontWeight: 700 }} tickLine={false} /><Tooltip content={({ active, payload }) => { const point = payload?.[0]?.payload as DashboardChartPoint | undefined; if (!active || !point) return null; return <div className={clsx('rounded-2xl border px-4 py-3 shadow-soft', isDarkMode ? 'border-white/10 bg-[#101915] text-sage-50' : 'border-sage-100 bg-white text-slate-900')}><p className={clsx('text-xs font-semibold uppercase tracking-[0.2em]', isDarkMode ? 'text-sage-300' : 'text-sage-500')}>{point.fullDate}</p><p className="mt-2 text-lg font-semibold">{point.mood != null ? `Mood: ${point.mood} / 5` : 'No mood rating'}</p><p className={clsx('mt-1 text-sm', isDarkMode ? 'text-sage-200' : 'text-sage-600')}>{point.moodLabel}</p></div>; }} /><Area activeDot={{ fill: '#5e7860', r: 5, stroke: '#ffffff', strokeWidth: 2 }} connectNulls={false} dataKey="mood" dot={({ cx, cy, payload }) => payload.mood == null || typeof cx !== 'number' || typeof cy !== 'number' ? null : <circle cx={cx} cy={cy} fill="#5e7860" opacity={payload.hasEntry ? 1 : 0.55} r={4} stroke="#ffffff" strokeWidth={2} />} fill="url(#dashboard-mood-fill)" stroke="#5e7860" strokeWidth={3} type="monotone" /></AreaChart></ResponsiveContainer></div><p className="mt-4 text-sm text-sage-600 dark:text-sage-300">{chartData.filter((point) => point.hasEntry).length} entries logged in this range.</p></div> : <div className="flex h-72 flex-col items-center justify-center rounded-[1.5rem] border border-dashed border-sage-200 bg-sage-50/70 px-6 text-center dark:border-white/10 dark:bg-[#101915]"><span className="material-symbols-outlined text-4xl text-sage-400 dark:text-sage-300">sentiment_neutral</span><p className="mt-4 text-2xl font-semibold text-sage-800 dark:text-sage-50">No weekly mood trend yet</p><p className="mt-2 max-w-md text-sm leading-6 text-sage-600 dark:text-sage-300">A few saved reflections will turn this space into a clearer picture of your emotional rhythm.</p></div>}</div></section><section><div className="mb-5 flex items-center justify-between"><div><h2 className="text-2xl font-semibold tracking-tight text-slate-900 dark:text-sage-50">Recent Journal Entries</h2><p className="mt-1 text-sm text-sage-600 dark:text-sage-300">Return to the moments that shaped your recent reflections.</p></div><Link className="text-sm font-semibold text-sage-700 dark:text-sage-200" to="/review">View all</Link></div><div className="space-y-4">{isLoading ? Array.from({ length: 2 }, (_, index) => <div key={index} className="skeleton h-28 rounded-[1.75rem]" />) : recentEntries.slice(0, 4).length ? recentEntries.slice(0, 4).map((entry) => <article key={entry.id} className="group flex flex-col justify-between gap-4 rounded-[1.75rem] border border-sage-100 bg-white p-5 shadow-soft sm:flex-row sm:items-center dark:border-white/10 dark:bg-white/5"><div><h3 className="font-semibold text-slate-800 dark:text-sage-50">{entryTitle(entry)}</h3><p className="text-sm text-slate-500 dark:text-sage-300">{entryExcerpt(entry)}</p></div><div className="flex items-center justify-between gap-3 sm:text-right"><p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400 dark:text-sage-400">{format(new Date(toEntryDateKey(entry.date)), 'MMM d')}</p><span className="material-symbols-outlined text-slate-300 dark:text-sage-400">chevron_right</span></div></article>) : <div className="rounded-[1.75rem] border border-dashed border-sage-200 bg-sage-50/70 px-6 py-8 text-center dark:border-white/10 dark:bg-[#101915]"><p className="font-semibold text-sage-800 dark:text-sage-50">No recent entries yet</p><p className="mt-2 text-sm leading-6 text-sage-600 dark:text-sage-300">Your saved reflections, self-care check-ins, and reviews will appear here.</p></div>}</div></section></div><div className="space-y-6"><section className="rounded-[1.75rem] border border-sage-200/80 bg-gradient-to-b from-sage-100/80 to-white p-8 text-center shadow-soft dark:border-white/10 dark:bg-gradient-to-b dark:from-[#18241d] dark:to-[#101915]"><h2 className="text-3xl font-semibold text-sage-700 dark:text-sage-50">Today&apos;s support</h2><p className="mx-auto mt-3 max-w-sm text-sm leading-7 text-slate-600 dark:text-sage-200">{todayEntry ? `You already checked in today. Use one more small step to support ${goalLabel.toLowerCase()} without adding friction.` : `The simplest next move is still the right one: check in once today and keep your ${cadenceLabel.toLowerCase()} rhythm alive.`}</p><div className="mt-8 space-y-4">{[{ label: "Today's Reflection", icon: 'edit_note', to: '/reflection', className: 'bg-sage-600 text-white dark:bg-sage-500 dark:text-slate-950' }, { label: 'Self-Care Check', icon: 'self_care', to: '/selfcare', className: 'border border-sage-200 bg-white text-sage-700 dark:border-white/10 dark:bg-white/5 dark:text-sage-100' }].map((action) => <Link key={action.label} className={`flex w-full items-center justify-center gap-3 rounded-2xl px-5 py-4 text-base font-bold ${action.className}`} to={action.to}><span className="material-symbols-outlined">{action.icon}</span>{action.label}</Link>)}</div></section><section className="rounded-[1.75rem] border border-sage-100 bg-white p-6 shadow-soft dark:border-white/10 dark:bg-white/5"><p className="text-xs font-semibold uppercase tracking-[0.24em] text-sage-500 dark:text-sage-300">Daily Inspiration</p><h2 className="mt-2 text-2xl font-semibold text-slate-900 dark:text-sage-50">A separate place for the softer layer</h2><p className="mt-4 text-base italic leading-7 text-slate-700 dark:text-sage-200">&quot;{quote.text}&quot;</p><p className="mt-3 text-xs font-semibold uppercase tracking-[0.2em] text-sage-500 dark:text-sage-300">{quote.author}</p><div className="mt-5"><Link className="inline-flex items-center gap-2 text-sm font-semibold text-sage-700 dark:text-sage-200" to="/inspiration">Open inspiration<span className="material-symbols-outlined text-[18px]">arrow_forward</span></Link></div></section><section className="overflow-hidden rounded-[1.75rem] border border-slate-900 bg-gradient-to-br from-slate-900 via-[#1b2b22] to-sage-800 p-6 text-white shadow-soft"><p className="text-xs font-semibold uppercase tracking-[0.24em] text-white/60">Premium Preview</p><h2 className="mt-3 text-2xl font-semibold leading-tight">See the insight layer before plans go live</h2><p className="mt-4 text-sm leading-7 text-white/80">AI weekly summaries, longer-range comparisons, and export-ready reports belong here as the premium reason to come back and upgrade.</p><div className="mt-6 space-y-3">{['AI weekly summary with recurring themes', 'Longer history and pattern comparisons', 'Report exports for coaching or therapy'].map((item) => <div key={item} className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/5 px-4 py-3"><span className="material-symbols-outlined text-sage-200">lock</span><span className="text-sm text-white/85">{item}</span></div>)}</div><div className="mt-6"><Link className="inline-flex items-center justify-center gap-2 rounded-full bg-white px-5 py-3 text-sm font-bold text-slate-900" to="/analytics"><span className="material-symbols-outlined text-[18px]">visibility</span>Preview analytics surface</Link></div></section></div></div>
     </div>
   );
 }
