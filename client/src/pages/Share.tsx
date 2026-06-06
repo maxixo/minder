@@ -6,16 +6,19 @@ import BrandLogo from '@/components/common/BrandLogo';
 import { useAuth } from '@/contexts/useAuth';
 import { useTheme } from '@/contexts/useTheme';
 import {
+  SHARE_CARD_BACKGROUNDS,
   SHARE_CARD_FONT_COLORS,
   SHARE_CARD_FONT_FAMILIES,
   SHARE_CARD_THEMES,
   downloadShareQuoteCard,
   formatShareQuoteText,
   getDefaultShareCardFontColor,
+  getShareCardBackground,
   getShareCardFontColor,
   getShareCardFontFamily,
   getLocalDateKey,
   getShareCardTheme,
+  type ShareCardBackgroundId,
   type ShareCardFontColorId,
   type ShareCardFontFamilyId,
   type ShareCardThemeId,
@@ -36,7 +39,6 @@ const defaultRituals = [
 ];
 
 const logoUrl = 'https://lh3.googleusercontent.com/aida/AP1WRLvCundqemjzSKgHRcFetGSWpcb1wzH9tAckSSy1QEXV6OnfDbRkNdJJD4fRD939T2q_YXihQlrJ-hjWpv1YyKT26fz1Tk4W6z5QrcCaLz-YeBUPs8dD-XgoWohfRsUtGTm-pM46gA_NX1tOaQ6s8eCR0HQ7mLXwTjLP3rOHzQlpLvfe5pb6T9QAbGaIOCUVLASlpjPB_k7HG4mRrZj4S6zzZxO0Tn1jC-gfIhD9g5I2DD4gPQit4TGanH0';
-const botanicalOverlayUrl = 'https://lh3.googleusercontent.com/aida/AP1WRLvq9lZZjsunohZorY3UamcbYhfBe3XHoGzPa6-amzZM8OFdLvAfG_Qetx1bej1N7cQTRtdP7prC_UKiDfhEZx51OAEqrsqCp-I5rKaVCjzWkDtGl1U0XKj9RLd2iSUdIj9yGRcJXf6XKg9dBLfb3t_TeEudkAtfIfvmKc-_I5tiX-_Zvcyfacv3bWdgjY3gzFvv6W_GpG4R2zqtHw3DBIzl6LSb-pVjjAgrXG6PmOUziIig13-mvey1gsE';
 const baseCardTransform = 'perspective(1000px) rotateY(0deg) rotateX(0deg) scale(1)';
 const defaultToastMessage = 'Ready for sharing!';
 
@@ -101,6 +103,7 @@ export default function Share() {
   const [isToastVisible, setIsToastVisible] = useState(false);
   const [isCardAnimating, setIsCardAnimating] = useState(false);
   const [showQuoteMarks, setShowQuoteMarks] = useState(true);
+  const [backgroundId, setBackgroundId] = useState<ShareCardBackgroundId>('leafy');
   const [themeId, setThemeId] = useState<ShareCardThemeId>(isDarkMode ? 'midnight' : 'sage');
   const [fontColorId, setFontColorId] = useState<ShareCardFontColorId>(
     getDefaultShareCardFontColor(isDarkMode ? 'midnight' : 'sage'),
@@ -189,12 +192,14 @@ export default function Share() {
     [ritualInputs],
   );
   const theme = getShareCardTheme(themeId);
+  const background = getShareCardBackground(backgroundId);
   const fontColor = getShareCardFontColor(fontColorId);
   const fontFamily = getShareCardFontFamily(fontFamilyId);
   const quoteDisplayText = formatShareQuoteText(quote.text, showQuoteMarks);
   const fontColorOptions = Object.values(SHARE_CARD_FONT_COLORS);
   const fontFamilyOptions = Object.values(SHARE_CARD_FONT_FAMILIES);
   const themeOptions = Object.values(SHARE_CARD_THEMES);
+  const backgroundOptions = Object.values(SHARE_CARD_BACKGROUNDS);
 
   useEffect(() => () => {
     if (exportResetTimeoutRef.current) {
@@ -248,6 +253,7 @@ export default function Share() {
     try {
       await downloadShareQuoteCard(quote, {
         attribution,
+        backgroundId,
         date: shareDate,
         fontColorId,
         fontFamilyId,
@@ -316,6 +322,18 @@ export default function Share() {
   const handleThemeSelect = (nextThemeId: ShareCardThemeId) => {
     hasCustomThemeSelectionRef.current = true;
     setThemeId(nextThemeId);
+  };
+
+  const handleBackgroundSelect = (nextBackgroundId: ShareCardBackgroundId) => {
+    const nextBackground = getShareCardBackground(nextBackgroundId);
+    setBackgroundId(nextBackgroundId);
+
+    if (nextBackground.recommendedThemeId) {
+      handleThemeSelect(nextBackground.recommendedThemeId);
+      if (!hasCustomFontColorSelectionRef.current) {
+        setFontColorId(getDefaultShareCardFontColor(nextBackground.recommendedThemeId));
+      }
+    }
   };
 
   const handleFontColorSelect = (nextFontColorId: ShareCardFontColorId) => {
@@ -391,15 +409,20 @@ export default function Share() {
                 boxShadow: theme.shadow,
               }}
             >
-              <div
-                className="absolute inset-0 bg-cover bg-center"
-                style={{ backgroundImage: `url('${botanicalOverlayUrl}')` }}
-              />
+              {background.imageUrl ? (
+                <div
+                  className="absolute inset-0 bg-cover bg-center"
+                  style={{
+                    backgroundImage: `url('${background.imageUrl}')`,
+                    opacity: background.opacity,
+                  }}
+                />
+              ) : null}
               <div className="absolute inset-0" style={{ background: theme.imageOverlay }} />
 
               <div className="relative flex h-full w-full flex-col p-8">
                 <div className="flex items-start justify-between">
-                  <img alt="MindfulLife" className="h-10 w-auto object-contain opacity-90" src={logoUrl} />
+                  <img alt="MindfulLife" className="h-10 w-auto object-contain opacity-100" src={logoUrl} />
 
                   <div className="flex flex-col items-end">
                     <div
@@ -456,7 +479,7 @@ export default function Share() {
                     ) : null}
                     {quoteSource ? (
                       <span className="mt-2 block font-metadata text-metadata uppercase tracking-[0.12em]" style={{ color: fontColor.muted, fontFamily: fontFamily.metaFamily }}>
-                        {quoteSource} - {shareDate}
+                        {shareDate}
                       </span>
                     ) : null}
                   </div>
@@ -502,6 +525,37 @@ export default function Share() {
                   <span className="material-symbols-outlined text-[18px]">{showQuoteMarks ? 'format_quote' : 'format_quote_off'}</span>
                   {showQuoteMarks ? 'Remove quote marks' : 'Show quote marks'}
                 </button>
+              </div>
+
+              <div>
+                <p className="mb-3 text-xs font-semibold uppercase tracking-[0.22em] text-sage-500 dark:text-sage-300">Card Background</p>
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                  {backgroundOptions.map((backgroundOption) => (
+                    <button
+                      key={backgroundOption.id}
+                      aria-pressed={backgroundId === backgroundOption.id}
+                      className="overflow-hidden rounded-2xl border bg-white text-left transition-all dark:bg-[#18231d]"
+                      onClick={() => handleBackgroundSelect(backgroundOption.id)}
+                      style={{
+                        borderColor: backgroundId === backgroundOption.id ? theme.accent : (isDarkMode ? 'rgba(255,255,255,0.16)' : 'rgba(194, 200, 193, 0.7)'),
+                        boxShadow: backgroundId === backgroundOption.id ? `0 0 0 2px ${theme.accentSoft}` : 'none',
+                      }}
+                      type="button"
+                    >
+                      <span
+                        className="block h-20 bg-cover bg-center"
+                        style={{
+                          background: backgroundOption.imageUrl
+                            ? `linear-gradient(rgba(255,255,255,0.08), rgba(255,255,255,0.08)), url('${backgroundOption.preview}') center / cover`
+                            : `linear-gradient(135deg, ${theme.backgroundStart}, ${theme.backgroundEnd})`,
+                        }}
+                      />
+                      <span className="block px-3 py-2 text-sm font-semibold text-sage-700 dark:text-sage-100">
+                        {backgroundOption.label}
+                      </span>
+                    </button>
+                  ))}
+                </div>
               </div>
 
               <div>

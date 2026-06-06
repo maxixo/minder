@@ -39,6 +39,7 @@ export const getQuoteCardFilename = (quote: DashboardQuote, date = new Date()) =
 
 export type ShareQuoteCardOptions = {
   attribution?: string | null;
+  backgroundId?: ShareCardBackgroundId;
   date?: string;
   fontColorId?: ShareCardFontColorId;
   fontFamilyId?: ShareCardFontFamilyId;
@@ -49,6 +50,14 @@ export type ShareQuoteCardOptions = {
   themeId?: ShareCardThemeId;
 };
 
+export type ShareCardBackgroundId =
+  | 'leafy'
+  | 'golden'
+  | 'night'
+  | 'soft-mist'
+  | 'stars'
+  | 'glow'
+  | 'clean';
 export type ShareCardThemeId = 'sage' | 'sunset' | 'dawn' | 'rose' | 'ocean' | 'ember' | 'midnight';
 export type ShareCardFontColorId = 'charcoal' | 'forest' | 'clay' | 'ocean' | 'ivory';
 export type ShareCardFontFamilyId = 'editorial' | 'modern' | 'classic' | 'literary';
@@ -73,6 +82,15 @@ type ShareCardTheme = {
   badgeIconColor: string;
   divider: string;
   shadow: string;
+};
+
+type ShareCardBackground = {
+  id: ShareCardBackgroundId;
+  label: string;
+  imageUrl: string | null;
+  opacity: number;
+  preview: string;
+  recommendedThemeId?: ShareCardThemeId;
 };
 
 type ShareCardFontColor = {
@@ -244,6 +262,64 @@ export const SHARE_CARD_THEMES: Record<ShareCardThemeId, ShareCardTheme> = {
   },
 };
 
+export const SHARE_CARD_BACKGROUNDS: Record<ShareCardBackgroundId, ShareCardBackground> = {
+  leafy: {
+    id: 'leafy',
+    label: 'Leafy',
+    imageUrl: SHARE_BOTANICAL_URL,
+    opacity: 0.68,
+    preview: SHARE_BOTANICAL_URL,
+    recommendedThemeId: 'sage',
+  },
+  golden: {
+    id: 'golden',
+    label: 'Golden',
+    imageUrl: '/backgrounds/share-golden.png',
+    opacity: 0.9,
+    preview: '/backgrounds/share-golden.png',
+    recommendedThemeId: 'sunset',
+  },
+  night: {
+    id: 'night',
+    label: 'Night Fern',
+    imageUrl: '/backgrounds/share-night.png',
+    opacity: 0.92,
+    preview: '/backgrounds/share-night.png',
+    recommendedThemeId: 'midnight',
+  },
+  'soft-mist': {
+    id: 'soft-mist',
+    label: 'Soft Mist',
+    imageUrl: '/backgrounds/share-soft-mist.png',
+    opacity: 0.92,
+    preview: '/backgrounds/share-soft-mist.png',
+    recommendedThemeId: 'sage',
+  },
+  stars: {
+    id: 'stars',
+    label: 'Stars',
+    imageUrl: '/backgrounds/share-stars.jpg',
+    opacity: 0.82,
+    preview: '/backgrounds/share-stars.jpg',
+    recommendedThemeId: 'midnight',
+  },
+  glow: {
+    id: 'glow',
+    label: 'Soft Glow',
+    imageUrl: '/backgrounds/share-glow.jpg',
+    opacity: 0.72,
+    preview: '/backgrounds/share-glow.jpg',
+    recommendedThemeId: 'dawn',
+  },
+  clean: {
+    id: 'clean',
+    label: 'Clean',
+    imageUrl: null,
+    opacity: 0,
+    preview: '',
+  },
+};
+
 export const SHARE_CARD_FONT_COLORS: Record<ShareCardFontColorId, ShareCardFontColor> = {
   charcoal: {
     id: 'charcoal',
@@ -333,6 +409,14 @@ export const getShareCardTheme = (themeId?: string | null) => {
   }
 
   return SHARE_CARD_THEMES.sage;
+};
+
+export const getShareCardBackground = (backgroundId?: string | null) => {
+  if (backgroundId && backgroundId in SHARE_CARD_BACKGROUNDS) {
+    return SHARE_CARD_BACKGROUNDS[backgroundId as ShareCardBackgroundId];
+  }
+
+  return SHARE_CARD_BACKGROUNDS.leafy;
 };
 
 export const getShareCardFontColor = (fontColorId?: string | null) => {
@@ -641,6 +725,7 @@ export const downloadShareQuoteCard = async (
   }
 
   const theme = getShareCardTheme(options.themeId);
+  const background = getShareCardBackground(options.backgroundId);
   const fontColor = getShareCardFontColor(options.fontColorId || getDefaultShareCardFontColor(theme.id));
   const fontFamily = getShareCardFontFamily(options.fontFamilyId);
   const dateKey = options.date || getLocalDateKey();
@@ -666,12 +751,19 @@ export const downloadShareQuoteCard = async (
   context.fillRect(cardInset, cardInset, cardWidth, cardHeight);
 
   try {
-    const backgroundImage = await loadImage(SHARE_BOTANICAL_URL);
+    if (!background.imageUrl) {
+      throw new Error('No background image selected.');
+    }
+
+    const backgroundImage = await loadImage(background.imageUrl);
     context.save();
-    context.globalAlpha = 0.68;
+    context.globalAlpha = background.opacity;
     context.drawImage(backgroundImage, cardInset, cardInset, cardWidth, cardHeight);
     context.restore();
   } catch {
+    if (!background.imageUrl) {
+      // The clean option intentionally uses only the selected color gradient.
+    } else {
     context.save();
     context.globalAlpha = 0.18;
     context.fillStyle = theme.accent;
@@ -682,6 +774,7 @@ export const downloadShareQuoteCard = async (
     context.arc(900, 1090, 260, 0, Math.PI * 2);
     context.fill();
     context.restore();
+    }
   }
 
   context.fillStyle = theme.imageOverlay;
@@ -694,7 +787,7 @@ export const downloadShareQuoteCard = async (
   try {
     const logoImage = await loadImage(SHARE_LOGO_URL);
     context.save();
-    context.globalAlpha = 0.92;
+    context.globalAlpha = 1;
     drawContainedImage(context, logoImage, contentX, contentY, 250, 72);
     context.restore();
   } catch {
@@ -788,7 +881,7 @@ export const downloadShareQuoteCard = async (
   if (options.source) {
     context.font = `500 14px ${fontFamily.metaFamily}`;
     context.fillStyle = fontColor.muted;
-    context.fillText(`${options.source.toUpperCase()} - ${dateKey}`, SHARE_CARD_WIDTH / 2, metadataY);
+    context.fillText(dateKey, SHARE_CARD_WIDTH / 2, metadataY);
     metadataY += 28;
   }
 
