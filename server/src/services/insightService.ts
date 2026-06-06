@@ -40,6 +40,14 @@ export interface ThemeTrendResponse {
   positiveAnchors: Array<{ label: string; count: number }>;
 }
 
+export interface ReflectionAssistResponse {
+  suggestedPrompt: string;
+  followUpQuestion: string;
+  encouragement: string;
+  modelVersion: string;
+  preview: boolean;
+}
+
 interface InsightPayload {
   summary: string;
   sentimentScore: number | null;
@@ -51,6 +59,29 @@ interface InsightPayload {
   riskFlags: string[];
   modelVersion: string;
   generatedAt: Date;
+}
+
+interface ReflectionAssistPayload {
+  suggestedPrompt: string;
+  followUpQuestion: string;
+  encouragement: string;
+  modelVersion: string;
+  preview: boolean;
+}
+
+interface ReflectionAssistDraft {
+  weather?: unknown;
+  gratitude?: unknown;
+  expectations?: unknown;
+  positiveNotes?: unknown;
+  mood?: unknown;
+  waterIntake?: unknown;
+  sleepHours?: unknown;
+  meals?: unknown;
+  mindThoughts?: unknown;
+  nextStep?: unknown;
+  focus?: unknown;
+  mindfulnessNotes?: unknown;
 }
 
 interface AiConfig {
@@ -75,6 +106,39 @@ const PERIOD_DAYS: Record<InsightPeriod, number> = {
 
 const SUMMARY_LIMIT = 280;
 const MAX_LIST_ITEMS = 5;
+const REFLECTION_ASSIST_COPY_LIMIT = 220;
+
+const reflectionPackConfig: Record<string, {
+  title: string;
+  promptHint: string;
+  followUpQuestion: string;
+  encouragement: string;
+}> = {
+  'open-check-in': {
+    title: 'Open Check-In',
+    promptHint: 'Stay concrete and name what feels most true today.',
+    followUpQuestion: 'Which part of today is asking for the most care or attention?',
+    encouragement: 'A short honest reflection is enough to create signal.',
+  },
+  'stress-reset': {
+    title: 'Stress Reset',
+    promptHint: 'Notice pressure points first, then name one way to soften them.',
+    followUpQuestion: 'What is creating the most pressure right now, and what can become smaller today?',
+    encouragement: 'Stress usually becomes clearer once it is named plainly.',
+  },
+  'sleep-unwind': {
+    title: 'Sleep Unwind',
+    promptHint: 'Focus on what is carrying into tonight and what could help your body settle.',
+    followUpQuestion: 'What would make tonight feel calmer than the last few evenings?',
+    encouragement: 'Even one small wind-down decision can change the tone of the night.',
+  },
+  'burnout-check-in': {
+    title: 'Burnout Check-In',
+    promptHint: 'Name what feels draining, then look for the smallest available relief.',
+    followUpQuestion: 'What are you carrying that feels heavier than it should right now?',
+    encouragement: 'Clarity about strain is useful even before you know the full solution.',
+  },
+};
 
 const emotionKeywords: Array<{ label: string; patterns: RegExp[] }> = [
   { label: 'calm', patterns: [/\bcalm\b/i, /\bpeace/i, /\bgrounded\b/i, /\bsteady\b/i] },
@@ -177,6 +241,10 @@ const extractMessageText = (content: ProviderMessageContent['content']) => {
     .trim();
 };
 
+const truncateCopy = (value: string, maxLength = REFLECTION_ASSIST_COPY_LIMIT) => (
+  value.length <= maxLength ? value : `${value.slice(0, maxLength - 3).trimEnd()}...`
+);
+
 const normalizeInsightPayload = (payload: Partial<InsightPayload>, fallbackVersion: string): InsightPayload => ({
   summary: truncate(
     String(payload.summary || 'Your journal entry captures a few meaningful signals, but there is not enough detail for a richer summary.'),
@@ -191,6 +259,23 @@ const normalizeInsightPayload = (payload: Partial<InsightPayload>, fallbackVersi
   riskFlags: takeUnique(asStringArray(payload.riskFlags), 3),
   modelVersion: String(payload.modelVersion || fallbackVersion),
   generatedAt: payload.generatedAt instanceof Date ? payload.generatedAt : new Date(),
+});
+
+const normalizeReflectionAssistPayload = (
+  payload: Partial<ReflectionAssistPayload>,
+  fallbackVersion: string,
+): ReflectionAssistResponse => ({
+  suggestedPrompt: truncateCopy(
+    String(payload.suggestedPrompt || 'Name the most concrete part of today first, then add what felt supportive or difficult about it.')
+  ),
+  followUpQuestion: truncateCopy(
+    String(payload.followUpQuestion || 'What part of this reflection deserves one more honest sentence?')
+  ),
+  encouragement: truncateCopy(
+    String(payload.encouragement || 'A few grounded details are enough to build a clearer reflection.')
+  ),
+  modelVersion: String(payload.modelVersion || fallbackVersion),
+  preview: payload.preview !== false,
 });
 
 const summarizeCounts = (items: string[], key: 'theme' | 'label') => {
@@ -209,6 +294,54 @@ const summarizeCounts = (items: string[], key: 'theme' | 'label') => {
 };
 
 const getSourceText = (entry: Entry) => buildEntryInsightInput(entry).text;
+
+const asReflectionDraft = (draft: ReflectionAssistDraft = {}) => ({
+  weather: typeof draft.weather === 'string' ? draft.weather : '',
+  gratitude: asStringArray(draft.gratitude),
+  expectations: typeof draft.expectations === 'string' ? draft.expectations.trim() : '',
+  positiveNotes: asStringArray(draft.positiveNotes),
+  mood: typeof draft.mood === 'number' ? draft.mood : null,
+  waterIntake: typeof draft.waterIntake === 'number' ? draft.waterIntake : null,
+  sleepHours: typeof draft.sleepHours === 'number' ? draft.sleepHours : null,
+  meals: draft.meals && typeof draft.meals === 'object'
+    ? draft.meals as Record<string, unknown>
+    : {},
+  mindThoughts: typeof draft.mindThoughts === 'string' ? draft.mindThoughts.trim() : '',
+  nextStep: typeof draft.nextStep === 'string' ? draft.nextStep.trim() : '',
+  focus: typeof draft.focus === 'string' ? draft.focus.trim() : '',
+  mindfulnessNotes: typeof draft.mindfulnessNotes === 'string' ? draft.mindfulnessNotes.trim() : '',
+});
+
+const buildReflectionAssistInput = (draft: ReflectionAssistDraft = {}, packId = 'open-check-in') => {
+  const normalizedDraft = asReflectionDraft(draft);
+  const pack = reflectionPackConfig[packId] || reflectionPackConfig['open-check-in'];
+  const lines = [`Pack: ${pack.title}`];
+
+  addLine(lines, 'Weather', normalizedDraft.weather);
+  addLine(lines, 'Mood', normalizedDraft.mood != null ? String(normalizedDraft.mood) : '');
+  addLine(lines, 'Sleep hours', normalizedDraft.sleepHours != null ? String(normalizedDraft.sleepHours) : '');
+  addLine(lines, 'Water intake', normalizedDraft.waterIntake != null ? String(normalizedDraft.waterIntake) : '');
+  addList(lines, 'Gratitude', normalizedDraft.gratitude);
+  addLine(lines, 'Intention', normalizedDraft.expectations);
+  addList(lines, 'Quick wins', normalizedDraft.positiveNotes);
+  addLine(lines, 'Mind thoughts', normalizedDraft.mindThoughts);
+  addLine(lines, 'Focus', normalizedDraft.focus);
+  addLine(lines, 'Mindfulness notes', normalizedDraft.mindfulnessNotes);
+  addLine(lines, 'Next step', normalizedDraft.nextStep);
+
+  const mealKeys = Object.entries(normalizedDraft.meals)
+    .filter(([, value]) => value === true)
+    .map(([key]) => key);
+  if (mealKeys.length) {
+    lines.push(`Meals: ${mealKeys.join(', ')}`);
+  }
+
+  return {
+    pack,
+    normalizedDraft,
+    text: lines.join('\n').trim(),
+  };
+};
 
 export const buildEntryInsightInput = (entry: Entry) => {
   const normalizedEntry = serializeEntry(entry);
@@ -349,10 +482,71 @@ export const buildHeuristicEntryInsight = (entry: Entry): InsightPayload => {
   }, 'heuristic-v1');
 };
 
+export const buildHeuristicReflectionAssist = (
+  draft: ReflectionAssistDraft = {},
+  packId = 'open-check-in',
+): ReflectionAssistResponse => {
+  const { pack, normalizedDraft, text } = buildReflectionAssistInput(draft, packId);
+  const matchedThemes = takeUnique(themeRules
+    .filter(({ patterns }) => patterns.some((pattern) => pattern.test(text)))
+    .map(({ label }) => label), 3);
+  const matchedStressors = takeUnique(stressorRules
+    .filter(({ patterns }) => patterns.some((pattern) => pattern.test(text)))
+    .map(({ label }) => label), 3);
+
+  let suggestedPrompt = pack.promptHint;
+  if (!normalizedDraft.gratitude.length) {
+    suggestedPrompt = 'Start with one small detail that felt steady, comforting, or easier than expected today.';
+  } else if (!normalizedDraft.expectations) {
+    suggestedPrompt = 'Write one sentence about what you most need from the rest of today.';
+  } else if (!normalizedDraft.positiveNotes.length) {
+    suggestedPrompt = 'Add one quick win, even if it was small or mostly internal.';
+  } else if (!normalizedDraft.mindThoughts) {
+    suggestedPrompt = matchedStressors[0]
+      ? `Write one honest sentence about how ${matchedStressors[0]} is affecting your day.`
+      : 'Add one honest sentence about what feels heaviest or most important right now.';
+  } else if (matchedThemes[0]) {
+    suggestedPrompt = `Stay with ${matchedThemes[0]} for one more sentence and make it more concrete.`;
+  }
+
+  let followUpQuestion = pack.followUpQuestion;
+  if (matchedStressors[0] === 'sleep disruption') {
+    followUpQuestion = 'What would help tonight feel more protected than the last few nights?';
+  } else if (matchedStressors[0] === 'workload pressure') {
+    followUpQuestion = 'Which responsibility can be reduced, delayed, or made smaller today?';
+  } else if (matchedThemes.includes('gratitude')) {
+    followUpQuestion = 'Which grounding detail from today would you want to remember tomorrow?';
+  }
+
+  let encouragement = pack.encouragement;
+  if (normalizedDraft.mood != null && normalizedDraft.mood <= 2) {
+    encouragement = 'You do not need a polished reflection. A few plain details are enough for today.';
+  } else if (normalizedDraft.positiveNotes.length || normalizedDraft.gratitude.length >= 2) {
+    encouragement = 'You already have enough detail here to turn this into a useful reflection.';
+  }
+
+  return normalizeReflectionAssistPayload({
+    suggestedPrompt,
+    followUpQuestion,
+    encouragement,
+    modelVersion: 'heuristic-reflection-assist-v1',
+    preview: true,
+  }, 'heuristic-reflection-assist-v1');
+};
+
 const buildProviderPrompt = (text: string) => ({
   system: 'You analyze wellness journal entries. Return valid JSON only. Do not diagnose. Use cautious language. Base every field only on the supplied text.',
   user: `Analyze this journal entry and return JSON with exactly these keys: summary, sentimentScore, dominantEmotions, themes, stressors, positiveAnchors, suggestedActions, riskFlags.\n\nRules:\n- summary: one concise paragraph under 280 characters\n- sentimentScore: number from -1 to 1 or null\n- array fields: short strings only\n- suggestedActions: 1 to 3 practical actions\n- riskFlags: include crisis-related flags only when the text clearly supports them\n\nEntry:\n${text}`,
 });
+
+const buildReflectionAssistPrompt = (text: string, packId: string) => {
+  const pack = reflectionPackConfig[packId] || reflectionPackConfig['open-check-in'];
+
+  return {
+    system: 'You help continue a wellness reflection. Return valid JSON only. Do not diagnose. Keep the tone gentle, practical, and specific.',
+    user: `Return JSON with exactly these keys: suggestedPrompt, followUpQuestion, encouragement.\n\nRules:\n- suggestedPrompt: one concise writing prompt under 220 characters\n- followUpQuestion: one grounded follow-up question under 220 characters\n- encouragement: one short supportive line under 220 characters\n- avoid therapy claims, diagnosis, or alarmist language\n- base everything only on the supplied draft\n- use the selected pack as framing, not as a script\n\nSelected pack: ${pack.title}\n\nDraft:\n${text}`,
+  };
+};
 
 const requestProviderInsight = async (text: string): Promise<InsightPayload> => {
   const config = getAiConfig();
@@ -394,6 +588,49 @@ const requestProviderInsight = async (text: string): Promise<InsightPayload> => 
   }, `${config.provider}:${config.model}`);
 };
 
+const requestProviderReflectionAssist = async (
+  draft: ReflectionAssistDraft = {},
+  packId = 'open-check-in',
+): Promise<ReflectionAssistResponse> => {
+  const config = getAiConfig();
+  const prompt = buildReflectionAssistPrompt(buildReflectionAssistInput(draft, packId).text, packId);
+
+  const response = await fetch(`${config.baseUrl}/chat/completions`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${config.apiKey}`,
+    },
+    body: JSON.stringify({
+      model: config.model,
+      temperature: 0.4,
+      response_format: { type: 'json_object' },
+      messages: [
+        { role: 'system', content: prompt.system },
+        { role: 'user', content: prompt.user },
+      ],
+    }),
+  });
+
+  if (!response.ok) {
+    const message = await response.text();
+    throw new Error(`Reflection assist provider request failed (${response.status}): ${message}`);
+  }
+
+  const payload = await response.json();
+  const content = extractMessageText(payload?.choices?.[0]?.message?.content);
+  if (!content) {
+    throw new Error('Reflection assist provider returned an empty response.');
+  }
+
+  const parsed = JSON.parse(content) as Partial<ReflectionAssistPayload>;
+  return normalizeReflectionAssistPayload({
+    ...parsed,
+    modelVersion: `${config.provider}:${config.model}`,
+    preview: true,
+  }, `${config.provider}:${config.model}`);
+};
+
 export const generateEntryInsight = async (entry: Entry): Promise<InsightPayload | null> => {
   const config = getAiConfig();
   const { textLength } = buildEntryInsightInput(entry);
@@ -413,6 +650,25 @@ export const generateEntryInsight = async (entry: Entry): Promise<InsightPayload
   } catch (error) {
     console.error(`generateEntryInsight fallback: ${error instanceof Error ? error.message : String(error)}`);
     return heuristicInsight;
+  }
+};
+
+export const generateReflectionAssist = async (
+  draft: ReflectionAssistDraft = {},
+  packId = 'open-check-in',
+): Promise<ReflectionAssistResponse> => {
+  const config = getAiConfig();
+  const heuristicAssist = buildHeuristicReflectionAssist(draft, packId);
+
+  if (!config.enabled || !config.apiKey) {
+    return heuristicAssist;
+  }
+
+  try {
+    return await requestProviderReflectionAssist(draft, packId);
+  } catch (error) {
+    console.error(`generateReflectionAssist fallback: ${error instanceof Error ? error.message : String(error)}`);
+    return heuristicAssist;
   }
 };
 

@@ -33,3 +33,23 @@ export interface ThemeTrendResponse {
   commonStressors: Array<{ label: string; count: number }>;
   positiveAnchors: Array<{ label: string; count: number }>;
 }
+
+export interface ReflectionAssistResponse {
+  suggestedPrompt: string;
+  followUpQuestion: string;
+  encouragement: string;
+  modelVersion: string;
+  preview: boolean;
+}
+
+export interface SavedReflectionInsightCard {
+  title: string;
+  summary: string;
+  keyThemes: string[];
+  anchorLabel: string;
+  anchorText: string;
+  followUpLabel: string;
+  followUpText: string;
+  premiumTeaser: string;
+  riskMessage: string | null;
+}

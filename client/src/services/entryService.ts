@@ -1,6 +1,6 @@
 import api from './api';
 import type { ApiEnvelope, PaginatedApiEnvelope } from '@/types/api';
-import type { EntryInsightResponse } from '@/types/ai';
+import type { EntryInsightResponse, ReflectionAssistResponse } from '@/types/ai';
 import type { DailyEntry, DailyEntryRequest, EntryQueryParams } from '@/types/entry';
 
 const entryService = {
@@ -12,6 +12,11 @@ const entryService = {
   ).data,
   getEntryInsight: async (id: string): Promise<ApiEnvelope<EntryInsightResponse | null>> => (
     await api.get(`/entries/${id}/insight`)
+  ).data,
+  getReflectionAssist: async (
+    payload: { packId?: string; entry: Partial<DailyEntryRequest> },
+  ): Promise<ApiEnvelope<ReflectionAssistResponse>> => (
+    await api.post('/entries/reflection-assist', payload)
   ).data,
   getEntryByDate: async (date: string): Promise<ApiEnvelope<DailyEntry | null>> => (
     await api.get(`/entries/date/${date}`)

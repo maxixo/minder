@@ -4,7 +4,7 @@ import { parseEntryDateInput } from '../lib/date.js';
 import { mergeEntryPatch, normalizeEntry } from '../lib/entry.js';
 import { sendInternalServerError } from '../lib/http.js';
 import { buildEntryPersistenceInput, serializeEntry, serializeEntryInsight } from '../lib/serializers.js';
-import { getEntryInsightByEntryId, refreshEntryInsight } from '../services/insightService.js';
+import { generateReflectionAssist, getEntryInsightByEntryId, refreshEntryInsight } from '../services/insightService.js';
 import type { AuthRequest } from '../types/auth.js';
 
 const buildDateRange = (startDate?: string, endDate?: string) => {
@@ -106,6 +106,15 @@ export const getEntryInsight = async (req: AuthRequest, res: Response) => {
     res.json({ success: true, data: insight ? serializeEntryInsight(insight) : null });
   } catch (err: any) {
     return sendInternalServerError(res, err, 'Get entry insight failed');
+  }
+};
+
+export const createReflectionAssist = async (req: AuthRequest, res: Response) => {
+  try {
+    const assist = await generateReflectionAssist(req.body?.entry || {}, req.body?.packId || 'open-check-in');
+    res.json({ success: true, data: assist });
+  } catch (err: any) {
+    return sendInternalServerError(res, err, 'Create reflection assist failed');
   }
 };
 

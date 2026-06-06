@@ -1,7 +1,13 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import type { Entry } from '@prisma/client';
-import { buildEntryInsightInput, buildHeuristicEntryInsight, generateEntryInsight } from '../src/services/insightService.ts';
+import {
+  buildEntryInsightInput,
+  buildHeuristicEntryInsight,
+  buildHeuristicReflectionAssist,
+  generateEntryInsight,
+  generateReflectionAssist,
+} from '../src/services/insightService.ts';
 
 const createEntry = (overrides: Partial<Entry> = {}): Entry => ({
   id: '11111111-1111-1111-1111-111111111111',
@@ -121,4 +127,44 @@ test('buildHeuristicEntryInsight flags crisis language when present', () => {
 
   assert.equal(insight.riskFlags.includes('self_harm_language'), true);
   assert.equal(insight.riskFlags.includes('hopelessness_language'), true);
+});
+
+test('buildHeuristicReflectionAssist fills the biggest missing reflection gap first', () => {
+  const assist = buildHeuristicReflectionAssist({
+    gratitude: [],
+    expectations: '',
+    positiveNotes: [],
+    mindThoughts: 'Work has felt noisy all day.',
+    mood: 2,
+  }, 'stress-reset');
+
+  assert.match(assist.suggestedPrompt, /small detail|steady|comforting/i);
+  assert.match(assist.followUpQuestion, /pressure|smaller/i);
+  assert.match(assist.encouragement, /plain details|enough/i);
+  assert.equal(assist.preview, true);
+});
+
+test('generateReflectionAssist falls back to heuristic output when AI is unavailable', async () => {
+  const originalEnabled = process.env.AI_INSIGHTS_ENABLED;
+  const originalApiKey = process.env.AI_API_KEY;
+
+  process.env.AI_INSIGHTS_ENABLED = 'true';
+  process.env.AI_API_KEY = '';
+
+  try {
+    const assist = await generateReflectionAssist({
+      gratitude: ['A quiet breakfast'],
+      expectations: 'Stay calmer during work.',
+      positiveNotes: [],
+      mindThoughts: 'I feel pressure about deadlines.',
+    }, 'stress-reset');
+
+    assert.equal(typeof assist.suggestedPrompt, 'string');
+    assert.equal(assist.suggestedPrompt.length > 0, true);
+    assert.equal(assist.preview, true);
+    assert.equal(assist.modelVersion, 'heuristic-reflection-assist-v1');
+  } finally {
+    process.env.AI_INSIGHTS_ENABLED = originalEnabled;
+    process.env.AI_API_KEY = originalApiKey;
+  }
 });

@@ -390,6 +390,19 @@ export const entryPayloadValidators: ValidationChain[] = [
     .withMessage('Entry dates must use YYYY-MM-DD format.'),
 ];
 
+export const reflectionAssistValidators: ValidationChain[] = [
+  body('packId')
+    .optional()
+    .isString()
+    .trim()
+    .isLength({ min: 1, max: 80 })
+    .withMessage('packId must be between 1 and 80 characters.'),
+  body('entry')
+    .isObject()
+    .withMessage('entry must be a JSON object.')
+    .custom(validateEntryPayload),
+];
+
 export const entryCollectionValidators: ValidationChain[] = [
   query('page')
     .optional()
