@@ -397,7 +397,7 @@ export default function Share() {
               />
               <div className="absolute inset-0" style={{ background: theme.imageOverlay }} />
 
-              <div className="relative flex h-full w-full flex-col gap-5 p-8">
+              <div className="relative flex h-full w-full flex-col p-8">
                 <div className="flex items-start justify-between">
                   <img alt="MindfulLife" className="h-10 w-auto object-contain opacity-90" src={logoUrl} />
 
@@ -415,7 +415,7 @@ export default function Share() {
                 </div>
 
                 <div
-                  className="rounded-[24px] border p-5 shadow-sm backdrop-blur-[16px]"
+                  className="mt-5 rounded-[24px] border p-5 shadow-sm backdrop-blur-[16px]"
                   style={{ background: theme.panelFill, borderColor: theme.panelBorder }}
                 >
                   <h3 className="mb-4 flex items-center gap-2 font-label-md text-label-md" style={{ color: fontColor.secondary, fontFamily: fontFamily.bodyFamily }}>
@@ -436,7 +436,7 @@ export default function Share() {
                   </ul>
                 </div>
 
-                <div className="space-y-3">
+                <div className="mt-4 space-y-3">
                   <div className="h-[1px] w-full" style={{ background: theme.divider }} />
 
                   <div className="px-4 text-center">

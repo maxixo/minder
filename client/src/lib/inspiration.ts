@@ -648,21 +648,28 @@ export const downloadShareQuoteCard = async (
   const streak = options.streak || '12';
   const showQuoteMarks = options.showQuoteMarks ?? true;
 
-  context.fillStyle = '#faf9f6';
-  context.fillRect(0, 0, SHARE_CARD_WIDTH, SHARE_CARD_HEIGHT);
+  const cardInset = 12;
+  const cardRadius = 72;
+  const cardWidth = SHARE_CARD_WIDTH - (cardInset * 2);
+  const cardHeight = SHARE_CARD_HEIGHT - (cardInset * 2);
+
+  context.clearRect(0, 0, SHARE_CARD_WIDTH, SHARE_CARD_HEIGHT);
+  context.save();
+  drawRoundedRect(context, cardInset, cardInset, cardWidth, cardHeight, cardRadius);
+  context.clip();
 
   const backgroundGradient = context.createLinearGradient(0, 0, SHARE_CARD_WIDTH, SHARE_CARD_HEIGHT);
   backgroundGradient.addColorStop(0, theme.backgroundStart);
   backgroundGradient.addColorStop(0.5, theme.backgroundMid);
   backgroundGradient.addColorStop(1, theme.backgroundEnd);
   context.fillStyle = backgroundGradient;
-  context.fillRect(0, 0, SHARE_CARD_WIDTH, SHARE_CARD_HEIGHT);
+  context.fillRect(cardInset, cardInset, cardWidth, cardHeight);
 
   try {
     const backgroundImage = await loadImage(SHARE_BOTANICAL_URL);
     context.save();
     context.globalAlpha = 0.68;
-    context.drawImage(backgroundImage, 0, 0, SHARE_CARD_WIDTH, SHARE_CARD_HEIGHT);
+    context.drawImage(backgroundImage, cardInset, cardInset, cardWidth, cardHeight);
     context.restore();
   } catch {
     context.save();
@@ -678,38 +685,11 @@ export const downloadShareQuoteCard = async (
   }
 
   context.fillStyle = theme.imageOverlay;
-  context.fillRect(0, 0, SHARE_CARD_WIDTH, SHARE_CARD_HEIGHT);
+  context.fillRect(cardInset, cardInset, cardWidth, cardHeight);
 
-  const cardPadding = 80;
-  context.save();
-  context.shadowColor = theme.shadow;
-  context.shadowBlur = 60;
-  context.shadowOffsetY = 16;
-  context.fillStyle = 'rgba(255,255,255,0.02)';
-  fillRoundedRect(
-    context,
-    cardPadding,
-    72,
-    SHARE_CARD_WIDTH - (cardPadding * 2),
-    SHARE_CARD_HEIGHT - 144,
-    32,
-  );
-  context.restore();
-
-  const innerX = cardPadding + 42;
-  const innerY = 112;
-  const innerWidth = SHARE_CARD_WIDTH - ((cardPadding + 42) * 2);
-  const innerHeight = SHARE_CARD_HEIGHT - 224;
-
-  context.fillStyle = theme.shellFill;
-  fillRoundedRect(context, innerX, innerY, innerWidth, innerHeight, 28);
-  context.strokeStyle = theme.shellBorder;
-  context.lineWidth = 2;
-  strokeRoundedRect(context, innerX, innerY, innerWidth, innerHeight, 28);
-
-  const contentX = innerX + 56;
-  const contentY = innerY + 56;
-  const contentWidth = innerWidth - 112;
+  const contentX = 80;
+  const contentY = 76;
+  const contentWidth = SHARE_CARD_WIDTH - (contentX * 2);
 
   try {
     const logoImage = await loadImage(SHARE_LOGO_URL);
@@ -725,7 +705,7 @@ export const downloadShareQuoteCard = async (
 
   const streakWidth = 222;
   const streakHeight = 56;
-  const streakX = innerX + innerWidth - 56 - streakWidth;
+  const streakX = SHARE_CARD_WIDTH - contentX - streakWidth;
   const streakY = contentY;
 
   context.fillStyle = theme.accentSoft;
@@ -743,8 +723,8 @@ export const downloadShareQuoteCard = async (
   context.font = `600 20px ${fontFamily.bodyFamily}`;
   context.fillText(`${streak} Day Streak`, streakX + 48, streakY + 35);
 
-  const ritualsBoxY = contentY + 160;
-  const ritualsBoxHeight = 270;
+  const ritualsBoxY = contentY + 128;
+  const ritualsBoxHeight = 330;
   context.fillStyle = theme.panelFill;
   fillRoundedRect(context, contentX, ritualsBoxY, contentWidth, ritualsBoxHeight, 24);
   context.strokeStyle = theme.panelBorder;
@@ -758,7 +738,7 @@ export const downloadShareQuoteCard = async (
 
   const ritualItems = rituals.length ? rituals : ['20m Morning Meditation', 'Forest Mindful Walk', 'Gratitude Journaling'];
   ritualItems.forEach((ritual, index) => {
-    const rowY = ritualsBoxY + 86 + (index * 60);
+    const rowY = ritualsBoxY + 94 + (index * 76);
 
     context.fillStyle = theme.accentSoft;
     context.beginPath();
@@ -771,7 +751,7 @@ export const downloadShareQuoteCard = async (
     context.fillText(ritual, contentX + 72, rowY + 8);
   });
 
-  const dividerY = innerY + innerHeight - 190;
+  const dividerY = ritualsBoxY + ritualsBoxHeight + 16;
   context.strokeStyle = theme.divider;
   context.lineWidth = 2;
   context.beginPath();
@@ -792,25 +772,34 @@ export const downloadShareQuoteCard = async (
     context.fillText(line, SHARE_CARD_WIDTH / 2, quoteStartY + (index * 54));
   });
 
+  const authorY = quoteStartY + (quoteLines.length * 54) + 26;
   context.font = `600 22px ${fontFamily.bodyFamily}`;
   context.fillStyle = fontColor.secondary;
-  context.fillText(`BY ${quote.author.toUpperCase()}`, SHARE_CARD_WIDTH / 2, quoteStartY + (quoteLines.length * 54) + 26);
+  context.fillText(`BY ${quote.author.toUpperCase()}`, SHARE_CARD_WIDTH / 2, authorY);
 
+  let metadataY = authorY + 32;
   if (options.attribution) {
     context.font = `500 14px ${fontFamily.metaFamily}`;
     context.fillStyle = fontColor.muted;
-    context.fillText(options.attribution, SHARE_CARD_WIDTH / 2, quoteStartY + (quoteLines.length * 54) + 58);
+    context.fillText(options.attribution, SHARE_CARD_WIDTH / 2, metadataY);
+    metadataY += 28;
   }
 
   if (options.source) {
     context.font = `500 14px ${fontFamily.metaFamily}`;
     context.fillStyle = fontColor.muted;
-    context.fillText(`${options.source.toUpperCase()} - ${dateKey}`, SHARE_CARD_WIDTH / 2, innerY + innerHeight - 52);
+    context.fillText(`${options.source.toUpperCase()} - ${dateKey}`, SHARE_CARD_WIDTH / 2, metadataY);
+    metadataY += 28;
   }
 
   context.fillStyle = theme.accentSoft;
-  fillRoundedRect(context, (SHARE_CARD_WIDTH / 2) - 32, innerY + innerHeight - 30, 64, 8, 4);
+  fillRoundedRect(context, (SHARE_CARD_WIDTH / 2) - 32, metadataY + 12, 64, 8, 4);
   context.textAlign = 'start';
+  context.restore();
+
+  context.strokeStyle = theme.shellBorder;
+  context.lineWidth = 3;
+  strokeRoundedRect(context, cardInset + 1.5, cardInset + 1.5, cardWidth - 3, cardHeight - 3, cardRadius - 1.5);
 
   const dataUrl = canvas.toDataURL('image/png');
   const link = document.createElement('a');
