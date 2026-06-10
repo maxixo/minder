@@ -23,6 +23,17 @@ model User {
   lastReminderSentAt DateTime?
   shareStats         Boolean            @default(false)
   hasSeenDashboardWelcome Boolean       @default(false)
+  plan               String             @default("free")
+  subscriptionStatus String             @default("free")
+  billingProvider    String?
+  billingCustomerId  String?            @unique
+  billingSubscriptionId String?          @unique
+  billingInterval    String?
+  currentPeriodEnd   DateTime?
+  trialEndsAt        DateTime?
+  cancelAtPeriodEnd  Boolean            @default(false)
+  premiumInterestAt  DateTime?
+  premiumInterestInterval String?
   pushSubscriptions  PushSubscription[]
   entries            Entry[]
   entryInsights      EntryInsight[]

@@ -12,6 +12,7 @@ const SLEEP_QUALITY_VALUES = ['poor', 'fair', 'good', 'great', 'excellent'];
 const FEELING_VALUES = ['happy', 'peace', 'sad', 'worried', 'excited', 'bored', 'relaxed', 'lonely', 'tired', 'angry', 'overwhelmed'];
 const GOAL_VALUES = ['better-sleep', 'reduce-stress', 'daily-focus', 'emotional-balance'];
 const CADENCE_VALUES = ['daily', 'three-times-week', 'flexible'];
+const BILLING_INTERVAL_VALUES = ['monthly', 'annual'];
 
 const isPlainObject = (value: unknown): value is Record<string, unknown> => (
   Boolean(value) && typeof value === 'object' && !Array.isArray(value)
@@ -394,6 +395,12 @@ export const testPushNotificationValidators: ValidationChain[] = [
     .trim()
     .isLength({ max: 200 })
     .withMessage('Test notification messages must be 200 characters or fewer.'),
+];
+
+export const billingIntervalValidators: ValidationChain[] = [
+  body('interval')
+    .isIn(BILLING_INTERVAL_VALUES)
+    .withMessage('Billing interval must be monthly or annual.'),
 ];
 
 export const entryPayloadValidators: ValidationChain[] = [

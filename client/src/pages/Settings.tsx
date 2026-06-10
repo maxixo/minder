@@ -9,6 +9,7 @@ import { useAuth } from '@/contexts/useAuth';
 import { useTheme, } from '@/contexts/useTheme';
 import { usePwaInstall } from '@/hooks/usePwaInstall';
 import authService from '@/services/authService';
+import billingService from '@/services/billingService';
 import {
   getBrowserTimeZone,
   getExistingPushSubscription,
@@ -20,6 +21,7 @@ import {
   type NotificationPermissionStatus,
 } from '@/services/pushService';
 import userService from '@/services/userService';
+import type { BillingInterval, BillingSummary, SubscriptionStatus } from '@/types/billing';
 
 type ThemePreference = 'light' | 'dark' | 'auto';
 
@@ -54,6 +56,50 @@ const defaultPreferences: PreferencesState = {
     shareStats: false,
   },
 };
+
+const emptyBillingSummary: BillingSummary = {
+  plan: 'free',
+  status: 'free',
+  billingProvider: null,
+  billingInterval: null,
+  currentPeriodEnd: null,
+  trialEndsAt: null,
+  cancelAtPeriodEnd: false,
+  premiumInterestAt: null,
+  premiumInterestInterval: null,
+  checkout: {
+    monthly: false,
+    annual: false,
+  },
+  portalAvailable: false,
+  pricing: {
+    monthly: {
+      amount: 8,
+      currency: 'USD',
+      interval: 'month',
+    },
+    annual: {
+      amount: 60,
+      currency: 'USD',
+      interval: 'year',
+      monthlyEquivalent: 5,
+      savingsPercent: 38,
+    },
+  },
+  invoices: [],
+};
+
+const billingStatusLabel: Record<SubscriptionStatus, string> = {
+  free: 'Free',
+  trialing: 'Trial active',
+  active: 'Active',
+  past_due: 'Payment needs attention',
+  canceled: 'Canceled',
+};
+
+const formatBillingDate = (value: string | null) => (
+  value ? format(new Date(value), 'MMMM d, yyyy') : null
+);
 
 const normalizePreferences = (preferences: any): PreferencesState => ({
   theme: preferences?.theme || 'light',
@@ -163,6 +209,10 @@ export default function Settings() {
   const [subscriptionCount, setSubscriptionCount] = useState(0);
   const [isUpdatingPush, setIsUpdatingPush] = useState(false);
   const [isSendingTestPush, setIsSendingTestPush] = useState(false);
+  const [billing, setBilling] = useState<BillingSummary>(emptyBillingSummary);
+  const [billingInterval, setBillingInterval] = useState<BillingInterval>('annual');
+  const [isBillingLoading, setIsBillingLoading] = useState(true);
+  const [isBillingActionPending, setIsBillingActionPending] = useState(false);
   const safeAvatarUrl = getSafeAvatarUrl(avatar);
 
   const applyPushStatus = (browserSubscription: Awaited<ReturnType<typeof getExistingPushSubscription>>, statusResponse: any) => {
@@ -210,6 +260,30 @@ export default function Settings() {
         }
       })
       .catch(() => undefined);
+
+    return () => {
+      cancelled = true;
+    };
+  }, [user]);
+
+  useEffect(() => {
+    if (!user) return;
+
+    let cancelled = false;
+    setIsBillingLoading(true);
+
+    void billingService.getStatus()
+      .then((response) => {
+        if (cancelled) return;
+        setBilling(response.data);
+        setBillingInterval(response.data.billingInterval || response.data.premiumInterestInterval || 'annual');
+      })
+      .catch(() => {
+        if (!cancelled) setBilling(emptyBillingSummary);
+      })
+      .finally(() => {
+        if (!cancelled) setIsBillingLoading(false);
+      });
 
     return () => {
       cancelled = true;
@@ -312,6 +386,66 @@ export default function Settings() {
     }
     return 'This device is ready to receive push reminders.';
   }, [isInstalled, isIosLikeBrowser, isPushServerConfigured, isPushSubscribed, notificationPermission, preferences.notifications.dailyReminder, pushSupported]);
+
+  const billingRenewalMessage = useMemo(() => {
+    const trialEnd = formatBillingDate(billing.trialEndsAt);
+    const periodEnd = formatBillingDate(billing.currentPeriodEnd);
+
+    if (billing.status === 'trialing' && trialEnd) {
+      return `Trial ends ${trialEnd}.`;
+    }
+    if (billing.cancelAtPeriodEnd && periodEnd) {
+      return `Access remains available until ${periodEnd}.`;
+    }
+    if (billing.status === 'active' && periodEnd) {
+      return `Renews ${periodEnd}.`;
+    }
+    if (billing.status === 'past_due') {
+      return 'Update payment details to keep Premium access active.';
+    }
+    if (billing.status === 'canceled') {
+      return 'This subscription is no longer renewing.';
+    }
+    return 'No renewal date. The Free plan has no recurring charge.';
+  }, [billing]);
+
+  const handleUpgrade = async () => {
+    setIsBillingActionPending(true);
+
+    try {
+      if (billing.checkout[billingInterval]) {
+        const response = await billingService.createCheckout(billingInterval);
+        window.location.assign(response.data.url);
+        return;
+      }
+
+      const response = await billingService.requestPremiumAccess(billingInterval);
+      setBilling(response.data);
+      toast.success(response.message || 'Premium access request saved');
+    } catch (error: any) {
+      toast.error(error?.response?.data?.message || 'Unable to start the Premium upgrade');
+    } finally {
+      setIsBillingActionPending(false);
+    }
+  };
+
+  const handleManageSubscription = async () => {
+    if (!billing.portalAvailable) {
+      toast.info('Subscription management will appear here when the billing portal is connected.');
+      return;
+    }
+
+    setIsBillingActionPending(true);
+
+    try {
+      const response = await billingService.getPortal();
+      window.location.assign(response.data.url);
+    } catch (error: any) {
+      toast.error(error?.response?.data?.message || 'Unable to open subscription management');
+    } finally {
+      setIsBillingActionPending(false);
+    }
+  };
 
   const enablePushForCurrentDevice = async (timezone: string) => {
     const permission = await requestNotificationPermission();
@@ -670,6 +804,186 @@ export default function Settings() {
               <p className="mt-1 text-sm text-sage-600 dark:text-sage-200">{user?.email || 'No email available'}</p>
               <p className="mt-2 text-sm text-sage-500 dark:text-sage-300">Member since {memberSince}</p>
             </div>
+          </div>
+        </div>
+      </section>
+
+      <section
+        className="mt-8 overflow-hidden rounded-[1.75rem] border border-sage-200 bg-white shadow-soft dark:border-white/10 dark:bg-white/5"
+        id="billing"
+      >
+        <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1.05fr)_minmax(0,1.45fr)]">
+          <div className="bg-gradient-to-br from-sage-800 via-sage-700 to-[#4f6d58] p-6 text-white sm:p-8">
+            <div className="flex items-center justify-between gap-4">
+              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-white/65">Current Plan</p>
+              <span className="rounded-full border border-white/15 bg-white/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-white/85">
+                {billingStatusLabel[billing.status]}
+              </span>
+            </div>
+
+            {isBillingLoading ? (
+              <div className="mt-6 skeleton h-44 rounded-[1.5rem] bg-white/10" />
+            ) : (
+              <>
+                <h2 className="mt-5 font-display text-4xl font-semibold">
+                  {billing.plan === 'free' ? 'MindfulLife Free' : `MindfulLife ${billing.plan[0].toUpperCase()}${billing.plan.slice(1)}`}
+                </h2>
+                <p className="mt-4 max-w-xl text-sm leading-7 text-white/80">{billingRenewalMessage}</p>
+
+                <div className="mt-6 grid grid-cols-2 gap-3">
+                  <div className="rounded-[1.25rem] border border-white/10 bg-white/10 p-4">
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-white/60">Billing</p>
+                    <p className="mt-2 text-sm font-semibold text-white">
+                      {billing.billingInterval ? `${billing.billingInterval[0].toUpperCase()}${billing.billingInterval.slice(1)}` : 'No recurring charge'}
+                    </p>
+                  </div>
+                  <div className="rounded-[1.25rem] border border-white/10 bg-white/10 p-4">
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-white/60">Provider</p>
+                    <p className="mt-2 text-sm font-semibold text-white">
+                      {billing.billingProvider || 'Not connected'}
+                    </p>
+                  </div>
+                </div>
+
+                {billing.plan !== 'free' ? (
+                  <button
+                    className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-full bg-white px-5 py-3 text-sm font-bold text-sage-900 transition-transform hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-60"
+                    disabled={isBillingActionPending}
+                    onClick={() => void handleManageSubscription()}
+                    type="button"
+                  >
+                    <span className="material-symbols-outlined text-[18px]">credit_card</span>
+                    Manage Subscription
+                  </button>
+                ) : null}
+              </>
+            )}
+          </div>
+
+          <div className="p-6 sm:p-8">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.24em] text-sage-500 dark:text-sage-300">Premium Upgrade</p>
+                <h2 className="mt-2 font-display text-3xl font-semibold text-sage-900 dark:text-sage-50">Turn daily check-ins into longer-term clarity.</h2>
+              </div>
+              <div className="inline-flex rounded-full border border-sage-200 bg-sage-50 p-1 dark:border-white/10 dark:bg-white/5">
+                {(['monthly', 'annual'] as BillingInterval[]).map((interval) => (
+                  <button
+                    key={interval}
+                    className={clsx(
+                      'rounded-full px-4 py-2 text-xs font-semibold transition-colors',
+                      billingInterval === interval
+                        ? 'bg-sage-700 text-white dark:bg-sage-400 dark:text-sage-950'
+                        : 'text-sage-600 hover:text-sage-900 dark:text-sage-200 dark:hover:text-white'
+                    )}
+                    onClick={() => setBillingInterval(interval)}
+                    type="button"
+                  >
+                    {interval === 'annual' ? 'Annual' : 'Monthly'}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="mt-6 grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(230px,0.7fr)]">
+              <div className="grid gap-3 sm:grid-cols-2">
+                {[
+                  'Full mood, sleep, and behavior analytics',
+                  'AI summaries and longer trend comparisons',
+                  'Monthly and quarterly report downloads',
+                  'Premium reflection packs and richer guidance',
+                ].map((feature) => (
+                  <div key={feature} className="flex gap-3 rounded-[1.25rem] border border-sage-100 bg-sage-50/70 p-4 dark:border-white/10 dark:bg-white/5">
+                    <span className="material-symbols-outlined mt-0.5 text-[18px] text-sage-700 dark:text-sage-200">check_circle</span>
+                    <p className="text-sm leading-6 text-sage-700 dark:text-sage-100">{feature}</p>
+                  </div>
+                ))}
+              </div>
+
+              <div className="rounded-[1.5rem] border border-sand-200 bg-sand-50 p-5 dark:border-white/10 dark:bg-[#101915]">
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-sand-700 dark:text-sand-200">
+                  {billingInterval === 'annual' ? 'Best value' : 'Flexible plan'}
+                </p>
+                <p className="mt-3 font-display text-4xl font-semibold text-sage-900 dark:text-sage-50">
+                  ${billing.pricing[billingInterval].amount}
+                  <span className="ml-1 text-base font-medium text-sage-500 dark:text-sage-300">
+                    /{billing.pricing[billingInterval].interval}
+                  </span>
+                </p>
+                {billingInterval === 'annual' ? (
+                  <p className="mt-2 text-sm leading-6 text-sage-600 dark:text-sage-200">
+                    ${billing.pricing.annual.monthlyEquivalent}/month equivalent, saving {billing.pricing.annual.savingsPercent}%.
+                  </p>
+                ) : (
+                  <p className="mt-2 text-sm leading-6 text-sage-600 dark:text-sage-200">Cancel from the billing portal when provider access is connected.</p>
+                )}
+
+                {billing.plan === 'free' ? (
+                  <button
+                    className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-full bg-sage-700 px-5 py-3 text-sm font-bold text-white transition-all hover:-translate-y-0.5 hover:bg-sage-800 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-sage-400 dark:text-sage-950"
+                    disabled={isBillingActionPending || Boolean(billing.premiumInterestAt && !billing.checkout[billingInterval])}
+                    onClick={() => void handleUpgrade()}
+                    type="button"
+                  >
+                    <span className="material-symbols-outlined text-[18px]">
+                      {billing.checkout[billingInterval] ? 'lock_open' : 'notifications_active'}
+                    </span>
+                    {isBillingActionPending
+                      ? 'Preparing...'
+                      : billing.premiumInterestAt && !billing.checkout[billingInterval]
+                        ? 'Premium requested'
+                        : billing.checkout[billingInterval]
+                          ? 'Upgrade to Premium'
+                          : 'Request Premium access'}
+                  </button>
+                ) : (
+                  <div className="mt-5 rounded-2xl bg-sage-100 px-4 py-3 text-sm font-semibold text-sage-700 dark:bg-white/10 dark:text-sage-100">
+                    Your account already includes paid-plan access.
+                  </div>
+                )}
+
+                {!billing.checkout.monthly && !billing.checkout.annual && billing.plan === 'free' ? (
+                  <p className="mt-3 text-xs leading-5 text-sage-500 dark:text-sage-400">
+                    Checkout is not connected in this environment. Your request records plan interest without changing access or charging you.
+                  </p>
+                ) : null}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="border-t border-sage-100 px-6 py-6 sm:px-8 dark:border-white/10">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-sage-500 dark:text-sage-300">Billing History</p>
+              <p className="mt-2 text-sm leading-6 text-sage-600 dark:text-sage-200">
+                {billing.invoices.length
+                  ? `${billing.invoices.length} billing record${billing.invoices.length === 1 ? '' : 's'} available.`
+                  : billing.plan === 'free'
+                    ? 'No invoices yet. Free accounts are never charged.'
+                    : 'No invoice records have been synced from the billing provider yet.'}
+              </p>
+            </div>
+            {billing.invoices.length ? (
+              <div className="flex flex-wrap gap-2">
+                {billing.invoices.slice(0, 3).map((invoice) => (
+                  <a
+                    key={invoice.id}
+                    className="rounded-full border border-sage-200 px-4 py-2 text-xs font-semibold text-sage-700 hover:bg-sage-50 dark:border-white/10 dark:text-sage-100 dark:hover:bg-white/10"
+                    href={invoice.receiptUrl || undefined}
+                    rel="noreferrer"
+                    target={invoice.receiptUrl ? '_blank' : undefined}
+                  >
+                    {format(new Date(invoice.date), 'MMM d, yyyy')} - ${invoice.amount}
+                  </a>
+                ))}
+              </div>
+            ) : (
+              <span className="inline-flex items-center gap-2 rounded-full bg-sage-50 px-4 py-2 text-xs font-semibold text-sage-600 dark:bg-white/10 dark:text-sage-200">
+                <span className="material-symbols-outlined text-[16px]">receipt_long</span>
+                Nothing billed
+              </span>
+            )}
           </div>
         </div>
       </section>

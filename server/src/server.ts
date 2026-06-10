@@ -15,6 +15,7 @@ import authRoutes from './routes/authRoutes.js';
 import cronRoutes from './routes/cronRoutes.js';
 import entryRoutes from './routes/entryRoutes.js';
 import analyticsRoutes from './routes/analyticsRoutes.js';
+import billingRoutes from './routes/billingRoutes.js';
 import inspirationRoutes from './routes/inspirationRoutes.js';
 import userRoutes from './routes/userRoutes.js';
 import { startDailyReminderJob } from './jobs/reminderJob.js';
@@ -110,6 +111,7 @@ app.get('/api/ready', async (req: Request, res: Response) => {
 app.use('/api/auth', authRoutes);
 app.use('/api/entries', entryRoutes);
 app.use('/api/analytics', analyticsRoutes);
+app.use('/api/billing', billingRoutes);
 app.use('/api/inspiration', inspirationRoutes);
 app.use('/api/users', userRoutes);
 

@@ -23,6 +23,15 @@ export const serializeUser = (user: any) => ({
   cadence: user.cadence ?? null,
   createdAt: user.createdAt ? new Date(user.createdAt).toISOString() : null,
   hasSeenDashboardWelcome: user.hasSeenDashboardWelcome ?? false,
+  billing: {
+    plan: user.plan || 'free',
+    status: user.subscriptionStatus || 'free',
+    billingProvider: user.billingProvider || null,
+    billingInterval: user.billingInterval || null,
+    currentPeriodEnd: user.currentPeriodEnd ? new Date(user.currentPeriodEnd).toISOString() : null,
+    trialEndsAt: user.trialEndsAt ? new Date(user.trialEndsAt).toISOString() : null,
+    cancelAtPeriodEnd: user.cancelAtPeriodEnd ?? false,
+  },
   preferences: {
     theme: user.theme || 'light',
     notifications: {

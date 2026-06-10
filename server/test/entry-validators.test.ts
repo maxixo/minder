@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { validationResult, type ValidationChain } from 'express-validator';
 import {
+  billingIntervalValidators,
   entryCollectionValidators,
   entryDateParamValidator,
   entryIdParamValidator,
@@ -298,4 +299,14 @@ test('entry route validators accept valid params and reject malformed ones', asy
     },
   });
   assert.equal(invalidDate.isEmpty(), false);
+});
+
+test('billing interval validators accept supported billing cycles', async () => {
+  const monthly = await runValidators(billingIntervalValidators, { body: { interval: 'monthly' } });
+  const annual = await runValidators(billingIntervalValidators, { body: { interval: 'annual' } });
+  const invalid = await runValidators(billingIntervalValidators, { body: { interval: 'weekly' } });
+
+  assert.equal(monthly.isEmpty(), true, JSON.stringify(monthly.array()));
+  assert.equal(annual.isEmpty(), true, JSON.stringify(annual.array()));
+  assert.equal(invalid.isEmpty(), false);
 });

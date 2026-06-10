@@ -27,6 +27,15 @@ test('serializeUser returns nested preferences and omits passwordHash', () => {
   assert.equal(user.cadence, null);
   assert.equal(user.createdAt, '2026-05-20T08:00:00.000Z');
   assert.equal(user.hasSeenDashboardWelcome, true);
+  assert.deepEqual(user.billing, {
+    plan: 'free',
+    status: 'free',
+    billingProvider: null,
+    billingInterval: null,
+    currentPeriodEnd: null,
+    trialEndsAt: null,
+    cancelAtPeriodEnd: false,
+  });
   assert.deepEqual(user.preferences, {
     theme: 'dark',
     notifications: {

@@ -29,6 +29,15 @@ export interface AuthUser {
   cadence: string | null;
   createdAt: string | null;
   hasSeenDashboardWelcome: boolean;
+  billing: {
+    plan: string;
+    status: string;
+    billingProvider: string | null;
+    billingInterval: string | null;
+    currentPeriodEnd: string | null;
+    trialEndsAt: string | null;
+    cancelAtPeriodEnd: boolean;
+  };
   preferences: AuthUserPreferences;
 }
 
