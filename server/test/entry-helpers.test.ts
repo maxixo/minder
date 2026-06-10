@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { validationResult } from 'express-validator';
-import { ensureTodoItemIds, getCompletionPercentage } from '../src/lib/entry.ts';
+import { ensureCustomSelfCareItemIds, ensureTodoItemIds, getCompletionPercentage } from '../src/lib/entry.ts';
 import { entryPayloadValidators } from '../src/middleware/requestValidators.ts';
 import { buildEntryPersistenceInput, serializeEntry, serializeUser } from '../src/lib/serializers.ts';
 
@@ -93,6 +93,22 @@ test('ensureTodoItemIds generates ids and completion percentage matches legacy f
   });
 
   assert.equal(completion, 100);
+});
+
+test('ensureCustomSelfCareItemIds normalizes persisted custom checklist items', () => {
+  const items = ensureCustomSelfCareItemIds([
+    { text: 'Take medication', completed: true },
+    { id: 'custom-2', text: 'Use the heating pad', completed: false },
+    { id: 'empty', text: '   ', completed: true },
+  ]);
+
+  assert.equal(items.length, 2);
+  assert.equal(typeof items[0].id, 'string');
+  assert.deepEqual(items[1], {
+    id: 'custom-2',
+    text: 'Use the heating pad',
+    completed: false,
+  });
 });
 
 test('entry payload validators allow decimal energy levels from the reflection graph', async () => {

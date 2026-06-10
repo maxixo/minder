@@ -729,7 +729,7 @@ export const downloadShareQuoteCard = async (
   const fontColor = getShareCardFontColor(options.fontColorId || getDefaultShareCardFontColor(theme.id));
   const fontFamily = getShareCardFontFamily(options.fontFamilyId);
   const dateKey = options.date || getLocalDateKey();
-  const rituals = (options.rituals || []).map((ritual) => ritual.trim()).filter(Boolean).slice(0, 3);
+  const rituals = (options.rituals || []).map((ritual) => ritual.trim()).filter(Boolean);
   const streak = options.streak || '12';
   const showQuoteMarks = options.showQuoteMarks ?? true;
 
@@ -827,22 +827,39 @@ export const downloadShareQuoteCard = async (
   context.fillStyle = fontColor.secondary;
   drawCalendarIcon(context, contentX + 28, ritualsBoxY + 22, fontColor.secondary);
   context.font = `600 22px ${fontFamily.bodyFamily}`;
-  context.fillText("TODAY'S RITUALS", contentX + 68, ritualsBoxY + 42);
+  context.fillText("TODAY'S COPING STRATEGIES", contentX + 68, ritualsBoxY + 42);
 
   const ritualItems = rituals.length ? rituals : ['20m Morning Meditation', 'Forest Mindful Walk', 'Gratitude Journaling'];
-  ritualItems.forEach((ritual, index) => {
-    const rowY = ritualsBoxY + 94 + (index * 76);
-
+  if (ritualItems.length > 4) {
+    const rowX = contentX + 38;
+    const rowY = ritualsBoxY + 94;
     context.fillStyle = theme.accentSoft;
     context.beginPath();
-    context.arc(contentX + 38, rowY, 18, 0, Math.PI * 2);
+    context.arc(rowX, rowY, 16, 0, Math.PI * 2);
     context.fill();
-    drawCheckIcon(context, contentX + 38, rowY, theme.accent);
+    drawCheckIcon(context, rowX, rowY, theme.accent);
 
     context.fillStyle = fontColor.primary;
-    context.font = `400 24px ${fontFamily.bodyFamily}`;
-    context.fillText(ritual, contentX + 72, rowY + 8);
-  });
+    context.font = `400 21px ${fontFamily.bodyFamily}`;
+    const strategyLines = wrapText(context, ritualItems.join(' / '), contentWidth - 112);
+    strategyLines.forEach((line, index) => {
+      context.fillText(line, rowX + 34, rowY + 7 + (index * 34));
+    });
+  } else {
+    ritualItems.forEach((ritual, index) => {
+      const rowY = ritualsBoxY + 94 + (index * 58);
+
+      context.fillStyle = theme.accentSoft;
+      context.beginPath();
+      context.arc(contentX + 38, rowY, 16, 0, Math.PI * 2);
+      context.fill();
+      drawCheckIcon(context, contentX + 38, rowY, theme.accent);
+
+      context.fillStyle = fontColor.primary;
+      context.font = `400 24px ${fontFamily.bodyFamily}`;
+      context.fillText(ritual, contentX + 72, rowY + 8);
+    });
+  }
 
   const dividerY = ritualsBoxY + ritualsBoxHeight + 16;
   context.strokeStyle = theme.divider;

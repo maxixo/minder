@@ -24,6 +24,7 @@ import {
   type ShareCardThemeId,
 } from '@/lib/inspiration';
 import analyticsService from '@/services/analyticsService';
+import entryService from '@/services/entryService';
 import type { DashboardQuote } from '@/constants/dashboardQuotes';
 
 const fallbackQuote: DashboardQuote = {
@@ -37,6 +38,12 @@ const defaultRituals = [
   'Forest Mindful Walk',
   'Gratitude Journaling',
 ];
+
+const parseCopingMethods = (value?: string | null) => (
+  typeof value === 'string'
+    ? value.split(',').map((item) => item.trim()).filter(Boolean)
+    : []
+);
 
 const logoUrl = 'https://lh3.googleusercontent.com/aida/AP1WRLvCundqemjzSKgHRcFetGSWpcb1wzH9tAckSSy1QEXV6OnfDbRkNdJJD4fRD939T2q_YXihQlrJ-hjWpv1YyKT26fz1Tk4W6z5QrcCaLz-YeBUPs8dD-XgoWohfRsUtGTm-pM46gA_NX1tOaQ6s8eCR0HQ7mLXwTjLP3rOHzQlpLvfe5pb6T9QAbGaIOCUVLASlpjPB_k7HG4mRrZj4S6zzZxO0Tn1jC-gfIhD9g5I2DD4gPQit4TGanH0';
 const baseCardTransform = 'perspective(1000px) rotateY(0deg) rotateX(0deg) scale(1)';
@@ -109,6 +116,7 @@ export default function Share() {
     getDefaultShareCardFontColor(isDarkMode ? 'midnight' : 'sage'),
   );
   const [fontFamilyId, setFontFamilyId] = useState<ShareCardFontFamilyId>('editorial');
+  const [isLoadingStrategies, setIsLoadingStrategies] = useState(false);
   const [streak, setStreak] = useState(() => {
     const locationState = location.state as ShareLocationState | null;
     return locationState?.currentStreak != null
@@ -138,14 +146,40 @@ export default function Share() {
 
   const initialRituals = useMemo(() => {
     const rituals = searchParams.getAll('ritual');
-    const baseRituals = rituals.length ? rituals.slice(0, 3) : defaultRituals;
-    return Array.from({ length: 3 }, (_, index) => baseRituals[index] || '');
+    return rituals.length ? rituals : defaultRituals;
   }, [searchParams]);
   const [ritualInputs, setRitualInputs] = useState<string[]>(initialRituals);
 
   useEffect(() => {
     setRitualInputs(initialRituals);
   }, [initialRituals]);
+
+  useEffect(() => {
+    if (isAuthLoading || !isAuthenticated || searchParams.getAll('ritual').length) return undefined;
+
+    let isCancelled = false;
+
+    const loadSavedStrategies = async () => {
+      setIsLoadingStrategies(true);
+
+      try {
+        const response = await entryService.getEntryByDate(shareDate);
+        const strategies = parseCopingMethods(response.data?.emotionalGuidance?.copingMethod);
+        if (!isCancelled && strategies.length) {
+          setRitualInputs(strategies);
+        }
+      } catch {
+        // Keep the editable fallback rituals when the dated entry is unavailable.
+      } finally {
+        if (!isCancelled) setIsLoadingStrategies(false);
+      }
+    };
+
+    void loadSavedStrategies();
+    return () => {
+      isCancelled = true;
+    };
+  }, [isAuthLoading, isAuthenticated, searchParams, shareDate]);
 
   useEffect(() => {
     const locationState = location.state as ShareLocationState | null;
@@ -188,7 +222,7 @@ export default function Share() {
   }, [themeId]);
 
   const shareRituals = useMemo(
-    () => ritualInputs.map((ritual) => ritual.trim()).filter(Boolean).slice(0, 3),
+    () => ritualInputs.map((ritual) => ritual.trim()).filter(Boolean),
     [ritualInputs],
   );
   const theme = getShareCardTheme(themeId);
@@ -319,6 +353,14 @@ export default function Share() {
     )));
   };
 
+  const handleAddRitual = () => {
+    setRitualInputs((current) => [...current, '']);
+  };
+
+  const handleRemoveRitual = (index: number) => {
+    setRitualInputs((current) => current.filter((_, ritualIndex) => ritualIndex !== index));
+  };
+
   const handleThemeSelect = (nextThemeId: ShareCardThemeId) => {
     hasCustomThemeSelectionRef.current = true;
     setThemeId(nextThemeId);
@@ -377,9 +419,9 @@ export default function Share() {
           <AuthThemeToggle className="shrink-0" showLabel={false} />
           <Link
             className="rounded-full bg-primary px-6 py-2.5 font-label-md text-label-md text-on-primary shadow-sm transition-all duration-200 hover:opacity-90"
-            to={from === 'inspiration' ? '/inspiration' : '/'}
+            to={from === 'inspiration' ? '/inspiration' : from === 'emotional' ? '/emotional' : '/'}
           >
-            {from === 'inspiration' ? 'Back to Inspiration' : 'Start Your Journey'}
+            {from === 'inspiration' ? 'Back to Inspiration' : from === 'emotional' ? 'Back to Guidance' : 'Start Your Journey'}
           </Link>
         </div>
       </header>
@@ -443,17 +485,15 @@ export default function Share() {
                 >
                   <h3 className="mb-4 flex items-center gap-2 font-label-md text-label-md" style={{ color: fontColor.secondary, fontFamily: fontFamily.bodyFamily }}>
                     <span className="material-symbols-outlined text-[20px]" style={{ ...iconStyle, color: fontColor.secondary }}>calendar_today</span>
-                    TODAY&apos;S RITUALS
+                    TODAY&apos;S COPING STRATEGIES
                   </h3>
-                  <ul className="space-y-4">
+                  <ul className={shareRituals.length > 4 ? 'grid grid-cols-2 gap-x-3 gap-y-2' : 'space-y-4'}>
                     {shareRituals.map((ritual) => (
-                      <li key={ritual} className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                          <div className="flex h-6 w-6 items-center justify-center rounded-full" style={{ background: theme.accentSoft }}>
-                            <span className="material-symbols-outlined text-[16px] font-bold" style={{ ...iconStyle, color: theme.accent }}>check</span>
-                          </div>
-                          <span className="font-body-md text-[15px]" style={{ color: fontColor.primary, fontFamily: fontFamily.bodyFamily }}>{ritual}</span>
+                      <li key={ritual} className="flex min-w-0 items-start gap-2">
+                        <div className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full" style={{ background: theme.accentSoft }}>
+                          <span className="material-symbols-outlined text-[14px] font-bold" style={{ ...iconStyle, color: theme.accent }}>check</span>
                         </div>
+                        <span className="min-w-0 font-body-md text-[13px] leading-5" style={{ color: fontColor.primary, fontFamily: fontFamily.bodyFamily }}>{ritual}</span>
                       </li>
                     ))}
                   </ul>
@@ -632,17 +672,41 @@ export default function Share() {
               </div>
 
               <div>
-                <p className="mb-3 text-xs font-semibold uppercase tracking-[0.22em] text-sage-500 dark:text-sage-300">Edit Rituals</p>
-                <div className="grid gap-3 md:grid-cols-3">
+                <div className="mb-3 flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-[0.22em] text-sage-500 dark:text-sage-300">Coping Strategies</p>
+                    <p className="mt-1 text-xs text-sage-500 dark:text-sage-400">
+                      {isLoadingStrategies ? 'Loading saved strategies...' : 'Loaded from the emotional check-in for this card date.'}
+                    </p>
+                  </div>
+                  <button
+                    className="inline-flex items-center gap-1 rounded-full border border-sage-200 bg-white px-3 py-2 text-xs font-semibold text-sage-700 hover:bg-sage-50 dark:border-white/10 dark:bg-white/5 dark:text-sage-100"
+                    onClick={handleAddRitual}
+                    type="button"
+                  >
+                    <span className="material-symbols-outlined text-[16px]">add</span>
+                    Add
+                  </button>
+                </div>
+                <div className="grid gap-3 md:grid-cols-2">
                   {ritualInputs.map((ritual, index) => (
-                    <input
-                      key={`ritual-${index + 1}`}
-                      className="rounded-2xl border border-sage-200 bg-white px-4 py-3 text-sm text-slate-900 shadow-inner-soft outline-none transition-colors placeholder:text-sage-400 focus:border-sage-500 dark:border-white/10 dark:bg-[#101915] dark:text-sage-50"
-                      onChange={(event) => handleRitualChange(index, event.target.value)}
-                      placeholder={`Ritual ${index + 1}`}
-                      type="text"
-                      value={ritual}
-                    />
+                    <div key={`ritual-${index + 1}`} className="flex items-center gap-2">
+                      <input
+                        className="min-w-0 flex-1 rounded-2xl border border-sage-200 bg-white px-4 py-3 text-sm text-slate-900 shadow-inner-soft outline-none transition-colors placeholder:text-sage-400 focus:border-sage-500 dark:border-white/10 dark:bg-[#101915] dark:text-sage-50"
+                        onChange={(event) => handleRitualChange(index, event.target.value)}
+                        placeholder={`Strategy ${index + 1}`}
+                        type="text"
+                        value={ritual}
+                      />
+                      <button
+                        aria-label={`Remove strategy ${index + 1}`}
+                        className="flex size-10 shrink-0 items-center justify-center rounded-full text-sage-400 hover:bg-clay-50 hover:text-clay-600 dark:hover:bg-white/10"
+                        onClick={() => handleRemoveRitual(index)}
+                        type="button"
+                      >
+                        <span className="material-symbols-outlined text-[19px]">close</span>
+                      </button>
+                    </div>
                   ))}
                 </div>
               </div>

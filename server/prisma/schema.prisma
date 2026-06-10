@@ -81,6 +81,7 @@ model Entry {
   nextStep            String   @default("")
   ratings             Json     @default(dbgenerated("'{}'::jsonb")) @db.JsonB
   selfCareChecklist   Json     @default(dbgenerated("'{}'::jsonb")) @db.JsonB
+  customSelfCareChecklist Json  @default(dbgenerated("'[]'::jsonb")) @db.JsonB
   emotionalGuidance   Json     @default(dbgenerated("'{}'::jsonb")) @db.JsonB
   selfCarePlanDays    Json     @default(dbgenerated("'{}'::jsonb")) @db.JsonB
   priorities          Json     @default(dbgenerated("'[]'::jsonb")) @db.JsonB

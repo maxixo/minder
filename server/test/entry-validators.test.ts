@@ -94,6 +94,10 @@ test('entry payload validators accept a full entry payload', async () => {
         meditated: false,
         stretched: true,
       },
+      customSelfCareChecklist: [
+        { id: 'custom-1', text: 'Take medication', completed: true },
+        { id: 'custom-2', text: 'Use the heating pad', completed: false },
+      ],
       emotionalGuidance: {
         whereAreYou: 'At home and a bit scattered.',
         howYoureFeeling: 'Mostly calm.',
@@ -167,6 +171,9 @@ test('entry payload validators accept payloads from each entry screen', async ()
         readBook: true,
         meditated: true,
       },
+      customSelfCareChecklist: [
+        { id: 'custom-1', text: 'Prepare a nourishing snack', completed: false },
+      ],
     },
     {
       date: '2026-05-24',

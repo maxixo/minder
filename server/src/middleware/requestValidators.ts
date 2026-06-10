@@ -205,6 +205,23 @@ const validateEntryPayload = (payload: unknown) => {
     'stretched',
   ]);
 
+  if (payload.customSelfCareChecklist !== undefined && payload.customSelfCareChecklist !== null) {
+    if (!Array.isArray(payload.customSelfCareChecklist)) {
+      throw new Error('customSelfCareChecklist must be an array.');
+    }
+    if (payload.customSelfCareChecklist.length > 20) {
+      throw new Error('customSelfCareChecklist must contain 20 items or fewer.');
+    }
+    payload.customSelfCareChecklist.forEach((item, index) => {
+      if (!isPlainObject(item)) {
+        throw new Error(`customSelfCareChecklist[${index}] must be an object.`);
+      }
+      assertOptionalString(item.id, `customSelfCareChecklist[${index}].id`, 120);
+      assertOptionalString(item.text, `customSelfCareChecklist[${index}].text`, 120);
+      assertOptionalBoolean(item.completed, `customSelfCareChecklist[${index}].completed`);
+    });
+  }
+
   if (payload.emotionalGuidance !== undefined && payload.emotionalGuidance !== null) {
     if (!isPlainObject(payload.emotionalGuidance)) {
       throw new Error('emotionalGuidance must be an object.');

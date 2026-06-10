@@ -13,6 +13,12 @@ export interface EntryTodoItem {
   completed: boolean;
 }
 
+export interface CustomSelfCareItem {
+  id: string;
+  text: string;
+  completed: boolean;
+}
+
 const nowIso = () => new Date().toISOString();
 
 export const createEmptyEntry = (date = nowIso()) => ({
@@ -80,6 +86,7 @@ export const createEmptyEntry = (date = nowIso()) => ({
     meditated: false,
     stretched: false,
   },
+  customSelfCareChecklist: [] as CustomSelfCareItem[],
   emotionalGuidance: {
     whereAreYou: '',
     howYoureFeeling: '',
@@ -129,6 +136,19 @@ export const ensureTodoItemIds = (todoList: unknown) => {
     }));
 };
 
+export const ensureCustomSelfCareItemIds = (items: unknown) => {
+  if (!Array.isArray(items)) return [];
+
+  return items
+    .filter((item) => isPlainObject(item))
+    .map((item) => ({
+      id: typeof item.id === 'string' && item.id.trim() ? item.id : crypto.randomUUID(),
+      text: typeof item.text === 'string' ? item.text : '',
+      completed: Boolean(item.completed),
+    }))
+    .filter((item) => item.text.trim());
+};
+
 export const normalizeEntry = (entry?: Record<string, unknown> | null) => {
   const date = typeof entry?.date === 'string' && entry.date ? entry.date : nowIso();
 
@@ -142,6 +162,7 @@ export const normalizeEntry = (entry?: Record<string, unknown> | null) => {
     ...(entry || {}),
     selfCarePlanDays,
     todoList: ensureTodoItemIds(entry?.todoList),
+    customSelfCareChecklist: ensureCustomSelfCareItemIds(entry?.customSelfCareChecklist),
   });
 };
 

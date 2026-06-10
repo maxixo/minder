@@ -31,6 +31,7 @@ describe('entry helpers', () => {
     expect(normalized.gratitude).toEqual(['Fresh air']);
     expect(normalized.selfCarePlanDays).toEqual({ monday: true });
     expect(normalized.todoList).toEqual([]);
+    expect(normalized.customSelfCareChecklist).toEqual([]);
     expect(normalized.activities.music).toBe(0);
   });
 

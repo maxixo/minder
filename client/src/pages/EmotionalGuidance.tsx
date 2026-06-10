@@ -1,9 +1,12 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { endOfWeek, format, parseISO, startOfWeek } from 'date-fns';
 import clsx from 'clsx';
 import { toast } from 'sonner';
+import { Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/useAuth';
 import { useDailyEntry } from '@/hooks/useDailyEntry';
-import type { DailyEntryPatch } from '@/types/entry';
+import entryService from '@/services/entryService';
+import type { DailyEntry, DailyEntryPatch } from '@/types/entry';
 
 const weekConfig = [
   { key: 'mon', day: 'Mon' },
@@ -28,6 +31,9 @@ const copingStrategies = [
   { icon: 'wb_sunny', label: 'Step Outside for Sunlight' },
   { icon: 'headphones', label: 'Noise-Canceling Break' },
 ];
+const MAX_COPING_METHOD_LENGTH = 280;
+const MAX_CUSTOM_STRATEGY_LENGTH = 60;
+const defaultCopingStrategyLabels = new Set(copingStrategies.map((strategy) => strategy.label.toLocaleLowerCase()));
 
 type WeekKey = (typeof weekConfig)[number]['key'];
 
@@ -51,6 +57,7 @@ const weekdayKeyByIndex: Record<number, WeekKey> = {
   6: 'sat',
 };
 
+const toDateParam = (date: Date) => format(date, 'yyyy-MM-dd');
 const sanitizeNotes = (notes: string[]) => notes.map((note) => note.trim()).filter(Boolean).slice(0, 6);
 const parseCopingMethods = (value?: string | null) => (
   typeof value === 'string'
@@ -61,43 +68,92 @@ const parseCopingMethods = (value?: string | null) => (
 export default function EmotionalGuidance() {
   const { user } = useAuth();
   const { entry, error, loading, saveEntryPatch, saving } = useDailyEntry();
-  const [week, setWeek] = useState<Record<WeekKey, boolean>>(emptyWeek);
+  const [weeklyEntries, setWeeklyEntries] = useState<DailyEntry[]>([]);
+  const [weekLoading, setWeekLoading] = useState(true);
+  const [weekError, setWeekError] = useState('');
   const [whereYouAre, setWhereYouAre] = useState('');
   const [feelings, setFeelings] = useState('');
   const [thoughts, setThoughts] = useState('');
   const [selectedStrategies, setSelectedStrategies] = useState<string[]>([]);
+  const [customStrategies, setCustomStrategies] = useState<string[]>([]);
+  const [customStrategyInput, setCustomStrategyInput] = useState('');
   const [notes, setNotes] = useState<string[]>([]);
 
   const firstName = user?.name?.split(' ')[0] || 'Friend';
+  const weekRange = useMemo(() => {
+    const now = new Date();
+    return {
+      start: startOfWeek(now, { weekStartsOn: 1 }),
+      end: endOfWeek(now, { weekStartsOn: 1 }),
+    };
+  }, []);
+  const week = useMemo(() => {
+    const checkedDays = emptyWeek();
+
+    weeklyEntries.forEach((weeklyEntry) => {
+      if (!weeklyEntry.completedSections.includes('emotional')) return;
+      const date = parseISO(weeklyEntry.date.slice(0, 10));
+      checkedDays[weekdayKeyByIndex[date.getDay()]] = true;
+    });
+
+    return checkedDays;
+  }, [weeklyEntries]);
   const completedDays = Object.values(week).filter(Boolean).length;
   const currentDayKey = weekdayKeyByIndex[new Date().getDay()];
   const hasNotes = notes.length > 0;
+  const sharePath = useMemo(() => {
+    const params = new URLSearchParams({
+      date: toDateParam(new Date()),
+      from: 'emotional',
+    });
+    selectedStrategies.forEach((strategy) => params.append('ritual', strategy));
+    return `/share?${params.toString()}`;
+  }, [selectedStrategies]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadWeeklyCheckIns = async () => {
+      setWeekLoading(true);
+      setWeekError('');
+
+      try {
+        const response = await entryService.getEntries({
+          startDate: toDateParam(weekRange.start),
+          endDate: toDateParam(weekRange.end),
+          limit: 7,
+        });
+        if (!cancelled) setWeeklyEntries(response.data);
+      } catch (loadError: any) {
+        if (!cancelled) {
+          setWeeklyEntries([]);
+          setWeekError(loadError?.response?.data?.message || 'Weekly check-ins could not be loaded.');
+        }
+      } finally {
+        if (!cancelled) setWeekLoading(false);
+      }
+    };
+
+    void loadWeeklyCheckIns();
+    return () => {
+      cancelled = true;
+    };
+  }, [weekRange]);
 
   useEffect(() => {
     if (!entry) return;
 
-    setWeek({
-      mon: Boolean(entry.selfCarePlanDays?.mon),
-      tue: Boolean(entry.selfCarePlanDays?.tue),
-      wed: Boolean(entry.selfCarePlanDays?.wed),
-      thu: Boolean(entry.selfCarePlanDays?.thu),
-      fri: Boolean(entry.selfCarePlanDays?.fri),
-      sat: Boolean(entry.selfCarePlanDays?.sat),
-      sun: Boolean(entry.selfCarePlanDays?.sun),
-    });
     setWhereYouAre(entry.emotionalGuidance?.whereAreYou || '');
     setFeelings(entry.emotionalGuidance?.howYoureFeeling || '');
     setThoughts(entry.emotionalGuidance?.whatYoureThinking || '');
-    setSelectedStrategies(parseCopingMethods(entry.emotionalGuidance?.copingMethod));
+    const savedStrategies = parseCopingMethods(entry.emotionalGuidance?.copingMethod);
+    setSelectedStrategies(savedStrategies);
+    setCustomStrategies(savedStrategies.filter(
+      (strategy) => !defaultCopingStrategyLabels.has(strategy.toLocaleLowerCase())
+    ));
+    setCustomStrategyInput('');
     setNotes(entry.todayNotes || []);
   }, [entry]);
-
-  const toggleDay = (key: WeekKey) => {
-    setWeek((current) => ({
-      ...current,
-      [key]: !current[key],
-    }));
-  };
 
   const toggleStrategy = (label: string) => {
     setSelectedStrategies((current) => (
@@ -107,20 +163,61 @@ export default function EmotionalGuidance() {
     ));
   };
 
+  const handleAddCustomStrategy = () => {
+    const strategy = customStrategyInput.trim().replace(/,+/g, ' ');
+    if (!strategy) return;
+
+    if (strategy.length > MAX_CUSTOM_STRATEGY_LENGTH) {
+      toast.error(`Custom strategies must be ${MAX_CUSTOM_STRATEGY_LENGTH} characters or fewer.`);
+      return;
+    }
+
+    const existingStrategies = [...copingStrategies.map((item) => item.label), ...customStrategies];
+    const existingStrategy = existingStrategies.find(
+      (item) => item.toLocaleLowerCase() === strategy.toLocaleLowerCase()
+    );
+    const strategyToSelect = existingStrategy || strategy;
+    const nextSelected = selectedStrategies.some(
+      (item) => item.toLocaleLowerCase() === strategyToSelect.toLocaleLowerCase()
+    )
+      ? selectedStrategies
+      : [...selectedStrategies, strategyToSelect];
+
+    if (nextSelected.join(', ').length > MAX_COPING_METHOD_LENGTH) {
+      toast.error('Remove another strategy before adding this one.');
+      return;
+    }
+
+    if (!existingStrategy) {
+      setCustomStrategies((current) => [...current, strategy]);
+    }
+    setSelectedStrategies(nextSelected);
+    setCustomStrategyInput('');
+  };
+
   const handleSave = async () => {
+    const copingMethod = selectedStrategies.join(', ');
+    if (copingMethod.length > MAX_COPING_METHOD_LENGTH) {
+      toast.error('Selected coping strategies are too long. Remove one before saving.');
+      return;
+    }
+
     const patch: DailyEntryPatch = {
       emotionalGuidance: {
         whereAreYou: whereYouAre.trim(),
         howYoureFeeling: feelings.trim(),
         whatYoureThinking: thoughts.trim(),
-        copingMethod: selectedStrategies.join(', '),
+        copingMethod,
       },
-      selfCarePlanDays: week,
       todayNotes: sanitizeNotes(notes),
     };
 
     try {
-      await saveEntryPatch(patch, 'emotional');
+      const savedEntry = await saveEntryPatch(patch, 'emotional');
+      setWeeklyEntries((current) => [
+        savedEntry,
+        ...current.filter((weeklyEntry) => weeklyEntry.date.slice(0, 10) !== savedEntry.date.slice(0, 10)),
+      ]);
       toast.success('Emotional reflection saved');
     } catch (saveError: any) {
       toast.error(saveError?.response?.data?.message || 'Unable to save emotional reflection');
@@ -179,20 +276,29 @@ export default function EmotionalGuidance() {
             </div>
             <div>
               <h2 className="font-display text-2xl font-semibold text-sage-900 dark:text-sage-50">Weekly Consistency Tracker</h2>
-              <p className="text-sm text-sage-500 dark:text-sage-300">Mark each day you paused for an honest emotional check-in.</p>
+              <p className="text-sm text-sage-500 dark:text-sage-300">
+                Days are marked automatically when you save an emotional check-in.
+              </p>
             </div>
           </div>
+
+          {weekError ? (
+            <div className="mb-5 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+              {weekError}
+            </div>
+          ) : null}
 
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-7">
             {weekConfig.map((item) => {
               const isCurrentDay = item.key === currentDayKey;
+              const isChecked = week[item.key];
 
               return (
-                <label
+                <div
                   key={item.key}
                   className={clsx(
-                    'flex cursor-pointer flex-col items-center gap-3 rounded-2xl border p-4 transition-all',
-                    week[item.key] ? 'border-sage-200 bg-sage-50 dark:border-sage-400/30 dark:bg-white/10' : 'border-sage-100 bg-sand-50/70 hover:border-sage-200 dark:border-white/10 dark:bg-[#101915]',
+                    'flex flex-col items-center gap-3 rounded-2xl border p-4 transition-all',
+                    isChecked ? 'border-sage-200 bg-sage-50 dark:border-sage-400/30 dark:bg-white/10' : 'border-sage-100 bg-sand-50/70 dark:border-white/10 dark:bg-[#101915]',
                     isCurrentDay && 'ring-2 ring-sage-300/60'
                   )}
                 >
@@ -202,16 +308,28 @@ export default function EmotionalGuidance() {
                   )}>
                     {item.day}
                   </span>
-                  <input
-                    checked={week[item.key]}
-                    className="h-6 w-6 rounded-full border-sage-300 text-sage-600 focus:ring-sage-500"
-                    onChange={() => toggleDay(item.key)}
-                    type="checkbox"
-                  />
-                </label>
+                  <span
+                    aria-label={`${item.day} ${isChecked ? 'check-in completed' : 'check-in not completed'}`}
+                    className={clsx(
+                      'flex size-7 items-center justify-center rounded-full border-2',
+                      isChecked
+                        ? 'border-sage-600 bg-sage-600 text-white dark:border-sage-300 dark:bg-sage-300 dark:text-sage-900'
+                        : 'border-sage-300 bg-white text-transparent dark:border-white/20 dark:bg-white/5'
+                    )}
+                    role="img"
+                  >
+                    <span className="material-symbols-outlined text-[18px]">check</span>
+                  </span>
+                </div>
               );
             })}
           </div>
+
+          <p className="mt-4 text-xs leading-5 text-sage-500 dark:text-sage-400">
+            {weekLoading
+              ? 'Syncing this week...'
+              : `${completedDays} emotional check-in${completedDays === 1 ? '' : 's'} saved from ${format(weekRange.start, 'MMM d')} to ${format(weekRange.end, 'MMM d')}.`}
+          </p>
         </section>
 
         <div className="grid grid-cols-1 gap-8 xl:grid-cols-3">
@@ -317,6 +435,52 @@ export default function EmotionalGuidance() {
                     </button>
                   );
                 })}
+                {customStrategies.map((strategy) => {
+                  const isSelected = selectedStrategies.includes(strategy);
+
+                  return (
+                    <button
+                      aria-pressed={isSelected}
+                      key={strategy}
+                      className={clsx(
+                        'inline-flex items-center gap-2 rounded-full border px-5 py-2.5 text-sm font-medium transition-all',
+                        isSelected
+                          ? 'border-sage-300 bg-white text-sage-800 shadow-sm dark:border-sage-400/30 dark:bg-white/10 dark:text-sage-50'
+                          : 'border-sand-300 bg-sand-50 text-sage-700 hover:border-sage-200 hover:bg-white dark:border-white/10 dark:bg-[#101915] dark:text-sage-200 dark:hover:bg-white/10'
+                      )}
+                      onClick={() => toggleStrategy(strategy)}
+                      type="button"
+                    >
+                      <span className="material-symbols-outlined text-[18px]">edit</span>
+                      {strategy}
+                    </button>
+                  );
+                })}
+              </div>
+
+              <div className="mt-5 flex flex-col gap-3 sm:flex-row">
+                <input
+                  className="min-w-0 flex-1 rounded-full border border-sand-300 bg-white px-5 py-3 text-sm text-sage-900 outline-none placeholder:text-sage-400 focus:border-sage-400 focus:ring-4 focus:ring-sage-400/10 dark:border-white/10 dark:bg-[#101915] dark:text-sage-50"
+                  maxLength={MAX_CUSTOM_STRATEGY_LENGTH}
+                  onChange={(event) => setCustomStrategyInput(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key !== 'Enter') return;
+                    event.preventDefault();
+                    handleAddCustomStrategy();
+                  }}
+                  placeholder="Type your own coping strategy"
+                  type="text"
+                  value={customStrategyInput}
+                />
+                <button
+                  className="inline-flex items-center justify-center gap-2 rounded-full bg-sage-700 px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-sage-800 disabled:cursor-not-allowed disabled:opacity-50"
+                  disabled={!customStrategyInput.trim()}
+                  onClick={handleAddCustomStrategy}
+                  type="button"
+                >
+                  <span className="material-symbols-outlined text-[18px]">add</span>
+                  Add strategy
+                </button>
               </div>
 
               <div className="mt-6 rounded-[1.5rem] border border-white/70 bg-white/70 p-5 dark:border-white/10 dark:bg-white/5">
@@ -327,6 +491,15 @@ export default function EmotionalGuidance() {
                 <p className="mt-2 text-sm leading-6 text-sage-600 dark:text-sage-200">
                   Let this be your next kind action, not another task to perform perfectly.
                 </p>
+                {selectedStrategies.length ? (
+                  <Link
+                    className="mt-4 inline-flex items-center gap-2 rounded-full border border-sage-200 bg-white px-4 py-2 text-xs font-semibold text-sage-700 transition-colors hover:bg-sage-50 dark:border-white/10 dark:bg-white/10 dark:text-sage-100"
+                    to={sharePath}
+                  >
+                    <span className="material-symbols-outlined text-[17px]">ios_share</span>
+                    Open export card
+                  </Link>
+                ) : null}
               </div>
             </section>
           </div>

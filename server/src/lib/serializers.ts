@@ -1,5 +1,5 @@
 import { parseEntryDateInput } from './date.js';
-import { ensureTodoItemIds, normalizeEntry } from './entry.js';
+import { ensureCustomSelfCareItemIds, ensureTodoItemIds, normalizeEntry } from './entry.js';
 
 const asArray = <T>(value: unknown, fallback: T[] = []) => (
   Array.isArray(value) ? value as T[] : fallback
@@ -103,6 +103,7 @@ export const serializeEntry = (entry: any) => normalizeEntry({
     meditated: false,
     stretched: false,
   }),
+  customSelfCareChecklist: ensureCustomSelfCareItemIds(entry.customSelfCareChecklist),
   emotionalGuidance: asObject(entry.emotionalGuidance, {
     whereAreYou: '',
     howYoureFeeling: '',
@@ -164,6 +165,7 @@ export const buildEntryPersistenceInput = (entry: Record<string, any>) => {
     nextStep: asString(normalized.nextStep),
     ratings: normalized.ratings,
     selfCareChecklist: normalized.selfCareChecklist,
+    customSelfCareChecklist: ensureCustomSelfCareItemIds(normalized.customSelfCareChecklist),
     emotionalGuidance: normalized.emotionalGuidance,
     selfCarePlanDays: normalized.selfCarePlanDays,
     priorities: normalized.priorities,

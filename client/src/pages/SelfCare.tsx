@@ -4,7 +4,7 @@ import { toast } from 'sonner';
 import BrandLogo from '@/components/common/BrandLogo';
 import { useDailyEntry } from '@/hooks/useDailyEntry';
 import ProfileMenu from '@/components/common/ProfileMenu';
-import type { DailyEntryPatch, EntryFeeling } from '@/types/entry';
+import type { CustomSelfCareItem, DailyEntryPatch, EntryFeeling } from '@/types/entry';
 import '@/styles/pages/self-care.css';
 
 const moodOptions = [
@@ -58,6 +58,8 @@ type MoodKey = (typeof moodOptions)[number]['key'];
 type ChecklistKey = (typeof checklistConfig)[number]['key'];
 type ChecklistField = (typeof checklistConfig)[number]['fields'][number];
 const SELF_CARE_MOOD_PREFIX = 'selfcare:mood:';
+const MAX_CUSTOM_CHECKLIST_ITEMS = 20;
+const MAX_CUSTOM_CHECKLIST_TEXT_LENGTH = 120;
 
 const feelingByMoodKey: Record<MoodKey, Exclude<EntryFeeling, null>> = moodOptions.reduce((accumulator, option) => {
   accumulator[option.key] = option.feeling;
@@ -115,9 +117,15 @@ export default function SelfCare() {
     overallDay: 0,
   });
   const [checklist, setChecklist] = useState<Record<ChecklistKey, boolean>>(emptyChecklist);
+  const [customChecklist, setCustomChecklist] = useState<CustomSelfCareItem[]>([]);
+  const [customChecklistInput, setCustomChecklistInput] = useState('');
 
-  const checkedCount = Object.values(checklist).filter(Boolean).length;
-  const completionRate = Math.round((checkedCount / checklistConfig.length) * 100);
+  const checkedCount = Object.values(checklist).filter(Boolean).length
+    + customChecklist.filter((item) => item.completed).length;
+  const totalChecklistItems = checklistConfig.length + customChecklist.length;
+  const completionRate = totalChecklistItems
+    ? Math.round((checkedCount / totalChecklistItems) * 100)
+    : 0;
 
   useEffect(() => {
     if (!entry) return;
@@ -154,6 +162,8 @@ export default function SelfCare() {
       tookNap: Boolean(entry.selfCareChecklist?.tookNap),
       watchedMovie: Boolean(entry.selfCareChecklist?.watchedMovie),
     });
+    setCustomChecklist(entry.customSelfCareChecklist || []);
+    setCustomChecklistInput('');
   }, [entry]);
 
   const adjustActivity = (key: ActivityKey, delta: number) => {
@@ -171,6 +181,46 @@ export default function SelfCare() {
       ...current,
       [key]: !current[key],
     }));
+  };
+
+  const handleAddCustomChecklistItem = () => {
+    const text = customChecklistInput.trim();
+    if (!text) return;
+
+    if (text.length > MAX_CUSTOM_CHECKLIST_TEXT_LENGTH) {
+      toast.error(`Custom checklist items must be ${MAX_CUSTOM_CHECKLIST_TEXT_LENGTH} characters or fewer.`);
+      return;
+    }
+
+    if (customChecklist.length >= MAX_CUSTOM_CHECKLIST_ITEMS) {
+      toast.error(`You can add up to ${MAX_CUSTOM_CHECKLIST_ITEMS} custom checklist items.`);
+      return;
+    }
+
+    if (customChecklist.some((item) => item.text.toLocaleLowerCase() === text.toLocaleLowerCase())) {
+      toast.error('That custom checklist item already exists.');
+      return;
+    }
+
+    setCustomChecklist((current) => [
+      ...current,
+      {
+        id: globalThis.crypto?.randomUUID?.() || `custom-${Date.now()}`,
+        text,
+        completed: false,
+      },
+    ]);
+    setCustomChecklistInput('');
+  };
+
+  const toggleCustomChecklistItem = (id: string) => {
+    setCustomChecklist((current) => current.map((item) => (
+      item.id === id ? { ...item, completed: !item.completed } : item
+    )));
+  };
+
+  const removeCustomChecklistItem = (id: string) => {
+    setCustomChecklist((current) => current.filter((item) => item.id !== id));
   };
 
   const handleSave = async () => {
@@ -196,6 +246,10 @@ export default function SelfCare() {
         overall: ratings.overallDay || null,
       },
       selfCareChecklist: checklistPatch,
+      customSelfCareChecklist: customChecklist.map((item) => ({
+        ...item,
+        text: item.text.trim(),
+      })),
     };
 
     try {
@@ -422,6 +476,74 @@ export default function SelfCare() {
                       </li>
                     ))}
                   </ul>
+
+                  <div className="mt-7 border-t border-sage-100 pt-6 dark:border-white/10">
+                    <div className="mb-4">
+                      <p className="text-sm font-bold text-sage-900 dark:text-sage-50">Your own checklist</p>
+                      <p className="mt-1 text-xs leading-5 text-sage-500 dark:text-sage-300">
+                        Add the specific care actions that matter to you today.
+                      </p>
+                    </div>
+
+                    <div className="flex gap-2">
+                      <input
+                        className="min-w-0 flex-1 rounded-xl border border-sage-200 bg-sage-50 px-3 py-2.5 text-sm text-sage-900 outline-none placeholder:text-sage-400 focus:border-[#13ec25] focus:ring-2 focus:ring-[#13ec25]/20 dark:border-white/10 dark:bg-[#101915] dark:text-sage-50"
+                        maxLength={MAX_CUSTOM_CHECKLIST_TEXT_LENGTH}
+                        onChange={(event) => setCustomChecklistInput(event.target.value)}
+                        onKeyDown={(event) => {
+                          if (event.key !== 'Enter') return;
+                          event.preventDefault();
+                          handleAddCustomChecklistItem();
+                        }}
+                        placeholder="e.g. Take medication"
+                        type="text"
+                        value={customChecklistInput}
+                      />
+                      <button
+                        aria-label="Add custom checklist item"
+                        className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-sage-900 text-white transition-colors hover:bg-sage-800 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-sage-100 dark:text-sage-900"
+                        disabled={!customChecklistInput.trim() || customChecklist.length >= MAX_CUSTOM_CHECKLIST_ITEMS}
+                        onClick={handleAddCustomChecklistItem}
+                        type="button"
+                      >
+                        <span className="material-symbols-outlined text-[19px]">add</span>
+                      </button>
+                    </div>
+
+                    {customChecklist.length ? (
+                      <ul className="mt-4 flex flex-col gap-3">
+                        {customChecklist.map((item) => (
+                          <li
+                            key={item.id}
+                            className="group flex items-center gap-3 rounded-xl border border-sage-100 bg-white p-3 dark:border-white/10 dark:bg-white/5"
+                          >
+                            <input
+                              checked={item.completed}
+                              className="h-5 w-5 shrink-0 rounded border-sage-300 text-[#13ec25] focus:ring-[#13ec25]"
+                              onChange={() => toggleCustomChecklistItem(item.id)}
+                              type="checkbox"
+                            />
+                            <span className={clsx(
+                              'min-w-0 flex-1 text-sm text-sage-900 dark:text-sage-100',
+                              item.completed && 'text-sage-500 line-through dark:text-sage-400'
+                            )}>
+                              {item.text}
+                            </span>
+                            <button
+                              aria-label={`Remove ${item.text}`}
+                              className="text-sage-400 transition-colors hover:text-clay-600"
+                              onClick={() => removeCustomChecklistItem(item.id)}
+                              type="button"
+                            >
+                              <span className="material-symbols-outlined text-[18px]">close</span>
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <p className="mt-4 text-xs italic text-sage-400">No custom items yet.</p>
+                    )}
+                  </div>
 
                   <div className="mt-8 rounded-xl border border-[#13ec25]/20 bg-[#13ec25]/10 p-4 dark:bg-[#13ec25]/12">
                     <p className="mb-1 text-xs font-bold text-sage-600 dark:text-sage-200">PROMPT OF THE DAY</p>

@@ -1,0 +1,87 @@
+.review-page {
+  position: relative;
+  isolation: isolate;
+}
+
+.review-page::before {
+  position: absolute;
+  inset: 8rem -2rem auto;
+  z-index: -1;
+  height: 36rem;
+  content: '';
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 18% 20%, rgba(214, 194, 171, 0.24), transparent 34%),
+    radial-gradient(circle at 82% 54%, rgba(174, 207, 181, 0.18), transparent 30%);
+  filter: blur(20px);
+}
+
+.review-hero {
+  background:
+    linear-gradient(118deg, rgba(246, 240, 231, 0.98), rgba(255, 255, 255, 0.9) 48%, rgba(217, 230, 217, 0.82)),
+    #f6f0e7;
+}
+
+.dark .review-hero {
+  background:
+    linear-gradient(118deg, rgba(45, 37, 30, 0.98), rgba(24, 32, 27, 0.96) 52%, rgba(27, 48, 35, 0.94)),
+    #18201b;
+}
+
+.review-orbit {
+  position: absolute;
+  border: 1px solid rgba(112, 85, 68, 0.13);
+  border-radius: 999px;
+  pointer-events: none;
+}
+
+.review-orbit-one {
+  top: -9rem;
+  right: -4rem;
+  width: 28rem;
+  height: 28rem;
+}
+
+.review-orbit-two {
+  right: 8rem;
+  bottom: -13rem;
+  width: 24rem;
+  height: 24rem;
+}
+
+.review-score-ring {
+  background: conic-gradient(#d6c2ab var(--review-score), rgba(255, 255, 255, 0.14) 0);
+}
+
+.dark .review-score-ring {
+  background: conic-gradient(#8a6a52 var(--review-score), rgba(55, 85, 65, 0.2) 0);
+}
+
+.review-reveal {
+  opacity: 0;
+  animation: review-rise 700ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+.review-weekly-result {
+  animation: review-rise 500ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes review-rise {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .review-reveal,
+  .review-weekly-result {
+    opacity: 1;
+    animation: none;
+  }
+}

@@ -34,6 +34,12 @@ export interface EntryTodoItem {
   completed: boolean;
 }
 
+export interface CustomSelfCareItem {
+  id: string;
+  text: string;
+  completed: boolean;
+}
+
 export interface DailyEntry {
   id: string;
   userId: string;
@@ -94,6 +100,7 @@ export interface DailyEntry {
     meditated: boolean;
     stretched: boolean;
   };
+  customSelfCareChecklist: CustomSelfCareItem[];
   emotionalGuidance: {
     whereAreYou: string;
     howYoureFeeling: string;
@@ -204,6 +211,7 @@ export const createEmptyDailyEntry = (date = nowIso()): DailyEntry => ({
     meditated: false,
     stretched: false,
   },
+  customSelfCareChecklist: [],
   emotionalGuidance: {
     whereAreYou: '',
     howYoureFeeling: '',
