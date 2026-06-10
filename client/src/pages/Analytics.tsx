@@ -1,16 +1,12 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import clsx from 'clsx';
+import { toast } from 'sonner';
 import {
-  addDays,
-  differenceInCalendarWeeks,
   eachDayOfInterval,
-  eachMonthOfInterval,
-  endOfWeek,
   format,
   parseISO,
   subDays,
-  startOfWeek,
 } from 'date-fns';
 import {
   Area,
@@ -25,11 +21,12 @@ import {
 } from 'recharts';
 import { useAuth } from '@/contexts/useAuth';
 import { useTheme } from '@/contexts/useTheme';
+import { buildAnalyticsReport, downloadAnalyticsReport } from '@/lib/analyticsReport';
 import analyticsService from '@/services/analyticsService';
 import entryService from '@/services/entryService';
 import type { AiSummaryResponse, ThemeTrendResponse } from '@/types/ai';
+import type { AnalyticsPatternInsights } from '@/types/analytics';
 import type { DailyEntry } from '@/types/entry';
-import '@/styles/pages/analytics.css';
 
 type Period = '7days' | '30days' | '90days' | 'year';
 
@@ -63,11 +60,6 @@ interface EnergyPatternPoint {
   averageEnergy: number;
 }
 
-interface HeatmapDay {
-  date: string;
-  completionRate: number;
-}
-
 interface FeelingCount {
   feeling: string;
   count: number;
@@ -95,8 +87,6 @@ const periodDayMap: Record<Period, number> = {
 };
 const MIN_MOOD_WINDOW_DAYS = 3;
 const MAX_MOOD_WINDOW_DAYS = 365;
-
-const weekdayLabels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
 const emptySummary: SummaryData = {
   totalEntries: 0,
@@ -135,6 +125,24 @@ const emptyThemeTrends: ThemeTrendResponse = {
   positiveAnchors: [],
 };
 
+const createEmptyPatternInsights = (period: Period): AnalyticsPatternInsights => ({
+  period,
+  ranges: {
+    currentStart: '',
+    previousStart: '',
+    currentDays: periodDayMap[period],
+  },
+  comparisons: [],
+  behaviorInsights: [],
+  dataQuality: {
+    currentEntries: 0,
+    previousEntries: 0,
+    moodDays: 0,
+    hasComparison: false,
+    hasBehaviorInsights: false,
+  },
+});
+
 const unwrapEnvelope = <T,>(response: ApiEnvelope<T>) => response.data;
 
 const toEntryDateKey = (value?: string | null) => (typeof value === 'string' ? value.slice(0, 10) : '');
@@ -165,6 +173,20 @@ const formatFeelingLabel = (feeling: string) => {
   return feeling.replace(/_/g, ' ').replace(/\b\w/g, (letter) => letter.toUpperCase());
 };
 
+const formatComparisonValue = (value: number | null, unit: string) => {
+  if (value == null) return 'Not enough data';
+  if (unit === '%') return `${value}%`;
+  if (unit === '/ 5') return `${value} / 5`;
+  return `${value} ${unit}`;
+};
+
+const comparisonPeriodLabel = (period: Period) => {
+  if (period === '7days') return 'previous 7 days';
+  if (period === '30days') return 'previous 30 days';
+  if (period === '90days') return 'previous 90 days';
+  return 'previous year';
+};
+
 const formatMoodChartTick = (date: Date, days: number) => {
   if (days <= 10) return format(date, 'EEE');
   if (days <= 45) return format(date, 'MMM d');
@@ -191,71 +213,27 @@ const getWeeklyNarrative = (report: WeeklyReportData, summary: SummaryData, topE
   return `${energySentence} Over the last week, ${report.daysLogged} day${report.daysLogged === 1 ? '' : 's'} of reflection helped capture a ${formatMoodLabel(report.averageMood).toLowerCase()} overall tone.`;
 };
 
-const getHeatmapLevelClassName = (completionRate: number | null) => {
-  if (completionRate == null) return 'bg-transparent border-transparent';
-  if (completionRate === 0) return 'border border-sage-100 bg-sage-50';
-  if (completionRate <= 25) return 'bg-sage-100';
-  if (completionRate <= 50) return 'bg-sage-200';
-  if (completionRate <= 75) return 'bg-sage-300';
-  return 'bg-sage-500';
-};
-
-const buildHeatmapColumns = (days: HeatmapDay[]) => {
-  if (!days.length) {
-    return { weeks: [] as Array<Array<HeatmapDay | null>>, monthLabels: {} as Record<number, string> };
-  }
-
-  const firstDay = parseISO(days[0].date);
-  const lastDay = parseISO(days[days.length - 1].date);
-  const gridStart = startOfWeek(firstDay, { weekStartsOn: 1 });
-  const gridEnd = endOfWeek(lastDay, { weekStartsOn: 1 });
-  const daysByDate = new Map(days.map((day) => [day.date, day]));
-  const weeks: Array<Array<HeatmapDay | null>> = [];
-  const monthLabels: Record<number, string> = {};
-
-  eachMonthOfInterval({ start: firstDay, end: lastDay }).forEach((monthDate) => {
-    const weekIndex = differenceInCalendarWeeks(monthDate, gridStart, { weekStartsOn: 1 });
-    monthLabels[weekIndex] = format(monthDate, 'MMM');
-  });
-
-  let cursor = gridStart;
-
-  while (cursor <= gridEnd) {
-    const week: Array<HeatmapDay | null> = [];
-
-    for (let dayIndex = 0; dayIndex < 7; dayIndex += 1) {
-      const key = format(cursor, 'yyyy-MM-dd');
-      week.push(daysByDate.get(key) || null);
-      cursor = addDays(cursor, 1);
-    }
-
-    weeks.push(week);
-  }
-
-  return { weeks, monthLabels };
-};
-
 export default function Analytics() {
   const { user } = useAuth();
   const { isDarkMode } = useTheme();
   const firstName = user?.name?.split(' ')[0] || 'there';
-  const currentYear = new Date().getFullYear();
-  const yearOptions = Array.from({ length: 4 }, (_, index) => currentYear - index);
 
   const [period, setPeriod] = useState<Period>('30days');
   const [customMoodWindowDays, setCustomMoodWindowDays] = useState(30);
   const [isCustomMoodWindowActive, setIsCustomMoodWindowActive] = useState(false);
-  const [year, setYear] = useState(currentYear);
   const [isLoading, setIsLoading] = useState(true);
   const [isMoodLoading, setIsMoodLoading] = useState(true);
   const [error, setError] = useState('');
   const [summary, setSummary] = useState<SummaryData>(emptySummary);
   const [moodEntries, setMoodEntries] = useState<DailyEntry[]>([]);
   const [energyPatterns, setEnergyPatterns] = useState<EnergyPatternPoint[]>([]);
-  const [activityHeatmap, setActivityHeatmap] = useState<HeatmapDay[]>([]);
   const [weeklyReport, setWeeklyReport] = useState<WeeklyReportData>(emptyWeeklyReport);
   const [aiSummary, setAiSummary] = useState<AiSummaryResponse>(emptyAiSummary);
   const [themeTrends, setThemeTrends] = useState<ThemeTrendResponse>(emptyThemeTrends);
+  const [patternInsights, setPatternInsights] = useState<AnalyticsPatternInsights>(
+    createEmptyPatternInsights('30days')
+  );
+  const [downloadingReport, setDownloadingReport] = useState<Period | null>(null);
   const moodWindowDays = isCustomMoodWindowActive ? customMoodWindowDays : periodDayMap[period];
 
   useEffect(() => {
@@ -265,12 +243,19 @@ export default function Analytics() {
       setIsLoading(true);
       setError('');
 
-      const [summaryResult, aiSummaryResult, themeTrendResult, energyResult, heatmapResult, weeklyResult] = await Promise.allSettled([
+      const [
+        summaryResult,
+        aiSummaryResult,
+        themeTrendResult,
+        patternResult,
+        energyResult,
+        weeklyResult,
+      ] = await Promise.allSettled([
         analyticsService.getSummary(period),
         analyticsService.getAiSummary(period),
         analyticsService.getThemeTrends(period),
+        analyticsService.getPatternInsights(period),
         analyticsService.getEnergyPatterns(),
-        analyticsService.getActivityHeatmap(year),
         analyticsService.getWeeklyReport(),
       ]);
 
@@ -299,18 +284,18 @@ export default function Analytics() {
         setThemeTrends({ ...emptyThemeTrends, period });
       }
 
+      if (patternResult.status === 'fulfilled') {
+        setPatternInsights(unwrapEnvelope(patternResult.value));
+      } else {
+        requestFailed = true;
+        setPatternInsights(createEmptyPatternInsights(period));
+      }
+
       if (energyResult.status === 'fulfilled') {
         setEnergyPatterns(unwrapEnvelope(energyResult.value));
       } else {
         requestFailed = true;
         setEnergyPatterns([]);
-      }
-
-      if (heatmapResult.status === 'fulfilled') {
-        setActivityHeatmap(unwrapEnvelope(heatmapResult.value));
-      } else {
-        requestFailed = true;
-        setActivityHeatmap([]);
       }
 
       if (weeklyResult.status === 'fulfilled') {
@@ -332,7 +317,7 @@ export default function Analytics() {
     return () => {
       cancelled = true;
     };
-  }, [period, year]);
+  }, [period]);
 
   useEffect(() => {
     let cancelled = false;
@@ -393,8 +378,6 @@ export default function Analytics() {
     [energyPatterns]
   );
 
-  const heatmap = useMemo(() => buildHeatmapColumns(activityHeatmap), [activityHeatmap]);
-
   const topEnergyWindow = useMemo(() => {
     if (!energyPatterns.length) return null;
     return energyPatterns.reduce((best, current) => (current.averageEnergy > best.averageEnergy ? current : best));
@@ -447,6 +430,49 @@ export default function Analytics() {
 
   const heroMessage = getCompletionMessage(summary.completionRate, summary.currentStreak);
   const weeklyNarrative = getWeeklyNarrative(weeklyReport, summary, topEnergyWindow?.hour ?? null);
+  const comparisonLabel = comparisonPeriodLabel(period);
+
+  const handleDownloadReport = async (reportPeriod: Extract<Period, '30days' | '90days'>) => {
+    setDownloadingReport(reportPeriod);
+
+    try {
+      const reportData = reportPeriod === period
+        ? {
+            summary,
+            aiSummary,
+            themeTrends,
+            patternInsights,
+          }
+        : await Promise.all([
+            analyticsService.getSummary(reportPeriod),
+            analyticsService.getAiSummary(reportPeriod),
+            analyticsService.getThemeTrends(reportPeriod),
+            analyticsService.getPatternInsights(reportPeriod),
+          ]).then(([summaryResponse, aiResponse, themeResponse, patternResponse]) => ({
+            summary: unwrapEnvelope<SummaryData>(summaryResponse),
+            aiSummary: unwrapEnvelope(aiResponse),
+            themeTrends: unwrapEnvelope(themeResponse),
+            patternInsights: unwrapEnvelope(patternResponse),
+          }));
+      const generatedAt = new Date();
+      const report = buildAnalyticsReport({
+        name: user?.name || 'MindfulLife member',
+        period: reportPeriod,
+        summary: reportData.summary,
+        aiSummary: reportData.aiSummary,
+        themeTrends: reportData.themeTrends,
+        patternInsights: reportData.patternInsights,
+        generatedAt,
+      });
+
+      downloadAnalyticsReport(report, reportPeriod, generatedAt);
+      toast.success(`${reportPeriod === '30days' ? 'Monthly' : 'Quarterly'} report downloaded`);
+    } catch (downloadError: any) {
+      toast.error(downloadError?.response?.data?.message || 'Unable to prepare the report');
+    } finally {
+      setDownloadingReport(null);
+    }
+  };
 
   return (
     <div className="animate-fade-in pb-10 text-slate-900 [&_.font-display]:font-body [&_h1]:font-body [&_h2]:font-body [&_h3]:font-body [&_h4]:font-body [&_h5]:font-body [&_h6]:font-body dark:text-sage-50">
@@ -648,6 +674,171 @@ export default function Analytics() {
         </article>
       </section>
 
+      <section className="mt-8 rounded-[1.75rem] border border-sage-100 bg-white p-6 shadow-soft sm:p-8 dark:border-white/10 dark:bg-white/5">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+          <div className="max-w-3xl">
+            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-sage-500 dark:text-sage-300">Longitudinal Comparison</p>
+            <h2 className="mt-2 font-display text-3xl font-semibold text-sage-900 dark:text-sage-50">What changed from the last period</h2>
+            <p className="mt-3 text-sm leading-6 text-sage-600 dark:text-sage-200">
+              Compare the selected window with the {comparisonLabel}. Direction matters less than whether the shift helps you ask a better question.
+            </p>
+          </div>
+          <div className="inline-flex items-center gap-2 rounded-full bg-sage-50 px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-sage-600 dark:bg-white/10 dark:text-sage-200">
+            <span className="material-symbols-outlined text-[17px]">compare_arrows</span>
+            {patternInsights.dataQuality.currentEntries} current / {patternInsights.dataQuality.previousEntries} previous
+          </div>
+        </div>
+
+        {isLoading ? (
+          <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+            {Array.from({ length: 4 }, (_, index) => (
+              <div key={`comparison-skeleton-${index + 1}`} className="skeleton h-40 rounded-[1.5rem]" />
+            ))}
+          </div>
+        ) : patternInsights.dataQuality.hasComparison ? (
+          <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+            {patternInsights.comparisons.map((comparison) => {
+              const hasDelta = comparison.delta != null;
+              const isUp = comparison.direction === 'up';
+
+              return (
+                <article key={comparison.key} className="rounded-[1.5rem] border border-sage-100 bg-sage-50/60 p-5 dark:border-white/10 dark:bg-[#101915]">
+                  <div className="flex items-start justify-between gap-3">
+                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-sage-500 dark:text-sage-300">{comparison.label}</p>
+                    <span className={clsx(
+                      'material-symbols-outlined rounded-full p-1 text-[18px]',
+                      !hasDelta && 'bg-sage-100 text-sage-500 dark:bg-white/10 dark:text-sage-300',
+                      hasDelta && isUp && 'bg-sage-100 text-sage-700 dark:bg-sage-500/20 dark:text-sage-200',
+                      hasDelta && !isUp && comparison.direction === 'down' && 'bg-sand-100 text-sand-700 dark:bg-sand-500/20 dark:text-sand-200',
+                      comparison.direction === 'steady' && 'bg-sage-100 text-sage-500 dark:bg-white/10 dark:text-sage-300'
+                    )}>
+                      {comparison.direction === 'up' ? 'trending_up' : comparison.direction === 'down' ? 'trending_down' : 'trending_flat'}
+                    </span>
+                  </div>
+                  <p className="mt-5 text-3xl font-semibold text-slate-900 dark:text-sage-50">
+                    {formatComparisonValue(comparison.current, comparison.unit)}
+                  </p>
+                  <p className="mt-2 text-sm text-sage-600 dark:text-sage-200">
+                    Previous: {formatComparisonValue(comparison.previous, comparison.unit)}
+                  </p>
+                  <p className="mt-4 text-xs font-semibold uppercase tracking-[0.14em] text-sage-500 dark:text-sage-300">
+                    {comparison.delta == null
+                      ? 'More history needed'
+                      : `${comparison.delta > 0 ? '+' : ''}${comparison.delta} ${comparison.unit} change`}
+                  </p>
+                </article>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="mt-6 rounded-[1.5rem] border border-dashed border-sage-200 bg-sage-50/70 px-6 py-10 text-center dark:border-white/10 dark:bg-[#101915]">
+            <span className="material-symbols-outlined text-4xl text-sage-400 dark:text-sage-300">timeline</span>
+            <p className="mt-3 text-xl font-semibold text-sage-800 dark:text-sage-50">The comparison needs an earlier period</p>
+            <p className="mx-auto mt-2 max-w-xl text-sm leading-6 text-sage-600 dark:text-sage-200">
+              Keep checking in. Once both adjacent windows contain entries, this section will show how mood, sleep, hydration, and completion are moving.
+            </p>
+          </div>
+        )}
+      </section>
+
+      <div className="mt-8 grid grid-cols-1 gap-8 xl:grid-cols-[minmax(0,1.35fr)_minmax(340px,0.65fr)]">
+        <section className="rounded-[1.75rem] border border-sage-100 bg-white p-6 shadow-soft sm:p-8 dark:border-white/10 dark:bg-white/5">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-sage-500 dark:text-sage-300">Pattern Relationships</p>
+              <h2 className="mt-2 font-display text-3xl font-semibold text-sage-900 dark:text-sage-50">What tends to support better days</h2>
+              <p className="mt-3 max-w-2xl text-sm leading-6 text-sage-600 dark:text-sage-200">
+                These are associations in your own entries, not proof that one action caused a mood change.
+              </p>
+            </div>
+            <div className="hidden size-12 shrink-0 items-center justify-center rounded-2xl bg-sage-100 text-sage-700 sm:flex dark:bg-white/10 dark:text-sage-100">
+              <span className="material-symbols-outlined">hub</span>
+            </div>
+          </div>
+
+          {isLoading ? (
+            <div className="mt-6 grid gap-4 md:grid-cols-3">
+              {Array.from({ length: 3 }, (_, index) => (
+                <div key={`relationship-skeleton-${index + 1}`} className="skeleton h-56 rounded-[1.5rem]" />
+              ))}
+            </div>
+          ) : patternInsights.behaviorInsights.length ? (
+            <div className="mt-6 grid gap-4 md:grid-cols-3">
+              {patternInsights.behaviorInsights.map((insight) => (
+                <article key={insight.id} className="rounded-[1.5rem] border border-sage-100 bg-gradient-to-b from-sage-50/80 to-white p-5 dark:border-white/10 dark:bg-gradient-to-b dark:from-[#18231d] dark:to-[#101915]">
+                  <div className="flex size-11 items-center justify-center rounded-2xl bg-white text-sage-700 shadow-sm dark:bg-white/10 dark:text-sage-100">
+                    <span className="material-symbols-outlined">{insight.icon}</span>
+                  </div>
+                  <p className="mt-5 text-xs font-semibold uppercase tracking-[0.18em] text-sage-500 dark:text-sage-300">{insight.shortLabel}</p>
+                  <p className="mt-2 font-display text-2xl font-semibold leading-8 text-sage-900 dark:text-sage-50">
+                    Mood was {Math.abs(insight.delta).toFixed(1)} points {insight.direction}.
+                  </p>
+                  <p className="mt-3 text-sm leading-6 text-sage-600 dark:text-sage-200">
+                    {insight.withAverage.toFixed(1)} / 5 on {insight.label}, compared with {insight.withoutAverage.toFixed(1)} / 5 otherwise.
+                  </p>
+                  <p className="mt-5 text-xs font-semibold uppercase tracking-[0.14em] text-sage-500 dark:text-sage-300">
+                    {insight.supportingDays} supporting days / {insight.sampleSize} mood-rated days
+                  </p>
+                </article>
+              ))}
+            </div>
+          ) : (
+            <div className="mt-6 rounded-[1.5rem] border border-dashed border-sage-200 bg-sage-50/70 px-6 py-10 text-center dark:border-white/10 dark:bg-[#101915]">
+              <span className="material-symbols-outlined text-4xl text-sage-400 dark:text-sage-300">query_stats</span>
+              <p className="mt-3 text-xl font-semibold text-sage-800 dark:text-sage-50">More paired check-ins are needed</p>
+              <p className="mx-auto mt-2 max-w-xl text-sm leading-6 text-sage-600 dark:text-sage-200">
+                Add mood ratings alongside sleep, hydration, movement, mindfulness, fresh air, or connection. Each comparison needs at least two days with and two days without the behavior.
+              </p>
+            </div>
+          )}
+        </section>
+
+        <aside className="analytics-premium-panel overflow-hidden rounded-[1.75rem] border border-slate-900 bg-gradient-to-br from-slate-950 via-[#1b2b22] to-sage-800 p-6 text-white shadow-soft sm:p-8">
+          <div className="flex items-center justify-between gap-4">
+            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-white/60">Premium Report Preview</p>
+            <span className="rounded-full border border-white/15 bg-white/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-white/80">Preview access</span>
+          </div>
+          <h2 className="mt-4 font-display text-3xl font-semibold">Package the pattern, not just the numbers.</h2>
+          <p className="mt-4 text-sm leading-7 text-white/75">
+            Download a plain-text preview for personal review, coaching, or therapy preparation. The report includes comparisons, behavior associations, themes, and the AI narrative.
+          </p>
+
+          <div className="mt-6 space-y-3">
+            {[
+              'Adjacent-period trend comparisons',
+              'Behavior and mood relationship notes',
+              'Recurring themes and suggested focus',
+            ].map((item) => (
+              <div key={item} className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/5 px-4 py-3">
+                <span className="material-symbols-outlined text-[18px] text-sage-200">check_circle</span>
+                <span className="text-sm text-white/85">{item}</span>
+              </div>
+            ))}
+          </div>
+
+          <div className="mt-7 grid gap-3 sm:grid-cols-2 xl:grid-cols-1">
+            <button
+              className="inline-flex items-center justify-center gap-2 rounded-full bg-white px-5 py-3 text-sm font-bold text-slate-900 transition-transform hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-60"
+              disabled={downloadingReport != null}
+              onClick={() => void handleDownloadReport('30days')}
+              type="button"
+            >
+              <span className="material-symbols-outlined text-[18px]">download</span>
+              {downloadingReport === '30days' ? 'Preparing...' : 'Monthly report'}
+            </button>
+            <button
+              className="inline-flex items-center justify-center gap-2 rounded-full border border-white/20 bg-white/10 px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-white/15 disabled:cursor-not-allowed disabled:opacity-60"
+              disabled={downloadingReport != null}
+              onClick={() => void handleDownloadReport('90days')}
+              type="button"
+            >
+              <span className="material-symbols-outlined text-[18px]">calendar_view_month</span>
+              {downloadingReport === '90days' ? 'Preparing...' : 'Quarterly report'}
+            </button>
+          </div>
+        </aside>
+      </div>
+
       <div className="mt-8 grid grid-cols-1 gap-8 xl:grid-cols-[minmax(0,1.7fr)_minmax(320px,1fr)]">
         <section className="rounded-[1.75rem] border border-sage-100 bg-white p-6 shadow-soft sm:p-8 dark:border-white/10 dark:bg-white/5">
           <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -831,8 +1022,7 @@ export default function Analytics() {
         </aside>
       </div>
 
-      <div className="mt-8 grid grid-cols-1 gap-8 xl:grid-cols-[minmax(320px,1fr)_minmax(0,1.6fr)]">
-        <section className="rounded-[1.75rem] border border-sage-100 bg-white p-6 shadow-soft sm:p-8 dark:border-white/10 dark:bg-white/5">
+      <section className="mt-8 rounded-[1.75rem] border border-sage-100 bg-white p-6 shadow-soft sm:p-8 dark:border-white/10 dark:bg-white/5">
           <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.24em] text-sage-500 dark:text-sage-300">Energy Pattern</p>
@@ -896,99 +1086,7 @@ export default function Analytics() {
               </p>
             </div>
           )}
-        </section>
-
-        <section className="rounded-[1.75rem] border border-sage-100 bg-white p-6 shadow-soft sm:p-8 dark:border-white/10 dark:bg-white/5">
-          <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-sage-500 dark:text-sage-300">Activity Heatmap</p>
-              <h2 className="mt-2 font-display text-3xl font-semibold text-sage-900 dark:text-sage-50">Consistency across {year}</h2>
-              <p className="mt-2 max-w-2xl text-sm leading-6 text-sage-600 dark:text-sage-200">
-                Each square reflects how complete that day&apos;s reflection was, so dense clusters show where your routine felt easiest to sustain.
-              </p>
-            </div>
-
-            <label className="flex items-center gap-3 rounded-full border border-sage-200 bg-sage-50 px-4 py-2 text-sm font-medium text-sage-700 dark:border-white/10 dark:bg-white/10 dark:text-sage-100">
-              <span>Year</span>
-              <select
-                className="bg-transparent font-semibold outline-none"
-                onChange={(event) => setYear(Number(event.target.value))}
-                value={year}
-              >
-                {yearOptions.map((option) => (
-                  <option key={option} value={option}>
-                    {option}
-                  </option>
-                ))}
-              </select>
-            </label>
-          </div>
-
-          {isLoading ? (
-            <div className="skeleton h-64 rounded-[1.5rem]" />
-          ) : heatmap.weeks.length ? (
-            <div className="overflow-hidden rounded-[1.5rem] border border-sage-100 bg-sage-50/60 p-4 dark:border-white/10 dark:bg-[#101915]">
-              <div className="flex gap-3">
-                <div className="mt-8 grid grid-rows-7 gap-1.5 text-[10px] font-semibold uppercase tracking-[0.18em] text-sage-500 dark:text-sage-300">
-                  {weekdayLabels.map((label) => (
-                    <span key={label} className="analytics-heatmap-label">
-                      {label.slice(0, 1)}
-                    </span>
-                  ))}
-                </div>
-
-                <div className="min-w-0 flex-1">
-                  <div className="analytics-heatmap-scroll overflow-x-auto pb-3">
-                    <div className="inline-flex min-w-full flex-col gap-2">
-                      <div className="flex gap-1.5 pl-0.5 text-[10px] font-semibold uppercase tracking-[0.2em] text-sage-500 dark:text-sage-300">
-                        {heatmap.weeks.map((_, index) => (
-                          <div key={`month-${index}`} className="analytics-heatmap-week justify-start overflow-visible text-left">
-                            {heatmap.monthLabels[index] || ''}
-                          </div>
-                        ))}
-                      </div>
-
-                      <div className="flex gap-1.5">
-                        {heatmap.weeks.map((week, weekIndex) => (
-                          <div key={`week-${weekIndex + 1}`} className="analytics-heatmap-week grid grid-rows-7 gap-1.5">
-                            {week.map((day, dayIndex) => (
-                              <div
-                                key={day ? day.date : `empty-${weekIndex + 1}-${dayIndex + 1}`}
-                                className={clsx('analytics-heatmap-cell', getHeatmapLevelClassName(day?.completionRate ?? null))}
-                                title={day ? `${format(parseISO(day.date), 'MMM d, yyyy')}: ${day.completionRate}% complete` : ''}
-                              />
-                            ))}
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="mt-4 flex flex-wrap items-center gap-3 text-xs text-sage-600 dark:text-sage-200">
-                    <span className="font-semibold uppercase tracking-[0.18em] text-sage-500 dark:text-sage-300">Less</span>
-                    {[0, 25, 50, 75, 100].map((level) => (
-                      <span
-                        key={level}
-                        className={clsx('analytics-heatmap-cell', getHeatmapLevelClassName(level))}
-                        title={`${level}% completion level`}
-                      />
-                    ))}
-                    <span className="font-semibold uppercase tracking-[0.18em] text-sage-500 dark:text-sage-300">More</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          ) : (
-            <div className="flex h-64 flex-col items-center justify-center rounded-[1.5rem] border border-dashed border-sage-200 bg-sage-50/70 px-6 text-center dark:border-white/10 dark:bg-[#101915]">
-              <span className="material-symbols-outlined text-4xl text-sage-400 dark:text-sage-300">calendar_month</span>
-              <p className="mt-4 font-display text-2xl font-semibold text-sage-800 dark:text-sage-50">No activity map yet</p>
-              <p className="mt-2 max-w-md text-sm leading-6 text-sage-600 dark:text-sage-200">
-                Daily completion blocks will appear here once reflections are saved through the year.
-              </p>
-            </div>
-          )}
-        </section>
-      </div>
+      </section>
 
       <section className="mt-8 rounded-[1.75rem] border border-sand-200 bg-sand-100/70 p-6 shadow-soft sm:p-8 dark:border-white/10 dark:bg-[#18231d]">
         <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">

@@ -1,6 +1,7 @@
 import type { Response } from 'express';
-import { eachDayOfInterval, format, subDays } from 'date-fns';
+import { format, subDays } from 'date-fns';
 import prisma from '../lib/prisma.js';
+import { buildAnalyticsPatternInsights } from '../lib/analyticsInsights.js';
 import { formatDateParam, parseEntryDateInput } from '../lib/date.js';
 import { getCompletionPercentage } from '../lib/entry.js';
 import { sendInternalServerError } from '../lib/http.js';
@@ -114,36 +115,6 @@ export const getEnergyPatterns = async (req: AuthRequest, res: Response) => {
   }
 };
 
-export const getActivityHeatmap = async (req: AuthRequest, res: Response) => {
-  try {
-    const year = parseInt(req.query.year as string, 10) || new Date().getFullYear();
-    const start = parseEntryDateInput(new Date(year, 0, 1));
-    const end = parseEntryDateInput(new Date(year, 11, 31));
-
-    const entries = await prisma.entry.findMany({
-      where: { userId: req.user.id, entryDate: { gte: start, lte: end } },
-      select: { entryDate: true, completedSections: true },
-    });
-
-    const entryMap: Record<string, number> = {};
-
-    entries.forEach((entry) => {
-      const key = format(entry.entryDate, 'yyyy-MM-dd');
-      const completedSections = Array.isArray(entry.completedSections) ? entry.completedSections : [];
-      entryMap[key] = Math.round((completedSections.length / 4) * 100);
-    });
-
-    const days = eachDayOfInterval({ start, end }).map((day) => {
-      const key = format(day, 'yyyy-MM-dd');
-      return { date: key, completionRate: entryMap[key] ?? 0 };
-    });
-
-    res.json({ success: true, data: days });
-  } catch (err: any) {
-    return sendInternalServerError(res, err, 'Get activity heatmap failed');
-  }
-};
-
 export const getWeeklyReport = async (req: AuthRequest, res: Response) => {
   try {
     const start = parseEntryDateInput(subDays(new Date(), 7));
@@ -197,5 +168,22 @@ export const getThemeTrends = async (req: AuthRequest, res: Response) => {
     res.json({ success: true, data: summary });
   } catch (err: any) {
     return sendInternalServerError(res, err, 'Get AI theme trends failed');
+  }
+};
+
+export const getPatternInsights = async (req: AuthRequest, res: Response) => {
+  try {
+    const period = resolveInsightPeriod(req.query.period);
+    const periodLength = { '7days': 7, '30days': 30, '90days': 90, year: 365 }[period];
+    const start = parseEntryDateInput(subDays(new Date(), (periodLength * 2) - 1));
+    const entries = await prisma.entry.findMany({
+      where: { userId: req.user.id, entryDate: { gte: start } },
+      orderBy: { entryDate: 'asc' },
+    });
+    const insights = buildAnalyticsPatternInsights(entries.map(serializeEntry), period);
+
+    res.json({ success: true, data: insights });
+  } catch (err: any) {
+    return sendInternalServerError(res, err, 'Get analytics pattern insights failed');
   }
 };

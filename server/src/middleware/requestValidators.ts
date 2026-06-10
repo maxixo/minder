@@ -453,13 +453,6 @@ export const analyticsQueryValidators: ValidationChain[] = [
     .withMessage('Period must be one of 7days, 30days, 90days, or year.'),
 ];
 
-export const activityHeatmapValidators: ValidationChain[] = [
-  query('year')
-    .optional()
-    .isInt({ min: 2000, max: 2100 })
-    .withMessage('Year must be between 2000 and 2100.'),
-];
-
 export const entryIdParamValidator: ValidationChain[] = [
   param('id')
     .isUUID()

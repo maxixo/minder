@@ -14,7 +14,7 @@
     "setup:postgres": "powershell -ExecutionPolicy Bypass -File ./scripts/setup-local-postgres.ps1",
     "build": "tsc",
     "typecheck": "tsc --noEmit",
-    "test": "node --import tsx --test test/auth-controller.test.ts test/database.test.ts test/entry-helpers.test.ts test/entry-validators.test.ts test/inspiration-service.test.ts test/insight-service.test.ts test/reminder-job.test.ts test/security.test.ts test/timezone-validation.test.ts",
+    "test": "node --import tsx --test test/analytics-insights.test.ts test/auth-controller.test.ts test/database.test.ts test/entry-helpers.test.ts test/entry-validators.test.ts test/inspiration-service.test.ts test/insight-service.test.ts test/reminder-job.test.ts test/security.test.ts test/timezone-validation.test.ts",
     "test:watch": "node --import tsx --test --watch test/auth-controller.test.ts test/database.test.ts test/entry-helpers.test.ts test/entry-validators.test.ts test/inspiration-service.test.ts test/insight-service.test.ts test/reminder-job.test.ts test/security.test.ts test/timezone-validation.test.ts"
   },
   "engines": {
