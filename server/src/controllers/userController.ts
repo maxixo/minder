@@ -68,9 +68,15 @@ export const updatePreferences = async (req: AuthRequest, res: Response) => {
 
     const nextDailyReminder = req.body?.notifications?.dailyReminder ?? currentUser.dailyReminder;
     const nextReminderTime = req.body?.notifications?.reminderTime ?? currentUser.reminderTime;
-    const shouldResetReminderHistory = (
+    const nextInspirationReminder = req.body?.notifications?.inspirationReminder ?? currentUser.inspirationReminder;
+    const nextInspirationReminderTime = req.body?.notifications?.inspirationReminderTime ?? currentUser.inspirationReminderTime;
+    const shouldResetReflectionHistory = (
       nextReminderTime !== currentUser.reminderTime
       || (currentUser.dailyReminder === false && nextDailyReminder === true)
+    );
+    const shouldResetInspirationHistory = (
+      nextInspirationReminderTime !== currentUser.inspirationReminderTime
+      || (currentUser.inspirationReminder === false && nextInspirationReminder === true)
     );
 
     const user = await prisma.user.update({
@@ -79,18 +85,28 @@ export const updatePreferences = async (req: AuthRequest, res: Response) => {
         theme: req.body?.theme ?? currentUser.theme,
         dailyReminder: nextDailyReminder,
         reminderTime: nextReminderTime,
+        inspirationReminder: nextInspirationReminder,
+        inspirationReminderTime: nextInspirationReminderTime,
         weeklyReport: req.body?.notifications?.weeklyReport ?? currentUser.weeklyReport,
         timezone: timezone || req.body?.notifications?.timezone || currentUser.timezone || 'UTC',
         shareStats: req.body?.privacy?.shareStats ?? currentUser.shareStats,
       },
     });
 
-    if (shouldResetReminderHistory) {
-      await prisma.pushSubscription.updateMany({
-        where: { userId: req.user.id },
-        data: { lastSentAt: null },
-      });
-    }
+    await Promise.all([
+      shouldResetReflectionHistory
+        ? prisma.pushSubscription.updateMany({
+          where: { userId: req.user.id },
+          data: { lastSentAt: null },
+        })
+        : Promise.resolve(),
+      shouldResetInspirationHistory
+        ? prisma.pushSubscription.updateMany({
+          where: { userId: req.user.id },
+          data: { lastInspirationSentAt: null },
+        })
+        : Promise.resolve(),
+    ]);
 
     res.json({ success: true, data: serializeUser(user).preferences });
   } catch (err: any) {

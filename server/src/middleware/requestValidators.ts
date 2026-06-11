@@ -13,6 +13,7 @@ const FEELING_VALUES = ['happy', 'peace', 'sad', 'worried', 'excited', 'bored', 
 const GOAL_VALUES = ['better-sleep', 'reduce-stress', 'daily-focus', 'emotional-balance'];
 const CADENCE_VALUES = ['daily', 'three-times-week', 'flexible'];
 const BILLING_INTERVAL_VALUES = ['monthly', 'annual'];
+const INSPIRATION_SOURCE_VALUES = ['zenquotes', 'fallback', 'collection'];
 
 const isPlainObject = (value: unknown): value is Record<string, unknown> => (
   Boolean(value) && typeof value === 'object' && !Array.isArray(value)
@@ -314,6 +315,11 @@ export const profileUpdateValidators: ValidationChain[] = [
     .optional()
     .matches(REMINDER_TIME_PATTERN)
     .withMessage('Reminder time must use HH:mm format.'),
+  booleanField('preferences.notifications.inspirationReminder', 'Inspiration reminder must be true or false.'),
+  body('preferences.notifications.inspirationReminderTime')
+    .optional()
+    .matches(REMINDER_TIME_PATTERN)
+    .withMessage('Inspiration reminder time must use HH:mm format.'),
   booleanField('preferences.notifications.weeklyReport', 'Weekly report must be true or false.'),
   body('preferences.notifications.timezone')
     .optional()
@@ -342,6 +348,11 @@ export const preferenceUpdateValidators: ValidationChain[] = [
     .optional()
     .matches(REMINDER_TIME_PATTERN)
     .withMessage('Reminder time must use HH:mm format.'),
+  booleanField('notifications.inspirationReminder', 'Inspiration reminder must be true or false.'),
+  body('notifications.inspirationReminderTime')
+    .optional()
+    .matches(REMINDER_TIME_PATTERN)
+    .withMessage('Inspiration reminder time must use HH:mm format.'),
   booleanField('notifications.weeklyReport', 'Weekly report must be true or false.'),
   body('notifications.timezone')
     .optional()
@@ -401,6 +412,39 @@ export const billingIntervalValidators: ValidationChain[] = [
   body('interval')
     .isIn(BILLING_INTERVAL_VALUES)
     .withMessage('Billing interval must be monthly or annual.'),
+];
+
+export const saveInspirationQuoteValidators: ValidationChain[] = [
+  body('quoteKey')
+    .isString()
+    .trim()
+    .isLength({ min: 1, max: 160 })
+    .withMessage('quoteKey must be between 1 and 160 characters.'),
+  body('text')
+    .isString()
+    .trim()
+    .isLength({ min: 1, max: 1000 })
+    .withMessage('Quote text must be between 1 and 1000 characters.'),
+  body('author')
+    .isString()
+    .trim()
+    .isLength({ min: 1, max: 200 })
+    .withMessage('Quote author must be between 1 and 200 characters.'),
+  body('source')
+    .isIn(INSPIRATION_SOURCE_VALUES)
+    .withMessage(`Quote source must be one of ${INSPIRATION_SOURCE_VALUES.join(', ')}.`),
+  body('attribution')
+    .optional({ nullable: true })
+    .isString()
+    .trim()
+    .isLength({ max: 500 })
+    .withMessage('Quote attribution must be 500 characters or fewer.'),
+];
+
+export const savedInspirationQuoteIdValidator: ValidationChain[] = [
+  param('id')
+    .isUUID()
+    .withMessage('Saved quote id must be a valid UUID.'),
 ];
 
 export const entryPayloadValidators: ValidationChain[] = [

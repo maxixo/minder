@@ -506,7 +506,7 @@ export default function Onboarding() {
               Find your rhythm.
             </h1>
             <p className="mx-auto max-w-md font-body-lg text-body-lg text-secondary md:mx-0">
-              We&apos;ll send a gentle nudge to help you stay centered. Select a time that feels natural for your reflection practice.
+              We&apos;ll send a gentle nudge to support your daily reflection practice. Select a time that feels natural for your routine.
             </p>
           </div>
 

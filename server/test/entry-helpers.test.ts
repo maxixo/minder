@@ -14,6 +14,8 @@ test('serializeUser returns nested preferences and omits passwordHash', () => {
     theme: 'dark',
     dailyReminder: false,
     reminderTime: '09:30',
+    inspirationReminder: true,
+    inspirationReminderTime: '07:45',
     weeklyReport: true,
     timezone: 'America/New_York',
     shareStats: true,
@@ -41,6 +43,8 @@ test('serializeUser returns nested preferences and omits passwordHash', () => {
     notifications: {
       dailyReminder: false,
       reminderTime: '09:30',
+      inspirationReminder: true,
+      inspirationReminderTime: '07:45',
       weeklyReport: true,
       timezone: 'America/New_York',
       lastReminderSentAt: '2026-05-24T10:00:00.000Z',

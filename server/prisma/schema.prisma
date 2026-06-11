@@ -18,6 +18,8 @@ model User {
   theme              String             @default("light")
   dailyReminder      Boolean            @default(true)
   reminderTime       String             @default("20:00")
+  inspirationReminder Boolean           @default(true)
+  inspirationReminderTime String        @default("08:30")
   weeklyReport       Boolean            @default(true)
   timezone           String             @default("UTC")
   lastReminderSentAt DateTime?
@@ -35,6 +37,7 @@ model User {
   premiumInterestAt  DateTime?
   premiumInterestInterval String?
   pushSubscriptions  PushSubscription[]
+  savedInspirationQuotes SavedInspirationQuote[]
   entries            Entry[]
   entryInsights      EntryInsight[]
   createdAt          DateTime           @default(now())
@@ -53,6 +56,7 @@ model PushSubscription {
   auth           String
   timezone       String   @default("UTC")
   lastSentAt     DateTime?
+  lastInspirationSentAt DateTime?
   userAgent      String?
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
@@ -60,6 +64,23 @@ model PushSubscription {
   @@unique([userId, endpoint])
   @@index([userId])
   @@map("push_subscriptions")
+}
+
+model SavedInspirationQuote {
+  id          String   @id @default(uuid()) @db.Uuid
+  userId      String   @db.Uuid
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  quoteKey    String
+  text        String
+  author      String
+  source      String
+  attribution String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([userId, quoteKey])
+  @@index([userId, createdAt])
+  @@map("saved_inspiration_quotes")
 }
 
 model Entry {

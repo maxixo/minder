@@ -122,6 +122,8 @@ export const updateProfile = async (req: AuthRequest, res: Response) => {
         theme: preferences?.theme ?? currentUser.theme,
         dailyReminder: preferences?.notifications?.dailyReminder ?? currentUser.dailyReminder,
         reminderTime: preferences?.notifications?.reminderTime ?? currentUser.reminderTime,
+        inspirationReminder: preferences?.notifications?.inspirationReminder ?? currentUser.inspirationReminder,
+        inspirationReminderTime: preferences?.notifications?.inspirationReminderTime ?? currentUser.inspirationReminderTime,
         weeklyReport: preferences?.notifications?.weeklyReport ?? currentUser.weeklyReport,
         timezone: preferences?.notifications?.timezone ?? currentUser.timezone,
         shareStats: preferences?.privacy?.shareStats ?? currentUser.shareStats,

@@ -8,11 +8,16 @@ import {
   getDailyQuote,
   getDailyQuoteIndex,
   getLocalDateKey,
+  getQuoteFavoriteKey,
   getShiftedQuoteIndex,
 } from '@/lib/inspiration';
 import analyticsService from '@/services/analyticsService';
 import inspirationService from '@/services/inspirationService';
-import type { InspirationQuoteResponse } from '@/types/inspiration';
+import type {
+  InspirationQuoteResponse,
+  SavedInspirationQuote,
+  SavedInspirationQuoteSource,
+} from '@/types/inspiration';
 
 const fallbackQuote: DashboardQuote = {
   id: 'mindfullife-default',
@@ -48,6 +53,11 @@ export default function Inspiration() {
   const [activeIndex, setActiveIndex] = useState(dailyIndex >= 0 ? dailyIndex : 0);
   const [isDownloading, setIsDownloading] = useState(false);
   const [currentStreak, setCurrentStreak] = useState(0);
+  const [savedQuotes, setSavedQuotes] = useState<SavedInspirationQuote[]>([]);
+  const [savedQuotesLoading, setSavedQuotesLoading] = useState(true);
+  const [savedQuotesError, setSavedQuotesError] = useState('');
+  const [favoriteActionPending, setFavoriteActionPending] = useState(false);
+  const [activeSavedQuote, setActiveSavedQuote] = useState<SavedInspirationQuote | null>(null);
   const hasUserSelectedQuote = useRef(false);
 
   useEffect(() => {
@@ -124,13 +134,45 @@ export default function Inspiration() {
     };
   }, []);
 
-  const isShowingDailyQuote = activeQuote.id === featuredQuote.id;
-  const visibleAttribution = isShowingDailyQuote && quoteSource === 'zenquotes' ? quoteAttribution : null;
+  useEffect(() => {
+    let isCancelled = false;
+
+    const loadSavedQuotes = async () => {
+      setSavedQuotesLoading(true);
+      setSavedQuotesError('');
+
+      try {
+        const response = await inspirationService.getSaved();
+        if (!isCancelled) setSavedQuotes(response.data);
+      } catch (error: any) {
+        if (!isCancelled) {
+          setSavedQuotes([]);
+          setSavedQuotesError(error?.response?.data?.message || 'Your saved quote library could not be loaded.');
+        }
+      } finally {
+        if (!isCancelled) setSavedQuotesLoading(false);
+      }
+    };
+
+    void loadSavedQuotes();
+
+    return () => {
+      isCancelled = true;
+    };
+  }, []);
+
+  const activeQuoteKey = getQuoteFavoriteKey(activeQuote);
+  const activeFavorite = savedQuotes.find((quote) => quote.quoteKey === activeQuoteKey) || null;
+  const isShowingDailyQuote = !activeSavedQuote && activeQuote.id === featuredQuote.id;
+  const activeQuoteSource: SavedInspirationQuoteSource = activeSavedQuote?.source
+    || (isShowingDailyQuote ? quoteSource || 'fallback' : 'collection');
+  const visibleAttribution = activeSavedQuote?.attribution
+    || (isShowingDailyQuote && quoteSource === 'zenquotes' ? quoteAttribution : null);
   const totalQuotes = dashboardQuotes.length || 1;
   const sharePath = buildQuoteSharePath(activeQuote, {
     attribution: visibleAttribution,
-    date: isShowingDailyQuote ? featuredDate : getLocalDateKey(),
-    source: isShowingDailyQuote ? quoteSource : 'collection',
+    date: isShowingDailyQuote ? featuredDate : activeSavedQuote?.createdAt.slice(0, 10) || getLocalDateKey(),
+    source: activeQuoteSource,
     streak: currentStreak,
   });
 
@@ -138,6 +180,7 @@ export default function Inspiration() {
     if (!dashboardQuotes.length) return;
 
     hasUserSelectedQuote.current = true;
+    setActiveSavedQuote(null);
     const nextIndex = getShiftedQuoteIndex(dashboardQuotes, activeIndex, offset);
     setActiveIndex(nextIndex);
     setActiveQuote(dashboardQuotes[nextIndex] || fallbackQuote);
@@ -147,13 +190,73 @@ export default function Inspiration() {
     if (index < 0 || index >= dashboardQuotes.length) return;
 
     hasUserSelectedQuote.current = true;
+    setActiveSavedQuote(null);
     setActiveIndex(index);
     setActiveQuote(dashboardQuotes[index]);
   };
 
   const handleSelectFeaturedQuote = () => {
     hasUserSelectedQuote.current = false;
+    setActiveSavedQuote(null);
     setActiveQuote(featuredQuote);
+  };
+
+  const handleSelectSavedQuote = (quote: SavedInspirationQuote) => {
+    hasUserSelectedQuote.current = true;
+    setActiveSavedQuote(quote);
+    setActiveQuote({
+      id: quote.quoteKey,
+      text: quote.text,
+      author: quote.author,
+    });
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const removeSavedQuote = async (quote: SavedInspirationQuote) => {
+    const response = await inspirationService.removeSaved(quote.id);
+    setSavedQuotes((current) => current.filter((savedQuote) => savedQuote.id !== quote.id));
+    setActiveSavedQuote((current) => current?.id === quote.id ? null : current);
+    toast.success(response.message || 'Quote removed from your inspiration library');
+  };
+
+  const handleToggleFavorite = async () => {
+    setFavoriteActionPending(true);
+
+    try {
+      if (activeFavorite) {
+        await removeSavedQuote(activeFavorite);
+        return;
+      }
+
+      const response = await inspirationService.save({
+        quoteKey: activeQuoteKey,
+        text: activeQuote.text,
+        author: activeQuote.author,
+        source: activeQuoteSource,
+        attribution: visibleAttribution,
+      });
+      setSavedQuotes((current) => [
+        response.data,
+        ...current.filter((quote) => quote.id !== response.data.id),
+      ]);
+      toast.success(response.message || 'Quote saved to your inspiration library');
+    } catch (error: any) {
+      toast.error(error?.response?.data?.message || 'Unable to update your inspiration library');
+    } finally {
+      setFavoriteActionPending(false);
+    }
+  };
+
+  const handleRemoveSavedQuote = async (quote: SavedInspirationQuote) => {
+    setFavoriteActionPending(true);
+
+    try {
+      await removeSavedQuote(quote);
+    } catch (error: any) {
+      toast.error(error?.response?.data?.message || 'Unable to remove this quote from your library');
+    } finally {
+      setFavoriteActionPending(false);
+    }
   };
 
   const handleDownload = async () => {
@@ -207,10 +310,16 @@ export default function Inspiration() {
                   ? 'Loading featured quote'
                   : isShowingDailyQuote
                     ? 'Featured today'
+                    : activeSavedQuote
+                      ? 'From your library'
                     : 'From the collection'}
               </p>
               <h2 className="mt-3 text-3xl font-semibold tracking-tight text-slate-900 dark:text-sage-50">
-                {isShowingDailyQuote ? 'Today\'s quote' : `Quote ${activeIndex + 1} of ${totalQuotes}`}
+                {isShowingDailyQuote
+                  ? 'Today\'s quote'
+                  : activeSavedQuote
+                    ? 'Saved inspiration'
+                    : `Quote ${activeIndex + 1} of ${totalQuotes}`}
               </h2>
             </div>
 
@@ -247,7 +356,24 @@ export default function Inspiration() {
 
           <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
             <button
+              aria-pressed={Boolean(activeFavorite)}
               className="inline-flex items-center justify-center gap-2 rounded-full bg-sage-700 px-6 py-3 text-sm font-semibold text-white transition-all hover:bg-sage-800 hover:shadow-lifted disabled:cursor-not-allowed disabled:opacity-70 dark:bg-sage-500 dark:text-slate-950 dark:hover:bg-sage-400"
+              disabled={favoriteActionPending || savedQuotesLoading}
+              onClick={() => void handleToggleFavorite()}
+              type="button"
+            >
+              <span className="material-symbols-outlined text-[18px]">
+                {activeFavorite ? 'favorite' : 'favorite_border'}
+              </span>
+              {favoriteActionPending
+                ? 'Updating library...'
+                : activeFavorite
+                  ? 'Remove favorite'
+                  : 'Save favorite'}
+            </button>
+
+            <button
+              className="inline-flex items-center justify-center gap-2 rounded-full border border-sage-200 bg-white px-6 py-3 text-sm font-semibold text-sage-700 transition-all hover:bg-sage-50 disabled:cursor-not-allowed disabled:opacity-70 dark:border-white/10 dark:bg-white/5 dark:text-sage-100 dark:hover:bg-white/10"
               disabled={isDownloading}
               onClick={() => void handleDownload()}
               type="button"
@@ -342,6 +468,85 @@ export default function Inspiration() {
           </section>
         </div>
       </div>
+
+      <section className="mt-8 rounded-[1.75rem] border border-sage-100 bg-white p-6 shadow-soft sm:p-8 dark:border-white/10 dark:bg-white/5">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-sage-500 dark:text-sage-300">Personal Quote Library</p>
+            <h2 className="mt-2 text-3xl font-semibold text-sage-900 dark:text-sage-50">Inspiration worth returning to</h2>
+            <p className="mt-3 max-w-2xl text-sm leading-6 text-sage-600 dark:text-sage-200">
+              Favorite quotes stay connected to your account so you can reopen, reflect on, download, or share them later.
+            </p>
+          </div>
+          <div className="inline-flex items-center gap-2 rounded-full bg-sage-50 px-4 py-2 text-sm font-semibold text-sage-700 dark:bg-white/10 dark:text-sage-100">
+            <span className="material-symbols-outlined text-[18px]">favorite</span>
+            {savedQuotes.length} saved
+          </div>
+        </div>
+
+        {savedQuotesError ? (
+          <div className="mt-6 rounded-2xl border border-amber-200 bg-amber-50 px-5 py-4 text-sm text-amber-800">
+            {savedQuotesError}
+          </div>
+        ) : null}
+
+        {savedQuotesLoading ? (
+          <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+            {Array.from({ length: 3 }, (_, index) => (
+              <div key={`saved-quote-skeleton-${index + 1}`} className="skeleton h-56 rounded-[1.5rem]" />
+            ))}
+          </div>
+        ) : savedQuotes.length ? (
+          <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+            {savedQuotes.map((quote) => (
+              <article key={quote.id} className="flex flex-col justify-between rounded-[1.5rem] border border-sage-100 bg-gradient-to-b from-sage-50/80 to-white p-5 dark:border-white/10 dark:bg-gradient-to-b dark:from-[#18231d] dark:to-[#101915]">
+                <div>
+                  <div className="flex items-start justify-between gap-3">
+                    <span className="material-symbols-outlined text-3xl text-sage-500 dark:text-sage-300">format_quote</span>
+                    <span className="text-xs font-medium text-sage-500 dark:text-sage-300">
+                      {new Date(quote.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+                    </span>
+                  </div>
+                  <blockquote className="mt-4 text-lg font-semibold leading-7 text-sage-900 dark:text-sage-50">
+                    {quote.text}
+                  </blockquote>
+                  <p className="mt-3 text-xs font-semibold uppercase tracking-[0.18em] text-sage-500 dark:text-sage-300">
+                    {quote.author}
+                  </p>
+                </div>
+
+                <div className="mt-6 flex flex-col gap-2 sm:flex-row">
+                  <button
+                    className="inline-flex flex-1 items-center justify-center gap-2 rounded-full bg-sage-700 px-4 py-2.5 text-xs font-semibold text-white transition-colors hover:bg-sage-800"
+                    onClick={() => handleSelectSavedQuote(quote)}
+                    type="button"
+                  >
+                    <span className="material-symbols-outlined text-[17px]">visibility</span>
+                    Open quote
+                  </button>
+                  <button
+                    className="inline-flex flex-1 items-center justify-center gap-2 rounded-full border border-sage-200 bg-white px-4 py-2.5 text-xs font-semibold text-sage-700 transition-colors hover:bg-sage-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-white/10 dark:bg-white/5 dark:text-sage-100 dark:hover:bg-white/10"
+                    disabled={favoriteActionPending}
+                    onClick={() => void handleRemoveSavedQuote(quote)}
+                    type="button"
+                  >
+                    <span className="material-symbols-outlined text-[17px]">delete</span>
+                    Remove
+                  </button>
+                </div>
+              </article>
+            ))}
+          </div>
+        ) : (
+          <div className="mt-6 rounded-[1.5rem] border border-dashed border-sage-200 bg-sage-50/70 px-6 py-10 text-center dark:border-white/10 dark:bg-[#101915]">
+            <span className="material-symbols-outlined text-4xl text-sage-400">favorite_border</span>
+            <p className="mt-3 text-lg font-semibold text-sage-800 dark:text-sage-100">Your quote library is ready.</p>
+            <p className="mx-auto mt-2 max-w-xl text-sm leading-6 text-sage-500 dark:text-sage-300">
+              Use Save favorite on any featured or collection quote to keep it here.
+            </p>
+          </div>
+        )}
+      </section>
     </div>
   );
 }

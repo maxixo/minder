@@ -10,6 +10,8 @@ export interface AuthUserPreferences {
   notifications: {
     dailyReminder: boolean;
     reminderTime: string;
+    inspirationReminder: boolean;
+    inspirationReminderTime: string;
     weeklyReport: boolean;
     timezone: string;
     lastReminderSentAt: string | null;

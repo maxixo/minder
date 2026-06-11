@@ -1,6 +1,11 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { isReminderDue, toMinutesSinceMidnight } from '../src/jobs/reminderJob.ts';
+import {
+  buildDailyInspirationNotification,
+  buildDailyReflectionNotification,
+  isReminderDue,
+  toMinutesSinceMidnight,
+} from '../src/jobs/reminderJob.ts';
 
 test('toMinutesSinceMidnight converts HH:mm values', () => {
   assert.equal(toMinutesSinceMidnight('00:00'), 0);
@@ -22,4 +27,31 @@ test('isReminderDue returns true at the scheduled minute and after it', () => {
 test('isReminderDue returns false before the scheduled minute', () => {
   assert.equal(isReminderDue('09:29', '09:30'), false);
   assert.equal(isReminderDue('08:59', '09:30'), false);
+});
+
+test('buildDailyInspirationNotification links the daily quote to the inspiration page', () => {
+  const notification = buildDailyInspirationNotification({
+    text: 'A steady practice begins with one honest moment of attention.',
+    author: 'MindfulLife',
+    source: 'fallback',
+    attribution: null,
+    date: '2026-06-11',
+    fetchedAt: '2026-06-11T08:00:00.000Z',
+  });
+
+  assert.deepEqual(notification, {
+    title: 'Your daily inspiration',
+    body: '"A steady practice begins with one honest moment of attention." - MindfulLife',
+    url: '/inspiration',
+    tag: 'daily-inspiration-reminder',
+  });
+});
+
+test('buildDailyReflectionNotification keeps reflection delivery separate', () => {
+  assert.deepEqual(buildDailyReflectionNotification(), {
+    title: 'Time for your daily reflection',
+    body: 'Take one minute to check in and log today\'s entry.',
+    url: '/reflection',
+    tag: 'daily-reflection-reminder',
+  });
 });

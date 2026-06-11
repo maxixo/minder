@@ -37,6 +37,8 @@ export const serializeUser = (user: any) => ({
     notifications: {
       dailyReminder: user.dailyReminder ?? true,
       reminderTime: user.reminderTime || '20:00',
+      inspirationReminder: user.inspirationReminder ?? true,
+      inspirationReminderTime: user.inspirationReminderTime || '08:30',
       weeklyReport: user.weeklyReport ?? true,
       timezone: user.timezone || 'UTC',
       lastReminderSentAt: user.lastReminderSentAt ? new Date(user.lastReminderSentAt).toISOString() : null,
@@ -143,6 +145,17 @@ export const serializeEntryInsight = (insight: any) => ({
   riskFlags: asArray<string>(insight.riskFlags),
   modelVersion: insight.modelVersion ?? 'unknown',
   generatedAt: insight.generatedAt ? new Date(insight.generatedAt).toISOString() : new Date().toISOString(),
+});
+
+export const serializeSavedInspirationQuote = (quote: any) => ({
+  id: quote.id,
+  quoteKey: quote.quoteKey,
+  text: quote.text,
+  author: quote.author,
+  source: quote.source,
+  attribution: quote.attribution ?? null,
+  createdAt: quote.createdAt ? new Date(quote.createdAt).toISOString() : new Date().toISOString(),
+  updatedAt: quote.updatedAt ? new Date(quote.updatedAt).toISOString() : new Date().toISOString(),
 });
 
 export const buildEntryPersistenceInput = (entry: Record<string, any>) => {

@@ -32,6 +32,18 @@ export const getShiftedQuoteIndex = (quotes: DashboardQuote[], startIndex: numbe
   return (baseIndex + offset + quotes.length) % quotes.length;
 };
 
+export const getQuoteFavoriteKey = (quote: Pick<DashboardQuote, 'text' | 'author'>) => {
+  const normalized = `${quote.author.trim().toLocaleLowerCase()}|${quote.text.trim().toLocaleLowerCase()}`;
+  let hash = 2166136261;
+
+  for (let index = 0; index < normalized.length; index += 1) {
+    hash ^= normalized.charCodeAt(index);
+    hash = Math.imul(hash, 16777619);
+  }
+
+  return `quote-${(hash >>> 0).toString(16).padStart(8, '0')}`;
+};
+
 export const getQuoteCardFilename = (quote: DashboardQuote, date = new Date()) => {
   const slug = quote.author.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'quote';
   return `mindfullife-inspiration-${slug}-${getLocalDateKey(date)}.png`;

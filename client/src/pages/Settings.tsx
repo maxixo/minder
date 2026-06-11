@@ -30,6 +30,8 @@ interface PreferencesState {
   notifications: {
     dailyReminder: boolean;
     reminderTime: string;
+    inspirationReminder: boolean;
+    inspirationReminderTime: string;
     weeklyReport: boolean;
     timezone: string;
   };
@@ -49,6 +51,8 @@ const defaultPreferences: PreferencesState = {
   notifications: {
     dailyReminder: true,
     reminderTime: '20:00',
+    inspirationReminder: true,
+    inspirationReminderTime: '08:30',
     weeklyReport: true,
     timezone: 'UTC',
   },
@@ -106,6 +110,8 @@ const normalizePreferences = (preferences: any): PreferencesState => ({
   notifications: {
     dailyReminder: preferences?.notifications?.dailyReminder ?? true,
     reminderTime: preferences?.notifications?.reminderTime || '20:00',
+    inspirationReminder: preferences?.notifications?.inspirationReminder ?? true,
+    inspirationReminderTime: preferences?.notifications?.inspirationReminderTime || '08:30',
     weeklyReport: preferences?.notifications?.weeklyReport ?? true,
     timezone: preferences?.notifications?.timezone || 'UTC',
   },
@@ -332,9 +338,16 @@ export default function Settings() {
         icon: preferences.theme === 'dark' ? 'dark_mode' : preferences.theme === 'light' ? 'light_mode' : 'brightness_auto',
       },
       {
-        label: 'Daily Reminder',
+        label: 'Reflection Reminder',
         value: preferences.notifications.dailyReminder
           ? `Enabled at ${preferences.notifications.reminderTime} (${preferences.notifications.timezone})`
+          : 'Currently paused',
+        icon: 'edit_note',
+      },
+      {
+        label: 'Daily Inspiration',
+        value: preferences.notifications.inspirationReminder
+          ? `Enabled at ${preferences.notifications.inspirationReminderTime} (${preferences.notifications.timezone})`
           : 'Currently paused',
         icon: 'notifications_active',
       },
@@ -372,8 +385,12 @@ export default function Settings() {
     if (!isPushServerConfigured) {
       return 'The server is not configured to send web push yet. Add VAPID keys on the backend before testing delivery.';
     }
-    if (!preferences.notifications.dailyReminder && isPushSubscribed) {
-      return 'Push is enabled on this device, but daily reminders are paused in your account preferences.';
+    if (
+      !preferences.notifications.dailyReminder
+      && !preferences.notifications.inspirationReminder
+      && isPushSubscribed
+    ) {
+      return 'Push is enabled on this device, but both scheduled reminders are paused in your account preferences.';
     }
     if (notificationPermission === 'denied') {
       return 'Notifications are blocked for this site. Update the site permission in your browser settings, then reload the page.';
@@ -384,8 +401,17 @@ export default function Settings() {
     if (!isPushSubscribed) {
       return 'Permission is granted, but this device is not subscribed yet. Use Enable Notifications to create a push subscription.';
     }
-    return 'This device is ready to receive push reminders.';
-  }, [isInstalled, isIosLikeBrowser, isPushServerConfigured, isPushSubscribed, notificationPermission, preferences.notifications.dailyReminder, pushSupported]);
+    return 'This device is ready to receive your configured reflection and inspiration reminders.';
+  }, [
+    isInstalled,
+    isIosLikeBrowser,
+    isPushServerConfigured,
+    isPushSubscribed,
+    notificationPermission,
+    preferences.notifications.dailyReminder,
+    preferences.notifications.inspirationReminder,
+    pushSupported,
+  ]);
 
   const billingRenewalMessage = useMemo(() => {
     const trialEnd = formatBillingDate(billing.trialEndsAt);
@@ -455,7 +481,7 @@ export default function Settings() {
       throw new Error(
         permission === 'denied'
           ? 'Notifications are blocked for this site. Change the site permission to Allow and reload the page.'
-          : 'Notification permission is required for daily reminders.'
+          : 'Notification permission is required for daily inspiration delivery.'
       );
     }
 
@@ -578,15 +604,20 @@ export default function Settings() {
         await syncCurrentDeviceSubscriptionTimeZone(timezone);
       }
 
-      if (response.data.notifications.dailyReminder && !isPushSubscribed) {
+      const hasScheduledNotifications = (
+        response.data.notifications.dailyReminder
+        || response.data.notifications.inspirationReminder
+      );
+
+      if (hasScheduledNotifications && !isPushSubscribed) {
         if (!pushSupported) {
-          toast.error('Daily reminders were saved, but this browser does not support push notifications.');
+          toast.error('Notification schedules were saved, but this browser does not support push notifications.');
           return;
         }
 
         try {
           await enablePushForCurrentDevice(timezone);
-          toast.success('Preferences updated and daily reminder notifications enabled for this device.');
+          toast.success('Preferences updated and notifications enabled for this device.');
           return;
         } catch (error: any) {
           toast.error(error?.message || 'Preferences were saved, but notifications could not be enabled for this device.');
@@ -633,7 +664,6 @@ export default function Settings() {
         ...preferences,
         notifications: {
           ...preferences.notifications,
-          dailyReminder: true,
           timezone,
         },
       });
@@ -642,7 +672,7 @@ export default function Settings() {
       setSubscriptionCount(pushResponse?.data?.subscriptionCount || 0);
       const { browserSubscription, statusResponse } = await loadPushStatus();
       applyPushStatus(browserSubscription, statusResponse);
-      toast.success('Daily reminder notifications enabled.');
+      toast.success('Notifications enabled.');
     } catch (error: any) {
       toast.error(error?.response?.data?.message || error?.message || 'Unable to enable notifications.');
     } finally {
@@ -673,7 +703,7 @@ export default function Settings() {
       applyPushStatus(browserSubscription, statusResponse);
       toast.success(
         endpoint
-          ? 'Daily reminder notifications disabled on this device.'
+          ? 'Daily inspiration delivery disabled on this device.'
           : 'This browser had no active endpoint to remove from the server. Local notifications are disabled.'
       );
     } catch (error: any) {
@@ -1138,8 +1168,8 @@ export default function Settings() {
             <div className="mt-6 space-y-4">
               <ToggleRow
                 checked={preferences.notifications.dailyReminder}
-                description="Receive a daily nudge to pause and check in with yourself."
-                label="Daily reminder"
+                description="Receive a gentle nudge to pause, check in, and complete your daily reflection."
+                label="Daily reflection reminder"
                 onToggle={() => setPreferences((current) => ({
                   ...current,
                   notifications: {
@@ -1153,7 +1183,7 @@ export default function Settings() {
                 'rounded-[1.25rem] border border-sage-200 bg-sage-100/70 p-4 transition-opacity dark:border-white/10 dark:bg-white/5',
                 !preferences.notifications.dailyReminder && 'opacity-60'
               )}>
-                <label className="label" htmlFor="settings-reminder-time">Reminder Time</label>
+                <label className="label" htmlFor="settings-reminder-time">Reflection Reminder Time</label>
                 <input
                   className="input rounded-[1rem] border-sage-200 bg-sage-50 dark:border-white/10 dark:bg-[#101915]"
                   disabled={!preferences.notifications.dailyReminder}
@@ -1170,9 +1200,45 @@ export default function Settings() {
                 />
               </div>
 
+              <ToggleRow
+                checked={preferences.notifications.inspirationReminder}
+                description="Receive the featured inspiration quote at your preferred time, with a direct link to the Inspiration page."
+                label="Daily inspiration delivery"
+                onToggle={() => setPreferences((current) => ({
+                  ...current,
+                  notifications: {
+                    ...current.notifications,
+                    inspirationReminder: !current.notifications.inspirationReminder,
+                  },
+                }))}
+              />
+
               <div className={clsx(
                 'rounded-[1.25rem] border border-sage-200 bg-sage-100/70 p-4 transition-opacity dark:border-white/10 dark:bg-white/5',
-                !preferences.notifications.dailyReminder && 'opacity-60'
+                !preferences.notifications.inspirationReminder && 'opacity-60'
+              )}>
+                <label className="label" htmlFor="settings-inspiration-reminder-time">Inspiration Delivery Time</label>
+                <input
+                  className="input rounded-[1rem] border-sage-200 bg-sage-50 dark:border-white/10 dark:bg-[#101915]"
+                  disabled={!preferences.notifications.inspirationReminder}
+                  id="settings-inspiration-reminder-time"
+                  onChange={(event) => setPreferences((current) => ({
+                    ...current,
+                    notifications: {
+                      ...current.notifications,
+                      inspirationReminderTime: event.target.value,
+                    },
+                  }))}
+                  type="time"
+                  value={preferences.notifications.inspirationReminderTime}
+                />
+              </div>
+
+              <div className={clsx(
+                'rounded-[1.25rem] border border-sage-200 bg-sage-100/70 p-4 transition-opacity dark:border-white/10 dark:bg-white/5',
+                !preferences.notifications.dailyReminder
+                  && !preferences.notifications.inspirationReminder
+                  && 'opacity-60'
               )}>
                 <label className="label" htmlFor="settings-reminder-timezone">Reminder Timezone</label>
                 <input
@@ -1183,7 +1249,7 @@ export default function Settings() {
                   type="text"
                   value={getEffectiveReminderTimeZone()}
                 />
-                <p className="helper-text">This timezone syncs automatically from the current device so reminders follow the device you are using.</p>
+                <p className="helper-text">This timezone syncs automatically from the current device and applies to both reminder schedules.</p>
               </div>
 
               <ToggleRow
