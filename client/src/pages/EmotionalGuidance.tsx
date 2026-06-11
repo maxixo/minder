@@ -5,6 +5,16 @@ import { toast } from 'sonner';
 import { Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/useAuth';
 import { useDailyEntry } from '@/hooks/useDailyEntry';
+import {
+  buildCopingPatterns,
+  buildRecurringTriggers,
+  buildReassuranceSummary,
+  buildSavedCopingPlans,
+  findPriorCopingRecall,
+  formatEmotionalHistoryDate,
+  parseCopingMethods,
+  type ReassuranceSummary,
+} from '@/lib/emotionalGuidanceInsights';
 import entryService from '@/services/entryService';
 import type { DailyEntry, DailyEntryPatch } from '@/types/entry';
 
@@ -58,24 +68,21 @@ const weekdayKeyByIndex: Record<number, WeekKey> = {
 };
 
 const toDateParam = (date: Date) => format(date, 'yyyy-MM-dd');
-const parseCopingMethods = (value?: string | null) => (
-  typeof value === 'string'
-    ? value.split(',').map((item) => item.trim()).filter(Boolean)
-    : []
-);
 
 export default function EmotionalGuidance() {
   const { user } = useAuth();
   const { entry, error, loading, saveEntryPatch, saving } = useDailyEntry();
-  const [weeklyEntries, setWeeklyEntries] = useState<DailyEntry[]>([]);
-  const [weekLoading, setWeekLoading] = useState(true);
-  const [weekError, setWeekError] = useState('');
+  const [historyEntries, setHistoryEntries] = useState<DailyEntry[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(true);
+  const [historyError, setHistoryError] = useState('');
   const [whereYouAre, setWhereYouAre] = useState('');
   const [feelings, setFeelings] = useState('');
   const [thoughts, setThoughts] = useState('');
   const [selectedStrategies, setSelectedStrategies] = useState<string[]>([]);
   const [customStrategies, setCustomStrategies] = useState<string[]>([]);
   const [customStrategyInput, setCustomStrategyInput] = useState('');
+  const [feelingBeforeGo, setFeelingBeforeGo] = useState('');
+  const [reassuranceSummary, setReassuranceSummary] = useState<ReassuranceSummary | null>(null);
 
   const firstName = user?.name?.split(' ')[0] || 'Friend';
   const weekRange = useMemo(() => {
@@ -87,17 +94,28 @@ export default function EmotionalGuidance() {
   }, []);
   const week = useMemo(() => {
     const checkedDays = emptyWeek();
+    const startDate = toDateParam(weekRange.start);
+    const endDate = toDateParam(weekRange.end);
 
-    weeklyEntries.forEach((weeklyEntry) => {
-      if (!weeklyEntry.completedSections.includes('emotional')) return;
-      const date = parseISO(weeklyEntry.date.slice(0, 10));
+    historyEntries.forEach((historyEntry) => {
+      const dateKey = historyEntry.date.slice(0, 10);
+      if (dateKey < startDate || dateKey > endDate || !historyEntry.completedSections.includes('emotional')) return;
+      const date = parseISO(dateKey);
       checkedDays[weekdayKeyByIndex[date.getDay()]] = true;
     });
 
     return checkedDays;
-  }, [weeklyEntries]);
+  }, [historyEntries, weekRange]);
   const completedDays = Object.values(week).filter(Boolean).length;
   const currentDayKey = weekdayKeyByIndex[new Date().getDay()];
+  const savedCopingPlans = useMemo(() => buildSavedCopingPlans(historyEntries), [historyEntries]);
+  const recurringTriggers = useMemo(() => buildRecurringTriggers(historyEntries), [historyEntries]);
+  const copingPatterns = useMemo(() => buildCopingPatterns(historyEntries), [historyEntries]);
+  const priorCopingRecall = useMemo(() => findPriorCopingRecall(
+    historyEntries,
+    entry?.date || new Date().toISOString(),
+    { whereYouAre, feelings, thoughts }
+  ), [entry?.date, feelings, historyEntries, thoughts, whereYouAre]);
   const sharePath = useMemo(() => {
     const params = new URLSearchParams({
       date: toDateParam(new Date()),
@@ -110,32 +128,30 @@ export default function EmotionalGuidance() {
   useEffect(() => {
     let cancelled = false;
 
-    const loadWeeklyCheckIns = async () => {
-      setWeekLoading(true);
-      setWeekError('');
+    const loadEmotionalHistory = async () => {
+      setHistoryLoading(true);
+      setHistoryError('');
 
       try {
         const response = await entryService.getEntries({
-          startDate: toDateParam(weekRange.start),
-          endDate: toDateParam(weekRange.end),
-          limit: 7,
+          limit: 60,
         });
-        if (!cancelled) setWeeklyEntries(response.data);
+        if (!cancelled) setHistoryEntries(response.data);
       } catch (loadError: any) {
         if (!cancelled) {
-          setWeeklyEntries([]);
-          setWeekError(loadError?.response?.data?.message || 'Weekly check-ins could not be loaded.');
+          setHistoryEntries([]);
+          setHistoryError(loadError?.response?.data?.message || 'Emotional check-in history could not be loaded.');
         }
       } finally {
-        if (!cancelled) setWeekLoading(false);
+        if (!cancelled) setHistoryLoading(false);
       }
     };
 
-    void loadWeeklyCheckIns();
+    void loadEmotionalHistory();
     return () => {
       cancelled = true;
     };
-  }, [weekRange]);
+  }, []);
 
   useEffect(() => {
     if (!entry) return;
@@ -149,6 +165,7 @@ export default function EmotionalGuidance() {
       (strategy) => !defaultCopingStrategyLabels.has(strategy.toLocaleLowerCase())
     ));
     setCustomStrategyInput('');
+    setFeelingBeforeGo(entry.emotionalGuidance?.feelingBeforeGo || '');
   }, [entry]);
 
   const toggleStrategy = (label: string) => {
@@ -191,6 +208,20 @@ export default function EmotionalGuidance() {
     setCustomStrategyInput('');
   };
 
+  const applyCopingPlan = (strategies: string[]) => {
+    if (strategies.join(', ').length > MAX_COPING_METHOD_LENGTH) {
+      toast.error('This saved plan is too long to use as one coping plan.');
+      return;
+    }
+
+    const customPlanStrategies = strategies.filter(
+      (strategy) => !defaultCopingStrategyLabels.has(strategy.toLocaleLowerCase())
+    );
+    setSelectedStrategies(strategies);
+    setCustomStrategies((current) => Array.from(new Set([...current, ...customPlanStrategies])));
+    toast.success('Saved coping plan is ready');
+  };
+
   const handleSave = async () => {
     const copingMethod = selectedStrategies.join(', ');
     if (copingMethod.length > MAX_COPING_METHOD_LENGTH) {
@@ -204,15 +235,17 @@ export default function EmotionalGuidance() {
         howYoureFeeling: feelings.trim(),
         whatYoureThinking: thoughts.trim(),
         copingMethod,
+        feelingBeforeGo: feelingBeforeGo.trim(),
       },
     };
 
     try {
       const savedEntry = await saveEntryPatch(patch, 'emotional');
-      setWeeklyEntries((current) => [
+      setHistoryEntries((current) => [
         savedEntry,
-        ...current.filter((weeklyEntry) => weeklyEntry.date.slice(0, 10) !== savedEntry.date.slice(0, 10)),
+        ...current.filter((historyEntry) => historyEntry.date.slice(0, 10) !== savedEntry.date.slice(0, 10)),
       ]);
+      setReassuranceSummary(buildReassuranceSummary(savedEntry, historyEntries));
       toast.success('Emotional reflection saved');
     } catch (saveError: any) {
       toast.error(saveError?.response?.data?.message || 'Unable to save emotional reflection');
@@ -255,6 +288,24 @@ export default function EmotionalGuidance() {
           </div>
         ) : null}
 
+        {reassuranceSummary ? (
+          <section
+            aria-live="polite"
+            className="rounded-[1.75rem] border border-sage-200 bg-gradient-to-r from-sage-800 to-sage-700 px-6 py-6 text-white shadow-soft sm:px-8"
+          >
+            <div className="flex items-start gap-4">
+              <div className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-white/10">
+                <span className="material-symbols-outlined">favorite</span>
+              </div>
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.24em] text-sage-100/70">Check-in saved</p>
+                <h2 className="mt-2 text-2xl font-semibold">{reassuranceSummary.title}</h2>
+                <p className="mt-2 max-w-3xl text-sm leading-7 text-sage-50/85">{reassuranceSummary.message}</p>
+              </div>
+            </div>
+          </section>
+        ) : null}
+
         <section className="rounded-[1.75rem] border border-sage-100 bg-white p-6 shadow-soft sm:p-8 dark:border-white/10 dark:bg-white/5">
           <div className="mb-6 flex items-center gap-3">
             <div className="flex size-11 items-center justify-center rounded-2xl bg-sage-100 text-sage-700 dark:bg-white/10 dark:text-sage-100">
@@ -268,9 +319,9 @@ export default function EmotionalGuidance() {
             </div>
           </div>
 
-          {weekError ? (
+          {historyError ? (
             <div className="mb-5 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-              {weekError}
+              {historyError}
             </div>
           ) : null}
 
@@ -312,7 +363,7 @@ export default function EmotionalGuidance() {
           </div>
 
           <p className="mt-4 text-xs leading-5 text-sage-500 dark:text-sage-400">
-            {weekLoading
+            {historyLoading
               ? 'Syncing this week...'
               : `${completedDays} emotional check-in${completedDays === 1 ? '' : 's'} saved from ${format(weekRange.start, 'MMM d')} to ${format(weekRange.end, 'MMM d')}.`}
           </p>
@@ -486,40 +537,242 @@ export default function EmotionalGuidance() {
                     Open export card
                   </Link>
                 ) : null}
+
+                <div className="mt-6 border-t border-sage-100 pt-5 dark:border-white/10">
+                  <label className="text-sm font-semibold text-sage-800 dark:text-sage-100" htmlFor="feeling-before-go">
+                    Before you go, what feels different?
+                  </label>
+                  <p className="mt-1 text-xs leading-5 text-sage-500 dark:text-sage-300">
+                    A short closing note helps MindfulLife remember what actually felt useful.
+                  </p>
+                  <textarea
+                    className="mt-3 min-h-28 w-full resize-y rounded-2xl border border-sage-200 bg-white px-4 py-3 text-sm leading-6 text-sage-900 outline-none placeholder:text-sage-400 focus:border-sage-400 focus:ring-4 focus:ring-sage-400/10 dark:border-white/10 dark:bg-[#101915] dark:text-sage-50"
+                    id="feeling-before-go"
+                    maxLength={2000}
+                    onChange={(event) => setFeelingBeforeGo(event.target.value)}
+                    placeholder="I feel a little steadier because..."
+                    value={feelingBeforeGo}
+                  />
+                </div>
+
+                <button
+                  className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-full bg-sage-700 px-6 py-3 text-sm font-semibold text-white transition-all hover:bg-sage-800 hover:shadow-lifted disabled:cursor-not-allowed disabled:opacity-70"
+                  disabled={loading || saving}
+                  onClick={handleSave}
+                  type="button"
+                >
+                  <span className="material-symbols-outlined text-[19px]">bookmark_added</span>
+                  {saving ? 'Saving support plan...' : 'Save check-in and coping plan'}
+                </button>
               </div>
+            </section>
+
+            <section className="rounded-[1.75rem] border border-sage-100 bg-white p-6 shadow-soft sm:p-8 dark:border-white/10 dark:bg-white/5">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-[0.24em] text-sage-500 dark:text-sage-300">Saved Coping Plans</p>
+                  <h2 className="mt-2 text-3xl font-semibold text-sage-900 dark:text-sage-50">Support you can reuse</h2>
+                  <p className="mt-2 text-sm leading-6 text-sage-600 dark:text-sage-200">
+                    Plans are saved automatically with emotional check-ins, so useful combinations remain easy to find.
+                  </p>
+                </div>
+                <span className="material-symbols-outlined rounded-2xl bg-sage-100 p-3 text-sage-700 dark:bg-white/10 dark:text-sage-100">bookmark</span>
+              </div>
+
+              {historyLoading ? (
+                <div className="mt-6 space-y-3">
+                  {Array.from({ length: 2 }, (_, index) => (
+                    <div key={`coping-plan-skeleton-${index + 1}`} className="skeleton h-28 rounded-[1.5rem]" />
+                  ))}
+                </div>
+              ) : savedCopingPlans.length ? (
+                <div className="mt-6 space-y-3">
+                  {savedCopingPlans.slice(0, 4).map((plan) => (
+                    <article key={plan.id} className="rounded-[1.5rem] border border-sage-100 bg-sage-50/70 p-5 dark:border-white/10 dark:bg-[#101915]">
+                      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                        <div>
+                          <div className="flex flex-wrap gap-2">
+                            {plan.strategies.map((strategy) => (
+                              <span key={strategy} className="rounded-full bg-white px-3 py-1.5 text-xs font-semibold text-sage-700 shadow-sm dark:bg-white/10 dark:text-sage-100">
+                                {strategy}
+                              </span>
+                            ))}
+                          </div>
+                          <p className="mt-3 text-xs leading-5 text-sage-500 dark:text-sage-300">
+                            Used {plan.uses} time{plan.uses === 1 ? '' : 's'} | Last used {formatEmotionalHistoryDate(plan.lastUsed)}
+                            {plan.averageMood != null ? ` | Average mood ${plan.averageMood}/5` : ''}
+                          </p>
+                        </div>
+                        <button
+                          className="inline-flex shrink-0 items-center justify-center gap-2 rounded-full border border-sage-200 bg-white px-4 py-2 text-xs font-semibold text-sage-700 transition-colors hover:bg-sage-100 dark:border-white/10 dark:bg-white/5 dark:text-sage-100 dark:hover:bg-white/10"
+                          onClick={() => applyCopingPlan(plan.strategies)}
+                          type="button"
+                        >
+                          <span className="material-symbols-outlined text-[17px]">restart_alt</span>
+                          Use this plan
+                        </button>
+                      </div>
+                    </article>
+                  ))}
+                </div>
+              ) : (
+                <div className="mt-6 rounded-[1.5rem] border border-dashed border-sage-200 bg-sage-50/70 px-6 py-8 text-center dark:border-white/10 dark:bg-[#101915]">
+                  <span className="material-symbols-outlined text-3xl text-sage-400">bookmark_add</span>
+                  <p className="mt-3 text-sm font-semibold text-sage-800 dark:text-sage-100">Your first saved plan will appear here.</p>
+                  <p className="mt-1 text-xs leading-5 text-sage-500 dark:text-sage-300">Choose a coping strategy and save today&apos;s check-in.</p>
+                </div>
+              )}
             </section>
           </div>
 
           <aside className="space-y-8">
-            <section className="overflow-hidden rounded-[1.75rem] border border-sage-100 bg-white shadow-soft">
-              <div className="relative h-72">
-                <div
-                  aria-hidden="true"
-                  className="absolute inset-0 bg-cover bg-center"
-                  style={{
-                    backgroundImage:
-                      'url("https://images.unsplash.com/photo-1441974231531-c6227db76b6e?auto=format&fit=crop&w=1200&q=80")',
-                  }}
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-sage-900 via-sage-900/30 to-transparent" />
-                <div className="absolute bottom-0 left-0 right-0 p-6 text-white">
-                  <p className="text-xs font-semibold uppercase tracking-[0.28em] text-white/70">Daily Wisdom</p>
-                  <p className="mt-3 font-display text-2xl font-semibold italic leading-tight">
-                    In every walk with nature, one receives far more than he seeks.
-                  </p>
+            <section className="rounded-[1.75rem] border border-sage-100 bg-white p-6 shadow-soft sm:p-8 dark:border-white/10 dark:bg-white/5">
+              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-sage-500 dark:text-sage-300">What Helped Last Time</p>
+              {historyLoading ? (
+                <div className="mt-5 skeleton h-64 rounded-[1.5rem]" />
+              ) : priorCopingRecall ? (
+                <div className="mt-4">
+                  <p className="text-sm text-sage-500 dark:text-sage-300">{formatEmotionalHistoryDate(priorCopingRecall.date)}</p>
+                  <h3 className="mt-2 text-2xl font-semibold text-sage-900 dark:text-sage-50">
+                    You reached for {priorCopingRecall.strategies.join(' and ')}.
+                  </h3>
+                  {priorCopingRecall.matchingThemes.length ? (
+                    <p className="mt-3 text-xs font-semibold uppercase tracking-[0.16em] text-sage-500 dark:text-sage-300">
+                      Similar theme: {priorCopingRecall.matchingThemes.join(', ')}
+                    </p>
+                  ) : null}
+                  {priorCopingRecall.closingReflection ? (
+                    <div className="mt-5 rounded-2xl bg-sage-50 p-4 dark:bg-white/5">
+                      <p className="text-xs font-semibold uppercase tracking-[0.16em] text-sage-500 dark:text-sage-300">What shifted</p>
+                      <p className="mt-2 text-sm leading-6 text-sage-700 dark:text-sage-100">{priorCopingRecall.closingReflection}</p>
+                    </div>
+                  ) : priorCopingRecall.mood != null ? (
+                    <p className="mt-4 text-sm leading-6 text-sage-600 dark:text-sage-200">
+                      That day&apos;s mood was recorded as {priorCopingRecall.mood}/5.
+                    </p>
+                  ) : (
+                    <p className="mt-4 text-sm leading-6 text-sage-600 dark:text-sage-200">
+                      No closing note was recorded, but the coping plan is available to try again.
+                    </p>
+                  )}
+                  <button
+                    className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-full bg-sage-700 px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-sage-800"
+                    onClick={() => applyCopingPlan(priorCopingRecall.strategies)}
+                    type="button"
+                  >
+                    <span className="material-symbols-outlined text-[18px]">history</span>
+                    Use what helped last time
+                  </button>
                 </div>
-              </div>
+              ) : (
+                <div className="mt-5 rounded-[1.5rem] border border-dashed border-sage-200 bg-sage-50/70 p-5 text-sm leading-6 text-sage-600 dark:border-white/10 dark:bg-[#101915] dark:text-sage-200">
+                  Save a coping plan today. On a future check-in, this space will bring back a relevant plan from your history.
+                </div>
+              )}
             </section>
 
             <section className="rounded-[1.75rem] border border-sage-100 bg-sage-900 p-6 text-sage-50 shadow-soft sm:p-8">
-              <p className="text-xs font-semibold uppercase tracking-[0.3em] text-sage-200/80">Reflection Cue</p>
-              <h3 className="mt-3 font-display text-3xl font-semibold">What would feel most comforting right now?</h3>
-              <p className="mt-4 text-sm leading-7 text-sage-100/80">
-                Start with a truthful answer. Your next step can be small, quiet, and enough.
+              <p className="text-xs font-semibold uppercase tracking-[0.3em] text-sage-200/80">Repeated Themes</p>
+              <h3 className="mt-3 text-3xl font-semibold">What has been showing up</h3>
+              <p className="mt-3 text-sm leading-7 text-sage-100/75">
+                These are simple recurring themes in your own words, not a diagnosis or proof of cause.
               </p>
+              {historyLoading ? (
+                <div className="mt-5 space-y-3">
+                  <div className="h-16 animate-pulse rounded-2xl bg-white/10" />
+                  <div className="h-16 animate-pulse rounded-2xl bg-white/10" />
+                </div>
+              ) : recurringTriggers.length ? (
+                <div className="mt-5 space-y-3">
+                  {recurringTriggers.map((trigger) => (
+                    <div key={trigger.id} className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                      <p className="text-sm font-semibold text-white">{trigger.label}</p>
+                      <p className="mt-1 text-xs leading-5 text-sage-200">
+                        Appeared in {trigger.count} check-ins | Last seen {formatEmotionalHistoryDate(trigger.lastSeen)}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="mt-5 rounded-2xl border border-dashed border-white/15 bg-white/5 p-4 text-sm leading-6 text-sage-200">
+                  No theme has repeated enough yet. Patterns appear after the same theme is noticed on at least two check-ins.
+                </p>
+              )}
             </section>
           </aside>
         </div>
+
+        <section className="rounded-[1.75rem] border border-sage-100 bg-white p-6 shadow-soft sm:p-8 lg:p-10 dark:border-white/10 dark:bg-white/5">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-sage-500 dark:text-sage-300">Mood and Coping History</p>
+              <h2 className="mt-2 text-3xl font-semibold text-sage-900 dark:text-sage-50">How your support choices show up over time</h2>
+              <p className="mt-3 max-w-3xl text-sm leading-6 text-sage-600 dark:text-sage-200">
+                These are associations from your saved check-ins. They do not prove that a coping strategy caused a mood change.
+              </p>
+            </div>
+            <div className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-sage-100 text-sage-700 dark:bg-white/10 dark:text-sage-100">
+              <span className="material-symbols-outlined">insights</span>
+            </div>
+          </div>
+
+          {historyLoading ? (
+            <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+              {Array.from({ length: 3 }, (_, index) => (
+                <div key={`coping-pattern-skeleton-${index + 1}`} className="skeleton h-44 rounded-[1.5rem]" />
+              ))}
+            </div>
+          ) : copingPatterns.length ? (
+            <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+              {copingPatterns.map((pattern) => (
+                <article key={pattern.strategy} className="rounded-[1.5rem] border border-sage-100 bg-gradient-to-b from-sage-50/80 to-white p-5 dark:border-white/10 dark:bg-gradient-to-b dark:from-[#18231d] dark:to-[#101915]">
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="flex size-11 items-center justify-center rounded-2xl bg-white text-sage-700 shadow-sm dark:bg-white/10 dark:text-sage-100">
+                      <span className="material-symbols-outlined">self_improvement</span>
+                    </div>
+                    <span className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-sage-600 shadow-sm dark:bg-white/10 dark:text-sage-200">
+                      {pattern.uses} use{pattern.uses === 1 ? '' : 's'}
+                    </span>
+                  </div>
+                  <h3 className="mt-5 text-xl font-semibold text-sage-900 dark:text-sage-50">{pattern.strategy}</h3>
+                  <p className="mt-2 text-sm leading-6 text-sage-600 dark:text-sage-200">
+                    {pattern.averageMood != null
+                      ? `Mood averaged ${pattern.averageMood}/5 across ${pattern.moodSamples} rated check-in${pattern.moodSamples === 1 ? '' : 's'}.`
+                      : 'Add mood ratings on the same days to see more context here.'}
+                  </p>
+                  <p className="mt-4 text-xs leading-5 text-sage-500 dark:text-sage-300">
+                    {pattern.closingReflections} closing reflection{pattern.closingReflections === 1 ? '' : 's'} recorded
+                    {' | '}Last used {formatEmotionalHistoryDate(pattern.lastUsed)}
+                  </p>
+                </article>
+              ))}
+            </div>
+          ) : (
+            <div className="mt-6 rounded-[1.5rem] border border-dashed border-sage-200 bg-sage-50/70 px-6 py-9 text-center dark:border-white/10 dark:bg-[#101915]">
+              <span className="material-symbols-outlined text-4xl text-sage-400">query_stats</span>
+              <p className="mt-3 text-lg font-semibold text-sage-800 dark:text-sage-100">Your coping history starts with one saved plan.</p>
+              <p className="mx-auto mt-2 max-w-xl text-sm leading-6 text-sage-500 dark:text-sage-300">
+                Save emotional check-ins with coping strategies and mood ratings to build a more useful personal history.
+              </p>
+            </div>
+          )}
+
+          <div className="mt-6 flex flex-col gap-4 rounded-[1.5rem] border border-slate-900 bg-slate-950 px-5 py-5 text-white sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-sage-200/70">Premium pattern summary</p>
+              <p className="mt-2 text-sm leading-6 text-white/80">
+                Deeper emotional summaries can connect longer history, recurring themes, and coping responses in one report.
+              </p>
+            </div>
+            <Link
+              className="inline-flex shrink-0 items-center justify-center gap-2 rounded-full bg-white px-5 py-3 text-sm font-semibold text-slate-900"
+              to="/settings#billing"
+            >
+              <span className="material-symbols-outlined text-[18px]">lock</span>
+              View Premium
+            </Link>
+          </div>
+        </section>
       </div>
     </div>
   );
