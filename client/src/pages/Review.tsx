@@ -176,7 +176,7 @@ export default function Review() {
   };
 
   return (
-    <div className="review-page animate-fade-in pb-12 text-sage-900 dark:text-sage-50">
+    <div className="review-page animate-fade-in pb-12 text-sage-900 [&_.font-display]:font-body [&_h1]:font-body [&_h2]:font-body [&_h3]:font-body [&_h4]:font-body [&_h5]:font-body [&_h6]:font-body dark:text-sage-50">
       <section className="review-hero relative overflow-hidden rounded-[2rem] border border-sand-200 px-6 py-7 shadow-soft sm:px-8 sm:py-9 lg:px-10 dark:border-white/10">
         <div className="review-orbit review-orbit-one" />
         <div className="review-orbit review-orbit-two" />

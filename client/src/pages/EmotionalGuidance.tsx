@@ -58,7 +58,6 @@ const weekdayKeyByIndex: Record<number, WeekKey> = {
 };
 
 const toDateParam = (date: Date) => format(date, 'yyyy-MM-dd');
-const sanitizeNotes = (notes: string[]) => notes.map((note) => note.trim()).filter(Boolean).slice(0, 6);
 const parseCopingMethods = (value?: string | null) => (
   typeof value === 'string'
     ? value.split(',').map((item) => item.trim()).filter(Boolean)
@@ -77,7 +76,6 @@ export default function EmotionalGuidance() {
   const [selectedStrategies, setSelectedStrategies] = useState<string[]>([]);
   const [customStrategies, setCustomStrategies] = useState<string[]>([]);
   const [customStrategyInput, setCustomStrategyInput] = useState('');
-  const [notes, setNotes] = useState<string[]>([]);
 
   const firstName = user?.name?.split(' ')[0] || 'Friend';
   const weekRange = useMemo(() => {
@@ -100,7 +98,6 @@ export default function EmotionalGuidance() {
   }, [weeklyEntries]);
   const completedDays = Object.values(week).filter(Boolean).length;
   const currentDayKey = weekdayKeyByIndex[new Date().getDay()];
-  const hasNotes = notes.length > 0;
   const sharePath = useMemo(() => {
     const params = new URLSearchParams({
       date: toDateParam(new Date()),
@@ -152,7 +149,6 @@ export default function EmotionalGuidance() {
       (strategy) => !defaultCopingStrategyLabels.has(strategy.toLocaleLowerCase())
     ));
     setCustomStrategyInput('');
-    setNotes(entry.todayNotes || []);
   }, [entry]);
 
   const toggleStrategy = (label: string) => {
@@ -209,7 +205,6 @@ export default function EmotionalGuidance() {
         whatYoureThinking: thoughts.trim(),
         copingMethod,
       },
-      todayNotes: sanitizeNotes(notes),
     };
 
     try {
@@ -222,15 +217,6 @@ export default function EmotionalGuidance() {
     } catch (saveError: any) {
       toast.error(saveError?.response?.data?.message || 'Unable to save emotional reflection');
     }
-  };
-
-  const handleAddNote = () => {
-    const note = selectedStrategies.length
-      ? `Support plan for today: lean on ${selectedStrategies.join(', ').toLowerCase()} when the day feels heavy.`
-      : 'Pause, soften your shoulders, and return to one calm breath.';
-
-    setNotes((current) => [note, ...current].slice(0, 6));
-    toast.success('Support note added');
   };
 
   return (
@@ -505,31 +491,6 @@ export default function EmotionalGuidance() {
           </div>
 
           <aside className="space-y-8">
-            <section className="rounded-[1.75rem] border border-sage-100 bg-white p-6 shadow-soft sm:p-8 dark:border-white/10 dark:bg-white/5">
-              <div className="mb-6 flex items-center justify-between gap-4">
-                <div>
-                  <h3 className="font-display text-2xl font-semibold text-sage-900 dark:text-sage-50">Today&apos;s Notes</h3>
-                  <p className="mt-2 text-sm text-sage-500 dark:text-sage-300">Brief reminders to carry the day more gently.</p>
-                </div>
-                <button className="text-sage-600 transition-colors hover:text-sage-800 dark:text-sage-300 dark:hover:text-white" onClick={handleAddNote} type="button">
-                  <span className="material-symbols-outlined">add_circle</span>
-                </button>
-              </div>
-
-              <ul className="space-y-4">
-                {hasNotes ? notes.map((note, index) => (
-                  <li key={`${note}-${index}`} className="group flex items-start gap-3">
-                    <div className="mt-2 size-2 rounded-full bg-sage-300 transition-colors group-hover:bg-sage-600" />
-                    <p className="text-sm leading-7 text-slate-600 dark:text-sage-200">{note}</p>
-                  </li>
-                )) : (
-                  <li className="text-sm leading-7 text-sage-500 dark:text-sage-300">
-                    Add a support note to save a gentle reminder for later in the day.
-                  </li>
-                )}
-              </ul>
-            </section>
-
             <section className="overflow-hidden rounded-[1.75rem] border border-sage-100 bg-white shadow-soft">
               <div className="relative h-72">
                 <div

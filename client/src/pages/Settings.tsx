@@ -812,7 +812,7 @@ export default function Settings() {
         className="mt-8 overflow-hidden rounded-[1.75rem] border border-sage-200 bg-white shadow-soft dark:border-white/10 dark:bg-white/5"
         id="billing"
       >
-        <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1.05fr)_minmax(0,1.45fr)]">
+        <div className="grid grid-cols-1">
           <div className="bg-gradient-to-br from-sage-800 via-sage-700 to-[#4f6d58] p-6 text-white sm:p-8">
             <div className="flex items-center justify-between gap-4">
               <p className="text-xs font-semibold uppercase tracking-[0.24em] text-white/65">Current Plan</p>

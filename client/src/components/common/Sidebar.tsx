@@ -9,6 +9,7 @@ const primaryLinks = [
   { to: '/reflection', label: 'Daily Reflection', icon: 'edit_note' },
   { to: '/selfcare', label: 'Self-Care', icon: 'self_care' },
   { to: '/emotional', label: 'Emotional Guidance', icon: 'psychology' },
+  { to: '/inspiration', label: 'Inspiration', icon: 'lightbulb' },
 ];
 
 const secondaryLinks = [

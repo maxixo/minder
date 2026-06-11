@@ -757,13 +757,13 @@ export default function Analytics() {
           </div>
 
           {isLoading ? (
-            <div className="mt-6 grid gap-4 md:grid-cols-3">
+            <div className="mt-6 grid grid-cols-1 gap-4">
               {Array.from({ length: 3 }, (_, index) => (
                 <div key={`relationship-skeleton-${index + 1}`} className="skeleton h-56 rounded-[1.5rem]" />
               ))}
             </div>
           ) : patternInsights.behaviorInsights.length ? (
-            <div className="mt-6 grid gap-4 md:grid-cols-3">
+            <div className="mt-6 grid grid-cols-1 gap-4">
               {patternInsights.behaviorInsights.map((insight) => (
                 <article key={insight.id} className="rounded-[1.5rem] border border-sage-100 bg-gradient-to-b from-sage-50/80 to-white p-5 dark:border-white/10 dark:bg-gradient-to-b dark:from-[#18231d] dark:to-[#101915]">
                   <div className="flex size-11 items-center justify-center rounded-2xl bg-white text-sage-700 shadow-sm dark:bg-white/10 dark:text-sage-100">
