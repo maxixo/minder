@@ -1,4 +1,5 @@
 import type { NextFunction, Request, Response } from 'express';
+import { normalizeOrigin } from '../config/runtime.js';
 
 const MUTATING_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
 
@@ -13,7 +14,7 @@ export const requireTrustedOrigin = (allowedOrigins: string[]) => (
   }
 
   const origin = req.headers.origin;
-  if (origin && allowedOrigins.includes(origin)) {
+  if (origin && allowedOrigins.includes(normalizeOrigin(origin))) {
     next();
     return;
   }

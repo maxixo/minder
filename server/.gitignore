@@ -3,3 +3,4 @@
 dist/
 *.log
 *.md
+!CPANEL_DEPLOY.md

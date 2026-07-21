@@ -4,6 +4,7 @@ import {
   buildDailyInspirationNotification,
   buildDailyReflectionNotification,
   isReminderDue,
+  shouldStartDailyReminderJob,
   toMinutesSinceMidnight,
 } from '../src/jobs/reminderJob.ts';
 
@@ -27,6 +28,12 @@ test('isReminderDue returns true at the scheduled minute and after it', () => {
 test('isReminderDue returns false before the scheduled minute', () => {
   assert.equal(isReminderDue('09:29', '09:30'), false);
   assert.equal(isReminderDue('08:59', '09:30'), false);
+});
+
+test('shouldStartDailyReminderJob defaults to enabled unless explicitly false', () => {
+  assert.equal(shouldStartDailyReminderJob(undefined), true);
+  assert.equal(shouldStartDailyReminderJob('true'), true);
+  assert.equal(shouldStartDailyReminderJob('FALSE'), false);
 });
 
 test('buildDailyInspirationNotification links the daily quote to the inspiration page', () => {

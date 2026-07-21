@@ -11,6 +11,10 @@ export const errorHandler = (err: any, req: Request, res: Response, next: NextFu
     message = Object.values(err.errors).map((e: any) => e.message).join(', ');
   }
 
+  if (statusCode >= 500) {
+    console.error(`Unhandled ${req.method} ${req.originalUrl}: ${message}`);
+  }
+
   res.status(statusCode).json({
     success: false,
     message,
@@ -19,5 +23,5 @@ export const errorHandler = (err: any, req: Request, res: Response, next: NextFu
 };
 
 export const notFound = (req: Request, res: Response) => {
-  res.status(404).json({ success: false, message: `Not Found  ${req.originalUrl}` });
+  res.status(404).json({ success: false, message: `Not Found ${req.originalUrl}` });
 };

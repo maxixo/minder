@@ -1,10 +1,14 @@
 import type { DashboardQuote } from '@/constants/dashboardQuotes';
+import {
+  BRAND_LOGO_LEAF_OFFSET_X,
+  BRAND_LOGO_LEAF_PATH,
+  BRAND_LOGO_LEAF_VEIN_PATH,
+} from '@/lib/brandLogo';
 
 const CARD_WIDTH = 1080;
 const CARD_HEIGHT = 1350;
 const SHARE_CARD_WIDTH = 1080;
 const SHARE_CARD_HEIGHT = 1350;
-const SHARE_LOGO_URL = 'https://lh3.googleusercontent.com/aida/AP1WRLvCundqemjzSKgHRcFetGSWpcb1wzH9tAckSSy1QEXV6OnfDbRkNdJJD4fRD939T2q_YXihQlrJ-hjWpv1YyKT26fz1Tk4W6z5QrcCaLz-YeBUPs8dD-XgoWohfRsUtGTm-pM46gA_NX1tOaQ6s8eCR0HQ7mLXwTjLP3rOHzQlpLvfe5pb6T9QAbGaIOCUVLASlpjPB_k7HG4mRrZj4S6zzZxO0Tn1jC-gfIhD9g5I2DD4gPQit4TGanH0';
 const SHARE_BOTANICAL_URL = 'https://lh3.googleusercontent.com/aida/AP1WRLvq9lZZjsunohZorY3UamcbYhfBe3XHoGzPa6-amzZM8OFdLvAfG_Qetx1bej1N7cQTRtdP7prC_UKiDfhEZx51OAEqrsqCp-I5rKaVCjzWkDtGl1U0XKj9RLd2iSUdIj9yGRcJXf6XKg9dBLfb3t_TeEudkAtfIfvmKc-_I5tiX-_Zvcyfacv3bWdgjY3gzFvv6W_GpG4R2zqtHw3DBIzl6LSb-pVjjAgrXG6PmOUziIig13-mvey1gsE';
 
 const pad = (value: number) => String(value).padStart(2, '0');
@@ -532,29 +536,33 @@ const loadImage = async (src: string) => {
   return loaded;
 };
 
-const drawContainedImage = (
+const drawCoverImage = (
   context: CanvasRenderingContext2D,
   image: HTMLImageElement,
   x: number,
   y: number,
-  maxWidth: number,
-  maxHeight: number,
+  width: number,
+  height: number,
 ) => {
   const sourceWidth = image.naturalWidth || image.width;
   const sourceHeight = image.naturalHeight || image.height;
+  const scale = Math.max(width / sourceWidth, height / sourceHeight);
+  const sourceCropWidth = width / scale;
+  const sourceCropHeight = height / scale;
+  const sourceX = (sourceWidth - sourceCropWidth) / 2;
+  const sourceY = (sourceHeight - sourceCropHeight) / 2;
 
-  if (!sourceWidth || !sourceHeight) {
-    context.drawImage(image, x, y, maxWidth, maxHeight);
-    return;
-  }
-
-  const scale = Math.min(maxWidth / sourceWidth, maxHeight / sourceHeight);
-  const drawWidth = sourceWidth * scale;
-  const drawHeight = sourceHeight * scale;
-  const offsetX = x + ((maxWidth - drawWidth) / 2);
-  const offsetY = y + ((maxHeight - drawHeight) / 2);
-
-  context.drawImage(image, offsetX, offsetY, drawWidth, drawHeight);
+  context.drawImage(
+    image,
+    sourceX,
+    sourceY,
+    sourceCropWidth,
+    sourceCropHeight,
+    x,
+    y,
+    width,
+    height,
+  );
 };
 
 const drawRoundedRect = (
@@ -602,50 +610,112 @@ const strokeRoundedRect = (
   context.stroke();
 };
 
-const drawCheckIcon = (context: CanvasRenderingContext2D, x: number, y: number, color: string) => {
+const drawCheckIcon = (
+  context: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  color: string,
+  scale = 1,
+) => {
   context.save();
   context.strokeStyle = color;
-  context.lineWidth = 3;
+  context.lineWidth = 3 * scale;
   context.lineCap = 'round';
   context.beginPath();
-  context.moveTo(x - 6, y + 1);
-  context.lineTo(x - 1, y + 7);
-  context.lineTo(x + 8, y - 6);
+  context.moveTo(x - (6 * scale), y + scale);
+  context.lineTo(x - scale, y + (7 * scale));
+  context.lineTo(x + (8 * scale), y - (6 * scale));
   context.stroke();
   context.restore();
 };
 
-const drawCalendarIcon = (context: CanvasRenderingContext2D, x: number, y: number, color: string) => {
+const drawCalendarIcon = (
+  context: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  color: string,
+  scale = 1,
+) => {
   context.save();
   context.strokeStyle = color;
-  context.lineWidth = 2.5;
-  strokeRoundedRect(context, x, y, 22, 18, 4);
+  context.lineWidth = 2.5 * scale;
+  strokeRoundedRect(context, x, y, 22 * scale, 18 * scale, 4 * scale);
   context.beginPath();
-  context.moveTo(x + 5, y - 2);
-  context.lineTo(x + 5, y + 4);
-  context.moveTo(x + 17, y - 2);
-  context.lineTo(x + 17, y + 4);
-  context.moveTo(x, y + 7);
-  context.lineTo(x + 22, y + 7);
+  context.moveTo(x + (5 * scale), y - (2 * scale));
+  context.lineTo(x + (5 * scale), y + (4 * scale));
+  context.moveTo(x + (17 * scale), y - (2 * scale));
+  context.lineTo(x + (17 * scale), y + (4 * scale));
+  context.moveTo(x, y + (7 * scale));
+  context.lineTo(x + (22 * scale), y + (7 * scale));
   context.stroke();
   context.restore();
 };
 
-const drawLeafIcon = (context: CanvasRenderingContext2D, x: number, y: number, color: string) => {
+const drawLeafIcon = (
+  context: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  color: string,
+  scale = 1,
+) => {
   context.save();
   context.fillStyle = color;
   context.beginPath();
-  context.moveTo(x, y + 10);
-  context.quadraticCurveTo(x + 12, y - 4, x + 22, y + 8);
-  context.quadraticCurveTo(x + 10, y + 22, x, y + 10);
+  context.moveTo(x, y + (10 * scale));
+  context.quadraticCurveTo(x + (12 * scale), y - (4 * scale), x + (22 * scale), y + (8 * scale));
+  context.quadraticCurveTo(x + (10 * scale), y + (22 * scale), x, y + (10 * scale));
   context.fill();
   context.strokeStyle = 'rgba(255,255,255,0.65)';
-  context.lineWidth = 1.5;
+  context.lineWidth = 1.5 * scale;
   context.beginPath();
-  context.moveTo(x + 5, y + 13);
-  context.lineTo(x + 16, y + 4);
+  context.moveTo(x + (5 * scale), y + (13 * scale));
+  context.lineTo(x + (16 * scale), y + (4 * scale));
   context.stroke();
   context.restore();
+};
+
+const drawShareBrandLogo = (
+  context: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  color: string,
+  scale: number,
+) => {
+  const iconPath = new Path2D(BRAND_LOGO_LEAF_PATH);
+  const veinPath = new Path2D(BRAND_LOGO_LEAF_VEIN_PATH);
+
+  context.save();
+  context.translate(x, y);
+  context.scale(scale, scale);
+  context.translate(BRAND_LOGO_LEAF_OFFSET_X, 0);
+  context.strokeStyle = color;
+  context.lineWidth = 2.6;
+  context.lineCap = 'round';
+  context.lineJoin = 'round';
+  context.stroke(iconPath);
+  context.stroke(veinPath);
+  context.restore();
+
+  context.save();
+  context.fillStyle = color;
+  context.font = `600 ${24 * scale}px "Plus Jakarta Sans"`;
+  context.letterSpacing = `${-0.6 * scale}px`;
+  context.fillText('MindfulLife', x + (48 * scale) + (8 * scale), y + (31 * scale));
+  context.restore();
+};
+
+const loadShareCardFonts = async (fontFamily: ShareCardFontFamily) => {
+  if (!document.fonts) return;
+
+  await document.fonts.ready;
+  await Promise.all([
+    document.fonts.load('600 24px "Plus Jakarta Sans"', 'MindfulLife'),
+    document.fonts.load(`italic 500 24px ${fontFamily.quoteFamily}`, 'Soul Insight'),
+    document.fonts.load(`400 13px ${fontFamily.bodyFamily}`, 'Morning Meditation'),
+    document.fonts.load(`600 14px ${fontFamily.bodyFamily}`, 'Today Day Streak'),
+    document.fonts.load(`400 11px ${fontFamily.metaFamily}`, 'SOUL INSIGHT'),
+  ]);
+  await document.fonts.ready;
 };
 
 export const downloadQuoteCard = async (quote: DashboardQuote, date = new Date()) => {
@@ -658,61 +728,99 @@ export const downloadQuoteCard = async (quote: DashboardQuote, date = new Date()
     throw new Error('Canvas is not supported in this browser.');
   }
 
-  const background = context.createLinearGradient(0, 0, CARD_WIDTH, CARD_HEIGHT);
-  background.addColorStop(0, '#f6f3eb');
-  background.addColorStop(0.45, '#dce8db');
-  background.addColorStop(1, '#183025');
-  context.fillStyle = background;
+  const cardInset = 64;
+  const cardRadius = 48;
+  const cardWidth = CARD_WIDTH - (cardInset * 2);
+  const cardHeight = CARD_HEIGHT - (cardInset * 2);
+  const contentInset = 72;
+  const contentX = cardInset + contentInset;
+  const contentWidth = cardWidth - (contentInset * 2);
+
+  context.fillStyle = '#faf9f6';
   context.fillRect(0, 0, CARD_WIDTH, CARD_HEIGHT);
 
   context.save();
-  context.globalAlpha = 0.22;
-  context.fillStyle = '#ffffff';
-  context.beginPath();
-  context.arc(190, 180, 150, 0, Math.PI * 2);
-  context.fill();
-  context.beginPath();
-  context.arc(930, 1130, 230, 0, Math.PI * 2);
-  context.fill();
+  context.shadowColor = 'rgba(26, 28, 26, 0.22)';
+  context.shadowBlur = 44;
+  context.shadowOffsetY = 18;
+  context.fillStyle = '#45614b';
+  fillRoundedRect(context, cardInset, cardInset, cardWidth, cardHeight, cardRadius);
   context.restore();
 
-  context.strokeStyle = 'rgba(255,255,255,0.28)';
-  context.lineWidth = 3;
-  context.strokeRect(56, 56, CARD_WIDTH - 112, CARD_HEIGHT - 112);
+  context.save();
+  drawRoundedRect(context, cardInset, cardInset, cardWidth, cardHeight, cardRadius);
+  context.clip();
 
-  context.fillStyle = 'rgba(255,255,255,0.8)';
-  context.font = '700 40px Georgia, serif';
-  context.fillText('MINDFULLIFE', 96, 124);
+  const background = context.createLinearGradient(cardInset, cardInset, cardInset + cardWidth, cardInset + cardHeight);
+  background.addColorStop(0, '#2f4737');
+  background.addColorStop(0.5, '#45614b');
+  background.addColorStop(1, '#7d9380');
+  context.fillStyle = background;
+  context.fillRect(cardInset, cardInset, cardWidth, cardHeight);
 
-  context.fillStyle = 'rgba(255,255,255,0.6)';
-  context.font = '600 26px Arial, sans-serif';
-  context.fillText('DAILY INSPIRATION', 96, 168);
+  context.fillStyle = 'rgba(255,255,255,0.65)';
+  context.font = '600 20px "Plus Jakarta Sans", Inter, sans-serif';
+  context.letterSpacing = '5px';
+  context.fillText(quote.author.toUpperCase(), contentX, cardInset + 104);
 
-  context.fillStyle = 'rgba(255,255,255,0.34)';
-  context.font = '700 220px Georgia, serif';
-  context.fillText('"', 92, 408);
+  context.letterSpacing = '0px';
+  context.fillStyle = 'rgba(255,255,255,0.40)';
+  context.font = '700 112px Georgia, serif';
+  context.fillText('“', contentX - 4, cardInset + 244);
+
+  const quoteTop = cardInset + 292;
+  const quoteBottom = cardInset + cardHeight - 350;
+  let quoteFontSize = 58;
+  let lineHeight = 70;
+  let lines: string[] = [];
+
+  do {
+    context.font = `600 ${quoteFontSize}px "Plus Jakarta Sans", Inter, sans-serif`;
+    lines = wrapText(context, quote.text, contentWidth);
+    lineHeight = Math.round(quoteFontSize * 1.2);
+    if ((lines.length * lineHeight) <= (quoteBottom - quoteTop) || quoteFontSize <= 40) break;
+    quoteFontSize -= 2;
+  } while (quoteFontSize >= 40);
 
   context.fillStyle = '#ffffff';
-  context.font = '600 68px Georgia, serif';
-  const lines = wrapText(context, quote.text, CARD_WIDTH - 192);
-  const lineHeight = 92;
-  const quoteTop = 410;
   lines.forEach((line, index) => {
-    context.fillText(line, 96, quoteTop + (index * lineHeight));
+    context.fillText(line, contentX, quoteTop + (index * lineHeight));
   });
 
-  const authorY = quoteTop + (lines.length * lineHeight) + 72;
-  context.fillStyle = 'rgba(255,255,255,0.88)';
-  context.font = '700 34px Arial, sans-serif';
-  context.fillText(quote.author.toUpperCase(), 96, authorY);
+  const dividerY = cardInset + cardHeight - 300;
+  context.strokeStyle = 'rgba(255,255,255,0.15)';
+  context.lineWidth = 2;
+  context.beginPath();
+  context.moveTo(contentX, dividerY);
+  context.lineTo(contentX + contentWidth, dividerY);
+  context.stroke();
 
-  const footerY = CARD_HEIGHT - 176;
-  context.fillStyle = 'rgba(255,255,255,0.92)';
-  context.fillRect(96, footerY - 44, CARD_WIDTH - 192, 1);
-  context.fillStyle = 'rgba(255,255,255,0.78)';
-  context.font = '500 28px Arial, sans-serif';
-  context.fillText('Notice one honest feeling. Then carry it into your next reflection.', 96, footerY + 24);
-  context.fillText(getLocalDateKey(date), 96, footerY + 78);
+  context.fillStyle = 'rgba(255,255,255,0.60)';
+  context.font = '600 17px "Plus Jakarta Sans", Inter, sans-serif';
+  context.letterSpacing = '4px';
+  context.fillText('AUTHOR', contentX, dividerY + 58);
+
+  context.fillStyle = '#ffffff';
+  context.font = '600 28px "Plus Jakarta Sans", Inter, sans-serif';
+  context.letterSpacing = '0px';
+  context.fillText(quote.author, contentX, dividerY + 105);
+
+  context.fillStyle = 'rgba(255,255,255,0.80)';
+  context.font = '400 22px "Plus Jakarta Sans", Inter, sans-serif';
+  const footerTextX = contentX + 420;
+  const footerLines = wrapText(
+    context,
+    'Notice what this brings up, then carry one grounded thought into your next reflection.',
+    contentWidth - 420,
+  );
+  footerLines.forEach((line, index) => {
+    context.fillText(line, footerTextX, dividerY + 58 + (index * 34));
+  });
+  context.restore();
+
+  context.strokeStyle = '#eeeeea';
+  context.lineWidth = 2;
+  strokeRoundedRect(context, cardInset + 1, cardInset + 1, cardWidth - 2, cardHeight - 2, cardRadius - 1);
 
   const dataUrl = canvas.toDataURL('image/png');
   const link = document.createElement('a');
@@ -744,20 +852,41 @@ export const downloadShareQuoteCard = async (
   const rituals = (options.rituals || []).map((ritual) => ritual.trim()).filter(Boolean);
   const streak = options.streak || '12';
   const showQuoteMarks = options.showQuoteMarks ?? true;
-
-  const cardInset = 12;
-  const cardRadius = 72;
+  const previewScale = SHARE_CARD_WIDTH / 420;
+  const px = (value: number) => value * previewScale;
+  const cardInset = px(10);
+  const cardRadius = px(32);
   const cardWidth = SHARE_CARD_WIDTH - (cardInset * 2);
   const cardHeight = SHARE_CARD_HEIGHT - (cardInset * 2);
+  const contentX = cardInset + px(32);
+  const contentY = cardInset + px(32);
+  const contentWidth = cardWidth - px(64);
+  const logoColor = fontColor.id === 'ivory' ? '#f1f1ed' : '#44604a';
 
-  context.clearRect(0, 0, SHARE_CARD_WIDTH, SHARE_CARD_HEIGHT);
+  await loadShareCardFonts(fontFamily);
+
+  context.fillStyle = theme.backgroundStart;
+  context.fillRect(0, 0, SHARE_CARD_WIDTH, SHARE_CARD_HEIGHT);
+  context.save();
+  context.shadowColor = 'rgba(26, 28, 26, 0.20)';
+  context.shadowBlur = px(8);
+  context.shadowOffsetY = px(3);
+  context.fillStyle = theme.backgroundMid;
+  fillRoundedRect(context, cardInset, cardInset, cardWidth, cardHeight, cardRadius);
+  context.restore();
+
   context.save();
   drawRoundedRect(context, cardInset, cardInset, cardWidth, cardHeight, cardRadius);
   context.clip();
 
-  const backgroundGradient = context.createLinearGradient(0, 0, SHARE_CARD_WIDTH, SHARE_CARD_HEIGHT);
+  const backgroundGradient = context.createLinearGradient(
+    cardInset,
+    cardInset,
+    cardInset + cardWidth,
+    cardInset + cardHeight,
+  );
   backgroundGradient.addColorStop(0, theme.backgroundStart);
-  backgroundGradient.addColorStop(0.5, theme.backgroundMid);
+  backgroundGradient.addColorStop(0.52, theme.backgroundMid);
   backgroundGradient.addColorStop(1, theme.backgroundEnd);
   context.fillStyle = backgroundGradient;
   context.fillRect(cardInset, cardInset, cardWidth, cardHeight);
@@ -770,158 +899,200 @@ export const downloadShareQuoteCard = async (
     const backgroundImage = await loadImage(background.imageUrl);
     context.save();
     context.globalAlpha = background.opacity;
-    context.drawImage(backgroundImage, cardInset, cardInset, cardWidth, cardHeight);
+    drawCoverImage(context, backgroundImage, cardInset, cardInset, cardWidth, cardHeight);
     context.restore();
   } catch {
     if (!background.imageUrl) {
       // The clean option intentionally uses only the selected color gradient.
     } else {
-    context.save();
-    context.globalAlpha = 0.18;
-    context.fillStyle = theme.accent;
-    context.beginPath();
-    context.arc(150, 210, 180, 0, Math.PI * 2);
-    context.fill();
-    context.beginPath();
-    context.arc(900, 1090, 260, 0, Math.PI * 2);
-    context.fill();
-    context.restore();
+      context.save();
+      context.globalAlpha = 0.18;
+      context.fillStyle = theme.accent;
+      context.beginPath();
+      context.arc(150, 210, 180, 0, Math.PI * 2);
+      context.fill();
+      context.beginPath();
+      context.arc(900, 1090, 260, 0, Math.PI * 2);
+      context.fill();
+      context.restore();
     }
   }
 
   context.fillStyle = theme.imageOverlay;
   context.fillRect(cardInset, cardInset, cardWidth, cardHeight);
 
-  const contentX = 80;
-  const contentY = 76;
-  const contentWidth = SHARE_CARD_WIDTH - (contentX * 2);
+  drawShareBrandLogo(context, contentX, contentY, logoColor, previewScale);
 
-  try {
-    const logoImage = await loadImage(SHARE_LOGO_URL);
-    context.save();
-    context.globalAlpha = 1;
-    drawContainedImage(context, logoImage, contentX, contentY, 250, 72);
-    context.restore();
-  } catch {
-    context.fillStyle = fontColor.secondary;
-    context.font = `600 42px ${fontFamily.quoteFamily}`;
-    context.fillText('MindfulLife', contentX, contentY + 48);
-  }
-
-  const streakWidth = 222;
-  const streakHeight = 56;
+  const streakHeight = px(26);
+  context.font = `600 ${px(12)}px ${fontFamily.bodyFamily}`;
+  const streakLabel = `${streak} Day Streak`;
+  const streakWidth = px(12 + 18 + 6 + 12) + context.measureText(streakLabel).width;
   const streakX = SHARE_CARD_WIDTH - contentX - streakWidth;
-  const streakY = contentY;
+  const streakY = contentY + ((px(40) - streakHeight) / 2);
 
   context.fillStyle = theme.accentSoft;
-  fillRoundedRect(context, streakX, streakY, streakWidth, streakHeight, 28);
+  fillRoundedRect(context, streakX, streakY, streakWidth, streakHeight, streakHeight / 2);
   context.strokeStyle = theme.accentMuted;
-  context.lineWidth = 2;
-  strokeRoundedRect(context, streakX, streakY, streakWidth, streakHeight, 28);
+  context.lineWidth = px(1);
+  strokeRoundedRect(context, streakX, streakY, streakWidth, streakHeight, streakHeight / 2);
 
   context.fillStyle = theme.accent;
   context.beginPath();
-  context.arc(streakX + 28, streakY + 28, 12, 0, Math.PI * 2);
+  context.arc(streakX + px(21), streakY + (streakHeight / 2), px(9), 0, Math.PI * 2);
   context.fill();
-  drawLeafIcon(context, streakX + 17, streakY + 16, theme.badgeIconColor);
+  drawLeafIcon(context, streakX + px(13), streakY + px(5), theme.badgeIconColor, previewScale * 0.72);
   context.fillStyle = fontColor.badgeText;
-  context.font = `600 20px ${fontFamily.bodyFamily}`;
-  context.fillText(`${streak} Day Streak`, streakX + 48, streakY + 35);
+  context.font = `600 ${px(12)}px ${fontFamily.bodyFamily}`;
+  context.fillText(streakLabel, streakX + px(45), streakY + px(18));
 
-  const ritualsBoxY = contentY + 128;
-  const ritualsBoxHeight = 330;
+  const ritualsBoxY = contentY + px(40) + px(20);
+  const panelPadding = px(20);
+  const headingLineHeight = px(20);
+  const headingMarginBottom = px(16);
+  const ritualFontSize = px(13);
+  const ritualLineHeight = px(20);
+  const ritualIconSize = px(20);
+  const ritualTextGap = px(8);
+  const ritualItems = rituals.length ? rituals : ['20m Morning Meditation', 'Forest Mindful Walk', 'Gratitude Journaling'];
+  const usesGrid = ritualItems.length > 4;
+  const columnGap = px(12);
+  const rowGap = usesGrid ? px(8) : px(16);
+  const innerWidth = contentWidth - (panelPadding * 2);
+  const columnWidth = usesGrid ? (innerWidth - columnGap) / 2 : innerWidth;
+  const ritualTextWidth = columnWidth - ritualIconSize - ritualTextGap;
+
+  context.font = `400 ${ritualFontSize}px ${fontFamily.bodyFamily}`;
+  const ritualLayouts = ritualItems.map((ritual) => {
+    const lines = wrapText(context, ritual, ritualTextWidth);
+    return {
+      lines,
+      height: Math.max(ritualIconSize, lines.length * ritualLineHeight),
+    };
+  });
+
+  const ritualRows: number[][] = [];
+  for (let index = 0; index < ritualLayouts.length; index += usesGrid ? 2 : 1) {
+    ritualRows.push(usesGrid ? [index, index + 1].filter((item) => item < ritualLayouts.length) : [index]);
+  }
+  const ritualsListHeight = ritualRows.reduce((height, row, rowIndex) => (
+    height
+    + Math.max(...row.map((item) => ritualLayouts[item].height))
+    + (rowIndex ? rowGap : 0)
+  ), 0);
+  const ritualsBoxHeight = (panelPadding * 2) + headingLineHeight + headingMarginBottom + ritualsListHeight;
+
   context.fillStyle = theme.panelFill;
-  fillRoundedRect(context, contentX, ritualsBoxY, contentWidth, ritualsBoxHeight, 24);
+  fillRoundedRect(context, contentX, ritualsBoxY, contentWidth, ritualsBoxHeight, px(24));
   context.strokeStyle = theme.panelBorder;
-  context.lineWidth = 2;
-  strokeRoundedRect(context, contentX, ritualsBoxY, contentWidth, ritualsBoxHeight, 24);
+  context.lineWidth = px(1);
+  strokeRoundedRect(context, contentX, ritualsBoxY, contentWidth, ritualsBoxHeight, px(24));
 
   context.fillStyle = fontColor.secondary;
-  drawCalendarIcon(context, contentX + 28, ritualsBoxY + 22, fontColor.secondary);
-  context.font = `600 22px ${fontFamily.bodyFamily}`;
-  context.fillText("TODAY'S COPING STRATEGIES", contentX + 68, ritualsBoxY + 42);
+  drawCalendarIcon(
+    context,
+    contentX + panelPadding,
+    ritualsBoxY + panelPadding + px(1),
+    fontColor.secondary,
+    previewScale * 0.9,
+  );
+  context.font = `600 ${px(14)}px ${fontFamily.bodyFamily}`;
+  context.fillText(
+    "TODAY'S RITUALS",
+    contentX + panelPadding + px(28),
+    ritualsBoxY + panelPadding + px(15),
+  );
 
-  const ritualItems = rituals.length ? rituals : ['20m Morning Meditation', 'Forest Mindful Walk', 'Gratitude Journaling'];
-  if (ritualItems.length > 4) {
-    const rowX = contentX + 38;
-    const rowY = ritualsBoxY + 94;
-    context.fillStyle = theme.accentSoft;
-    context.beginPath();
-    context.arc(rowX, rowY, 16, 0, Math.PI * 2);
-    context.fill();
-    drawCheckIcon(context, rowX, rowY, theme.accent);
-
-    context.fillStyle = fontColor.primary;
-    context.font = `400 21px ${fontFamily.bodyFamily}`;
-    const strategyLines = wrapText(context, ritualItems.join(' / '), contentWidth - 112);
-    strategyLines.forEach((line, index) => {
-      context.fillText(line, rowX + 34, rowY + 7 + (index * 34));
-    });
-  } else {
-    ritualItems.forEach((ritual, index) => {
-      const rowY = ritualsBoxY + 94 + (index * 58);
-
+  let rowY = ritualsBoxY + panelPadding + headingLineHeight + headingMarginBottom;
+  ritualRows.forEach((row, rowIndex) => {
+    const rowHeight = Math.max(...row.map((item) => ritualLayouts[item].height));
+    row.forEach((item, columnIndex) => {
+      const itemX = contentX + panelPadding + (columnIndex * (columnWidth + columnGap));
+      const iconCenterX = itemX + (ritualIconSize / 2);
+      const iconCenterY = rowY + (ritualIconSize / 2);
       context.fillStyle = theme.accentSoft;
       context.beginPath();
-      context.arc(contentX + 38, rowY, 16, 0, Math.PI * 2);
+      context.arc(iconCenterX, iconCenterY, ritualIconSize / 2, 0, Math.PI * 2);
       context.fill();
-      drawCheckIcon(context, contentX + 38, rowY, theme.accent);
+      drawCheckIcon(context, iconCenterX, iconCenterY, theme.accent, previewScale * 0.62);
 
       context.fillStyle = fontColor.primary;
-      context.font = `400 24px ${fontFamily.bodyFamily}`;
-      context.fillText(ritual, contentX + 72, rowY + 8);
+      context.font = `400 ${ritualFontSize}px ${fontFamily.bodyFamily}`;
+      ritualLayouts[item].lines.forEach((line, lineIndex) => {
+        context.fillText(
+          line,
+          itemX + ritualIconSize + ritualTextGap,
+          rowY + px(15) + (lineIndex * ritualLineHeight),
+        );
+      });
     });
-  }
+    rowY += rowHeight + (rowIndex < ritualRows.length - 1 ? rowGap : 0);
+  });
 
-  const dividerY = ritualsBoxY + ritualsBoxHeight + 16;
+  const dividerY = ritualsBoxY + ritualsBoxHeight + px(16);
   context.strokeStyle = theme.divider;
-  context.lineWidth = 2;
+  context.lineWidth = px(1);
   context.beginPath();
   context.moveTo(contentX, dividerY);
   context.lineTo(contentX + contentWidth, dividerY);
   context.stroke();
 
+  const insightX = SHARE_CARD_WIDTH / 2;
+  const insightContentTop = dividerY + px(12);
   context.fillStyle = fontColor.muted;
-  context.font = `500 16px ${fontFamily.metaFamily}`;
+  context.font = `400 ${px(11)}px ${fontFamily.metaFamily}`;
+  context.letterSpacing = `${px(2.2)}px`;
   context.textAlign = 'center';
-  context.fillText('SOUL INSIGHT', SHARE_CARD_WIDTH / 2, dividerY + 36);
+  context.fillText('SOUL INSIGHT', insightX, insightContentTop + px(13));
 
   context.fillStyle = fontColor.secondary;
-  context.font = `italic 48px ${fontFamily.quoteFamily}`;
-  const quoteLines = wrapText(context, formatShareQuoteText(quote.text, showQuoteMarks), contentWidth - 100);
-  const quoteStartY = dividerY + 82;
+  context.font = `italic 500 ${px(24)}px ${fontFamily.quoteFamily}`;
+  context.letterSpacing = '0px';
+  const quoteLines = wrapText(context, formatShareQuoteText(quote.text, showQuoteMarks), contentWidth - px(32));
+  const quoteLineHeight = px(39);
+  const quoteStartY = insightContentTop + px(11 + 8 + 24);
   quoteLines.forEach((line, index) => {
-    context.fillText(line, SHARE_CARD_WIDTH / 2, quoteStartY + (index * 54));
+    context.fillText(line, insightX, quoteStartY + (index * quoteLineHeight));
   });
 
-  const authorY = quoteStartY + (quoteLines.length * 54) + 26;
-  context.font = `600 22px ${fontFamily.bodyFamily}`;
+  const authorY = quoteStartY + ((quoteLines.length - 1) * quoteLineHeight) + px(12 + 20);
+  context.font = `600 ${px(14)}px ${fontFamily.bodyFamily}`;
+  context.letterSpacing = `${px(2.24)}px`;
   context.fillStyle = fontColor.secondary;
-  context.fillText(`BY ${quote.author.toUpperCase()}`, SHARE_CARD_WIDTH / 2, authorY);
+  context.fillText(`BY ${quote.author.toUpperCase()}`, insightX, authorY);
 
-  let metadataY = authorY + 32;
+  let metadataY = authorY + px(8 + 15);
+  context.letterSpacing = '0px';
   if (options.attribution) {
-    context.font = `500 14px ${fontFamily.metaFamily}`;
+    context.font = `400 ${px(11)}px ${fontFamily.metaFamily}`;
     context.fillStyle = fontColor.muted;
-    context.fillText(options.attribution, SHARE_CARD_WIDTH / 2, metadataY);
-    metadataY += 28;
+    context.fillText(options.attribution, insightX, metadataY);
+    metadataY += px(8 + 15);
   }
 
   if (options.source) {
-    context.font = `500 14px ${fontFamily.metaFamily}`;
+    context.font = `400 ${px(11)}px ${fontFamily.metaFamily}`;
+    context.letterSpacing = `${px(1.32)}px`;
     context.fillStyle = fontColor.muted;
-    context.fillText(dateKey, SHARE_CARD_WIDTH / 2, metadataY);
-    metadataY += 28;
+    context.fillText(dateKey, insightX, metadataY);
+    metadataY += px(8 + 15);
   }
 
+  context.letterSpacing = '0px';
   context.fillStyle = theme.accentSoft;
-  fillRoundedRect(context, (SHARE_CARD_WIDTH / 2) - 32, metadataY + 12, 64, 8, 4);
+  fillRoundedRect(context, insightX - px(16), metadataY + px(14), px(32), px(4), px(2));
   context.textAlign = 'start';
   context.restore();
 
   context.strokeStyle = theme.shellBorder;
-  context.lineWidth = 3;
-  strokeRoundedRect(context, cardInset + 1.5, cardInset + 1.5, cardWidth - 3, cardHeight - 3, cardRadius - 1.5);
+  context.lineWidth = px(1.5);
+  strokeRoundedRect(
+    context,
+    cardInset + (context.lineWidth / 2),
+    cardInset + (context.lineWidth / 2),
+    cardWidth - context.lineWidth,
+    cardHeight - context.lineWidth,
+    cardRadius - (context.lineWidth / 2),
+  );
 
   const dataUrl = canvas.toDataURL('image/png');
   const link = document.createElement('a');

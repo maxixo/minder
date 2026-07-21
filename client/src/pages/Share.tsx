@@ -45,7 +45,6 @@ const parseCopingMethods = (value?: string | null) => (
     : []
 );
 
-const logoUrl = 'https://lh3.googleusercontent.com/aida/AP1WRLvCundqemjzSKgHRcFetGSWpcb1wzH9tAckSSy1QEXV6OnfDbRkNdJJD4fRD939T2q_YXihQlrJ-hjWpv1YyKT26fz1Tk4W6z5QrcCaLz-YeBUPs8dD-XgoWohfRsUtGTm-pM46gA_NX1tOaQ6s8eCR0HQ7mLXwTjLP3rOHzQlpLvfe5pb6T9QAbGaIOCUVLASlpjPB_k7HG4mRrZj4S6zzZxO0Tn1jC-gfIhD9g5I2DD4gPQit4TGanH0';
 const baseCardTransform = 'perspective(1000px) rotateY(0deg) rotateX(0deg) scale(1)';
 const defaultToastMessage = 'Ready for sharing!';
 
@@ -463,8 +462,14 @@ export default function Share() {
               <div className="absolute inset-0" style={{ background: theme.imageOverlay }} />
 
               <div className="relative flex h-full w-full flex-col p-8">
-                <div className="flex items-start justify-between">
-                  <img alt="MindfulLife" className="h-10 w-auto object-contain opacity-100" src={logoUrl} />
+                <div className="flex items-center justify-between">
+                  <BrandLogo
+                    className="!gap-2"
+                    iconClassName="!h-10 !w-10"
+                    titleClassName="!font-['Plus_Jakarta_Sans'] !text-2xl"
+                    tone={fontColorId === 'ivory' ? 'light' : 'brand'}
+                    withWordmark
+                  />
 
                   <div className="flex flex-col items-end">
                     <div
@@ -485,7 +490,7 @@ export default function Share() {
                 >
                   <h3 className="mb-4 flex items-center gap-2 font-label-md text-label-md" style={{ color: fontColor.secondary, fontFamily: fontFamily.bodyFamily }}>
                     <span className="material-symbols-outlined text-[20px]" style={{ ...iconStyle, color: fontColor.secondary }}>calendar_today</span>
-                    TODAY&apos;S COPING STRATEGIES
+                    TODAY&apos;S RITUALS
                   </h3>
                   <ul className={shareRituals.length > 4 ? 'grid grid-cols-2 gap-x-3 gap-y-2' : 'space-y-4'}>
                     {shareRituals.map((ritual) => (

@@ -1,6 +1,19 @@
 import axios from 'axios';
 
-const baseURL = `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api`;
+const trimTrailingSlashes = (value: string) => value.replace(/\/+$/, '');
+
+const resolveApiBaseUrl = () => {
+  const configuredApiUrl = import.meta.env.VITE_API_URL?.trim();
+
+  if (!configuredApiUrl) {
+    return '/api';
+  }
+
+  const normalizedApiUrl = trimTrailingSlashes(configuredApiUrl);
+  return normalizedApiUrl.endsWith('/api') ? normalizedApiUrl : `${normalizedApiUrl}/api`;
+};
+
+const baseURL = resolveApiBaseUrl();
 const SAFE_METHODS = new Set(['get', 'head', 'options']);
 const CSRF_ERROR_MESSAGE = 'CSRF token validation failed.';
 

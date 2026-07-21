@@ -199,8 +199,12 @@ export const runDailyReminders = async () => {
 
 let reminderInterval: NodeJS.Timeout | null = null;
 
+export const shouldStartDailyReminderJob = (flag = process.env.RUN_DAILY_REMINDER_JOB) => (
+  flag == null || flag.trim().toLowerCase() !== 'false'
+);
+
 export const startDailyReminderJob = () => {
-  if (reminderInterval || process.env.RUN_DAILY_REMINDER_JOB !== 'true') return;
+  if (reminderInterval || !shouldStartDailyReminderJob()) return;
 
   reminderInterval = setInterval(() => {
     void runDailyReminders();

@@ -1,20 +1,20 @@
 import type { Response, NextFunction, CookieOptions } from 'express';
 import jwt, { type JwtPayload, type SignOptions } from 'jsonwebtoken';
+import { isProductionEnvironment } from '../config/runtime.js';
 import prisma from '../lib/prisma.js';
 import { serializeUser } from '../lib/serializers.js';
 import type { AuthRequest } from '../types/auth.js';
 
 export const SESSION_COOKIE_NAME = 'mindful_session';
-const isProduction = process.env.NODE_ENV === 'production';
 
 export const getCookieSecure = () => {
-  if (isProduction) return true;
+  if (isProductionEnvironment()) return true;
   if (process.env.COOKIE_SECURE) return process.env.COOKIE_SECURE === 'true';
   return false;
 };
 
 export const getCookieSameSite = (): CookieOptions['sameSite'] => {
-  if (isProduction) return 'none';
+  if (isProductionEnvironment()) return 'none';
   const configured = process.env.COOKIE_SAME_SITE?.toLowerCase();
   if (configured === 'lax' || configured === 'strict' || configured === 'none') {
     return configured;

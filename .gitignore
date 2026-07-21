@@ -36,3 +36,5 @@ client/public/backgrounds/share-glow.jpg
 client/public/backgrounds/share-night.png
 client/public/backgrounds/share-soft-mist.png
 client/public/backgrounds/share-stars.jpg
+server/CPANEL_DEPLOY.md
+client/VERCEL_DEPLOY.md

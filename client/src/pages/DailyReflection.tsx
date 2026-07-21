@@ -4,15 +4,10 @@ import clsx from 'clsx';
 import { toast } from 'sonner';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import BrandLogo from '@/components/common/BrandLogo';
-import { useAuth } from '@/contexts/useAuth';
 import { useDailyEntry } from '@/hooks/useDailyEntry';
 import { clearOnboardingFlowState, readOnboardingFlowState } from '@/lib/onboardingFlow';
-import { buildSavedReflectionInsightCard } from '@/lib/reflectionInsights';
-import { defaultReflectionPack, getReflectionPack, recommendReflectionPackId, reflectionPacks } from '@/lib/reflectionPacks';
 import ProfileMenu from '@/components/common/ProfileMenu';
-import entryService from '@/services/entryService';
-import type { EntryInsightResponse, ReflectionAssistResponse } from '@/types/ai';
-import type { DailyEntryPatch, DailyEntryRequest, EntryEnergyPoint, EntryWeather } from '@/types/entry';
+import type { DailyEntryPatch, EntryEnergyPoint, EntryWeather } from '@/types/entry';
 import '@/styles/pages/daily-reflection.css';
 
 const ENERGY_MIN_TIME = 6;
@@ -54,6 +49,9 @@ const cadenceLabelMap: Record<string, string> = {
   'three-times-week': 'about three times a week',
   flexible: 'flexibly',
 };
+const gratitudePrompt = 'List three things that feel grounding, supportive, or quietly good today.';
+const intentionPrompt = 'What would help the rest of today feel lighter or more honest?';
+const quickWinsPrompt = 'What small progress or stability showed up today, even if it barely counted in the moment?';
 
 type ReflectionWeather = (typeof weatherOptions)[number]['key'];
 type ReflectionMood = (typeof moodOptions)[number]['key'];
@@ -196,7 +194,6 @@ const validateEnergyLevels = (levels: ReflectionEnergyPoint[]) => {
 export default function DailyReflection() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const { user } = useAuth();
   const {
     entry,
     error,
@@ -222,18 +219,10 @@ export default function DailyReflection() {
   const [selectedEnergyPointId, setSelectedEnergyPointId] = useState<string | null>(null);
   const [draggingEnergyPointId, setDraggingEnergyPointId] = useState<string | null>(null);
   const [energyError, setEnergyError] = useState('');
-  const [selectedPackId, setSelectedPackId] = useState(defaultReflectionPack.id);
-  const [entryInsight, setEntryInsight] = useState<EntryInsightResponse | null>(null);
-  const [insightLoading, setInsightLoading] = useState(false);
-  const [insightError, setInsightError] = useState('');
-  const [reflectionAssist, setReflectionAssist] = useState<ReflectionAssistResponse | null>(null);
-  const [assistLoading, setAssistLoading] = useState(false);
-  const [assistError, setAssistError] = useState('');
   const [onboardingFlow, setOnboardingFlow] = useState(() => readOnboardingFlowState());
   const requestedSearchDate = useMemo(() => parseDateSearchParam(searchParams.get('date')), [searchParams]);
   const isOnboardingEntry = searchParams.get('source') === 'onboarding';
 
-  const firstName = user?.name?.split(' ')[0] || 'Sarah';
   const entryDateLabel = useMemo(
     () => (isToday(selectedDate) ? `Today, ${format(selectedDate, 'MMM d, yyyy')}` : format(selectedDate, 'EEE, MMM d, yyyy')),
     [selectedDate]
@@ -241,31 +230,6 @@ export default function DailyReflection() {
   const selectedDateInputValue = useMemo(() => format(selectedDate, 'yyyy-MM-dd'), [selectedDate]);
   const todayInputMax = format(new Date(), 'yyyy-MM-dd');
   const controlsDisabled = loading || saving;
-  const selectedPack = useMemo(() => getReflectionPack(selectedPackId), [selectedPackId]);
-  const recommendedPackId = useMemo(() => recommendReflectionPackId(entryInsight), [entryInsight]);
-  const savedInsightCard = useMemo(
-    () => (entryInsight ? buildSavedReflectionInsightCard(entryInsight, selectedPack) : null),
-    [entryInsight, selectedPack]
-  );
-  const reflectionAssistDraft = useMemo<Partial<DailyEntryRequest>>(() => ({
-    gratitude: sanitizeList(gratitude),
-    expectations: intention.trim(),
-    positiveNotes: sanitizeList(quickWins),
-    weather,
-    mood: moodValueMap[mood],
-    waterIntake: hydration,
-    sleepHours: sleep,
-    meals: {
-      breakfast: meals.breakfast,
-      lunch: meals.lunch,
-      dinner: meals.dinner,
-      snack: false,
-    },
-    focus: entry?.focus || '',
-    mindfulnessNotes: entry?.mindfulnessNotes || '',
-    mindThoughts: entry?.mindThoughts || '',
-    nextStep: entry?.nextStep || '',
-  }), [entry?.focus, entry?.mindThoughts, entry?.mindfulnessNotes, entry?.nextStep, gratitude, hydration, intention, meals.breakfast, meals.dinner, meals.lunch, mood, quickWins, sleep, weather]);
 
   const resetReflectionForm = () => {
     setGratitude(['', '', '']);
@@ -323,8 +287,6 @@ export default function DailyReflection() {
   useEffect(() => {
     if (!entry || toEntryDateKey(entry.date) !== selectedDateInputValue) {
       resetReflectionForm();
-      setReflectionAssist(null);
-      setAssistError('');
       return;
     }
 
@@ -345,62 +307,6 @@ export default function DailyReflection() {
     setDraggingEnergyPointId(null);
     setEnergyError('');
   }, [entry, selectedDateInputValue]);
-
-  const loadInsightForEntry = async (entryId: string) => {
-    setInsightLoading(true);
-    setInsightError('');
-
-    try {
-      const response = await entryService.getEntryInsight(entryId);
-      setEntryInsight(response.data);
-      return response.data;
-    } catch (loadError: any) {
-      setEntryInsight(null);
-      setInsightError(loadError?.response?.data?.message || 'Unable to load the AI insight for this entry.');
-      return null;
-    } finally {
-      setInsightLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    let cancelled = false;
-
-    const loadInsight = async () => {
-      if (!entry?.id) {
-        setEntryInsight(null);
-        setInsightError('');
-        setInsightLoading(false);
-        return;
-      }
-
-      setInsightLoading(true);
-      setInsightError('');
-
-      try {
-        const response = await entryService.getEntryInsight(entry.id);
-        if (!cancelled) {
-          setEntryInsight(response.data);
-          setInsightError('');
-        }
-      } catch (loadError: any) {
-        if (!cancelled) {
-          setEntryInsight(null);
-          setInsightError(loadError?.response?.data?.message || 'Unable to load the AI insight for this entry.');
-        }
-      } finally {
-        if (!cancelled) {
-          setInsightLoading(false);
-        }
-      }
-    };
-
-    void loadInsight();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [entry?.id, entry?.updatedAt]);
 
   const sortedEnergyLevels = useMemo(() => sortByTime(energyLevels), [energyLevels]);
   const selectedEnergyPoint = useMemo(
@@ -438,30 +344,6 @@ export default function DailyReflection() {
 
   const updateQuickWin = (index: number, value: string) => {
     setQuickWins((current) => current.map((item, itemIndex) => (itemIndex === index ? value : item)));
-  };
-
-  const handlePackSelect = (packId: string) => {
-    setSelectedPackId(packId);
-    setReflectionAssist(null);
-    setAssistError('');
-  };
-
-  const handleGenerateAssist = async () => {
-    setAssistLoading(true);
-    setAssistError('');
-
-    try {
-      const response = await entryService.getReflectionAssist({
-        packId: selectedPack.id,
-        entry: reflectionAssistDraft,
-      });
-      setReflectionAssist(response.data);
-    } catch (loadError: any) {
-      setReflectionAssist(null);
-      setAssistError(loadError?.response?.data?.message || 'Unable to load a reflection assist prompt right now.');
-    } finally {
-      setAssistLoading(false);
-    }
   };
 
   const toggleMeal = (mealKey: ReflectionMealKey) => {
@@ -581,13 +463,8 @@ export default function DailyReflection() {
     };
 
     try {
-      const savedEntry = await saveEntryPatch(patch, 'reflection');
+      await saveEntryPatch(patch, 'reflection');
       setEnergyError('');
-      setReflectionAssist(null);
-      setAssistError('');
-      if (savedEntry.id) {
-        void loadInsightForEntry(savedEntry.id);
-      }
       clearOnboardingFlowState();
       setOnboardingFlow(null);
       if (isOnboardingEntry) {
@@ -676,18 +553,6 @@ export default function DailyReflection() {
       </header>
 
       <main className="w-full flex-1 space-y-8 py-2">
-        <div className="rounded-xl border border-[#e8ede8] bg-white px-6 py-5 shadow-sm dark:border-white/10 dark:bg-white/5">
-          <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[#638869] dark:text-sage-300">
-            {selectedPack.isPremium ? 'Premium pack preview' : 'Daily reflection'}
-          </p>
-          <h2 className="mt-2 text-xl font-bold text-[#3a523e] dark:text-sage-50">
-            {selectedPack.title}
-          </h2>
-          <p className="mt-3 text-sm leading-6 text-[#638869] dark:text-sage-200">
-            {selectedPack.intro} {selectedPack.isPremium ? 'This preview shows how premium reflection packs can guide the next layer of insight.' : `How are you feeling today, ${firstName}?`}
-          </p>
-        </div>
-
         {isOnboardingEntry && onboardingFlow ? (
           <div className="rounded-xl border border-[#dce8dd] bg-[#eef6ee] px-6 py-5 shadow-sm dark:border-white/10 dark:bg-[#15201a]">
             <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[#638869] dark:text-sage-300">First-entry flow</p>
@@ -719,122 +584,6 @@ export default function DailyReflection() {
           </div>
         ) : null}
 
-        <section className="rounded-xl border border-[#e8ede8] bg-white p-6 shadow-sm dark:border-white/10 dark:bg-white/5">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[#638869] dark:text-sage-300">Guided packs</p>
-              <h2 className="mt-2 text-xl font-bold text-[#3a523e] dark:text-sage-50">Choose how you want to reflect</h2>
-              <p className="mt-2 text-sm leading-6 text-[#638869] dark:text-sage-200">
-                Start with the included check-in or preview guided premium packs built for stress, sleep, and heavier days.
-              </p>
-            </div>
-            <button
-              className="inline-flex items-center justify-center rounded-full border border-[#d1dbd2] px-4 py-2 text-sm font-semibold text-[#4f6b55] transition-colors hover:border-[#19e63c] hover:text-[#2e4733] dark:border-white/10 dark:text-sage-200 dark:hover:border-sage-300"
-              onClick={() => navigate('/settings')}
-              type="button"
-            >
-              View premium options
-            </button>
-          </div>
-
-          <div className="mt-6 grid gap-4 lg:grid-cols-4">
-            {reflectionPacks.map((pack) => {
-              const isSelected = selectedPack.id === pack.id;
-              const isRecommended = recommendedPackId === pack.id;
-
-              return (
-                <button
-                  key={pack.id}
-                  className={clsx(
-                    'rounded-2xl border p-5 text-left transition-all',
-                    isSelected
-                      ? 'border-[#19e63c] bg-[#f2fbf3] shadow-sm dark:border-[#19e63c] dark:bg-[#16231a]'
-                      : 'border-[#e8ede8] bg-[#fbfcfb] hover:border-[#b7cbb9] dark:border-white/10 dark:bg-[#101915]'
-                  )}
-                  onClick={() => handlePackSelect(pack.id)}
-                  type="button"
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#638869] dark:text-sage-300">{pack.badge}</p>
-                      <h3 className="mt-2 text-lg font-bold text-[#3a523e] dark:text-sage-50">{pack.title}</h3>
-                    </div>
-                    <span className="rounded-full bg-white px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-[#638869] dark:bg-[#1c2a20] dark:text-sage-200">
-                      {pack.estimatedMinutes}
-                    </span>
-                  </div>
-                  <p className="mt-3 text-sm leading-6 text-[#638869] dark:text-sage-200">{pack.description}</p>
-                  <div className="mt-4 flex flex-wrap gap-2">
-                    {pack.isPremium ? (
-                      <span className="rounded-full border border-[#d7e3d8] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-[#4f6b55] dark:border-white/10 dark:text-sage-200">
-                        Premium preview
-                      </span>
-                    ) : null}
-                    {isRecommended ? (
-                      <span className="rounded-full bg-[#19e63c]/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-[#217334]">
-                        Recommended
-                      </span>
-                    ) : null}
-                  </div>
-                </button>
-              );
-            })}
-          </div>
-        </section>
-
-        <section className="rounded-xl border border-[#dce8dd] bg-[#f8fbf8] px-6 py-5 shadow-sm dark:border-white/10 dark:bg-white/5">
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-            <div className="max-w-2xl">
-              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[#638869] dark:text-sage-300">AI assist</p>
-              <h2 className="mt-2 text-xl font-bold text-[#3a523e] dark:text-sage-50">One grounded prompt when you get stuck</h2>
-              <p className="mt-2 text-sm leading-6 text-[#4f6b55] dark:text-sage-200">
-                {selectedPack.assistHint}
-              </p>
-            </div>
-            <button
-              className="inline-flex items-center justify-center rounded-full bg-[#19e63c] px-5 py-3 text-sm font-bold text-[#25402b] shadow-lg shadow-[#19e63c]/20 transition-transform hover:scale-[1.02] active:scale-95 disabled:cursor-not-allowed disabled:opacity-70"
-              disabled={assistLoading || loading || saving}
-              onClick={handleGenerateAssist}
-              type="button"
-            >
-              <span className="material-symbols-outlined text-[18px]">auto_awesome</span>
-              <span>{assistLoading ? 'Generating prompt...' : 'Generate AI assist'}</span>
-            </button>
-          </div>
-
-          {assistError ? (
-            <p className="mt-4 text-sm leading-6 text-amber-700 dark:text-amber-300">{assistError}</p>
-          ) : null}
-
-          {reflectionAssist ? (
-            <div className="mt-5 grid gap-4 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)]">
-              <div className="rounded-2xl border border-[#dce8dd] bg-white px-5 py-4 dark:border-white/10 dark:bg-[#101915]">
-                <div className="flex items-center justify-between gap-3">
-                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#638869] dark:text-sage-300">Suggested prompt</p>
-                  <span className="rounded-full bg-[#f2f7f2] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-[#638869] dark:bg-[#18241c] dark:text-sage-200">
-                    {reflectionAssist.modelVersion}
-                  </span>
-                </div>
-                <p className="mt-3 text-sm leading-7 text-[#4f6b55] dark:text-sage-200">{reflectionAssist.suggestedPrompt}</p>
-              </div>
-              <div className="grid gap-4">
-                <div className="rounded-2xl border border-[#dce8dd] bg-white px-5 py-4 dark:border-white/10 dark:bg-[#101915]">
-                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#638869] dark:text-sage-300">Follow-up question</p>
-                  <p className="mt-3 text-sm leading-7 text-[#4f6b55] dark:text-sage-200">{reflectionAssist.followUpQuestion}</p>
-                </div>
-                <div className="rounded-2xl border border-[#dce8dd] bg-[#eef6ee] px-5 py-4 dark:border-white/10 dark:bg-[#15201a]">
-                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#638869] dark:text-sage-300">Why this helps</p>
-                  <p className="mt-3 text-sm leading-7 text-[#4f6b55] dark:text-sage-200">{reflectionAssist.encouragement}</p>
-                </div>
-              </div>
-            </div>
-          ) : (
-            <p className="mt-4 text-sm leading-6 text-[#638869] dark:text-sage-200">
-              Generate one prompt when the page feels open but your next sentence does not.
-            </p>
-          )}
-        </section>
-
         {loading ? (
           <div className="rounded-xl border border-[#e8ede8] bg-[#f4f7f4] px-6 py-4 text-sm font-medium text-[#638869] shadow-sm dark:border-white/10 dark:bg-white/5 dark:text-sage-200">
             Loading reflection...
@@ -847,92 +596,6 @@ export default function DailyReflection() {
           </div>
         ) : null}
 
-        {entry?.id ? (
-          <section className="rounded-xl border border-[#dce8dd] bg-[#f8fbf8] px-6 py-5 shadow-sm dark:border-white/10 dark:bg-white/5">
-            <div className="flex flex-col gap-4">
-              <div className="flex items-start justify-between gap-4">
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[#638869] dark:text-sage-300">Saved reflection insight</p>
-                  <h2 className="mt-2 text-xl font-bold text-[#3a523e] dark:text-sage-50">What stands out after you save</h2>
-                </div>
-                <span className="rounded-full bg-white px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-[#638869] dark:bg-[#101915] dark:text-sage-200">
-                  {entryInsight?.modelVersion || 'pending'}
-                </span>
-              </div>
-
-              {insightLoading ? (
-                <p className="text-sm leading-6 text-[#638869] dark:text-sage-200">Building your reflection insight from the saved entry...</p>
-              ) : null}
-
-              {!insightLoading && insightError ? (
-                <p className="text-sm leading-6 text-amber-700 dark:text-amber-300">{insightError}</p>
-              ) : null}
-
-              {!insightLoading && !insightError && entryInsight && savedInsightCard ? (
-                <>
-                  <div>
-                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#638869] dark:text-sage-300">{savedInsightCard.title}</p>
-                    <p className="mt-3 text-sm leading-7 text-[#4f6b55] dark:text-sage-200">{savedInsightCard.summary}</p>
-                  </div>
-
-                  {savedInsightCard.keyThemes.length ? (
-                    <div className="flex flex-wrap gap-2">
-                      {savedInsightCard.keyThemes.map((theme) => (
-                        <span
-                          key={theme}
-                          className="rounded-full border border-[#cfe0d1] bg-white px-3 py-1 text-xs font-semibold uppercase tracking-[0.14em] text-[#4f6b55] dark:border-white/10 dark:bg-[#101915] dark:text-sage-200"
-                        >
-                          {theme}
-                        </span>
-                      ))}
-                    </div>
-                  ) : null}
-
-                  <div className="grid gap-4 md:grid-cols-2">
-                    <div className="rounded-xl border border-[#e3ece4] bg-white px-4 py-4 dark:border-white/10 dark:bg-[#101915]">
-                      <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#638869] dark:text-sage-300">{savedInsightCard.anchorLabel}</p>
-                      <p className="mt-3 text-sm leading-6 text-[#4f6b55] dark:text-sage-200">
-                        {savedInsightCard.anchorText}
-                      </p>
-                    </div>
-                    <div className="rounded-xl border border-[#e3ece4] bg-white px-4 py-4 dark:border-white/10 dark:bg-[#101915]">
-                      <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#638869] dark:text-sage-300">{savedInsightCard.followUpLabel}</p>
-                      <p className="mt-3 text-sm leading-6 text-[#4f6b55] dark:text-sage-200">
-                        {savedInsightCard.followUpText}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="rounded-xl border border-[#dce8dd] bg-white px-4 py-4 dark:border-white/10 dark:bg-[#101915]">
-                    <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#638869] dark:text-sage-300">Deeper insight</p>
-                    <p className="mt-3 text-sm leading-6 text-[#4f6b55] dark:text-sage-200">{savedInsightCard.premiumTeaser}</p>
-                    <button
-                      className="mt-4 inline-flex items-center gap-2 rounded-full border border-[#d1dbd2] px-4 py-2 text-sm font-semibold text-[#4f6b55] transition-colors hover:border-[#19e63c] hover:text-[#2e4733] dark:border-white/10 dark:text-sage-200"
-                      onClick={() => navigate('/analytics')}
-                      type="button"
-                    >
-                      Open deeper analytics
-                      <span className="material-symbols-outlined text-[18px]">arrow_forward</span>
-                    </button>
-                  </div>
-
-                  {savedInsightCard.riskMessage ? (
-                    <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-4 text-sm leading-6 text-amber-800 dark:border-amber-300/50 dark:bg-amber-100">
-                      {savedInsightCard.riskMessage}
-                    </div>
-                  ) : null}
-                </>
-              ) : null}
-
-              {!insightLoading && !insightError && !entryInsight ? (
-                <p className="text-sm leading-6 text-[#638869] dark:text-sage-200">
-                  Save a fuller reflection to generate a stronger read on what themes, grounding points, and next questions are emerging.
-                </p>
-              ) : null}
-            </div>
-          </section>
-        ) : null}
-
             <div className="grid grid-cols-1 gap-8 lg:grid-cols-12">
               <div className="space-y-8 lg:col-span-7">
                 <section className="rounded-xl border border-[#e8ede8] bg-white p-8 shadow-sm dark:border-white/10 dark:bg-white/5">
@@ -940,7 +603,7 @@ export default function DailyReflection() {
                     <span className="material-symbols-outlined text-red-400">favorite</span>
                     <h3 className="text-xl font-bold">1. Gratitude Practice</h3>
                   </div>
-                  <p className="mb-6 text-sm italic text-[#638869] dark:text-sage-300">{selectedPack.gratitudePrompt}</p>
+                  <p className="mb-6 text-sm italic text-[#638869] dark:text-sage-300">{gratitudePrompt}</p>
 
                   <div className="space-y-4">
                     {gratitude.map((item, index) => (
@@ -952,7 +615,7 @@ export default function DailyReflection() {
                         <input
                           className="w-full border-none bg-transparent text-[#3a523e] outline-none placeholder:text-[#638869] dark:text-sage-50 dark:placeholder:text-sage-500"
                           onChange={(event) => updateGratitude(index, event.target.value)}
-                          placeholder={selectedPack.isPremium ? 'Name one grounding detail...' : 'I am grateful for...'}
+                          placeholder="I am grateful for..."
                           type="text"
                           value={item}
                         />
@@ -970,11 +633,11 @@ export default function DailyReflection() {
                   <div className="space-y-6">
                     <div>
                       <label className="mb-2 block text-sm font-semibold dark:text-sage-200">What is your main intention for today?</label>
-                      <p className="mb-3 text-sm leading-6 text-[#638869] dark:text-sage-300">{selectedPack.intentionPrompt}</p>
+                      <p className="mb-3 text-sm leading-6 text-[#638869] dark:text-sage-300">{intentionPrompt}</p>
                       <textarea
                         className="w-full rounded-xl border border-[#e8ede8] bg-[#f4f7f4] px-4 py-3 text-[#3a523e] outline-none placeholder:text-[#638869] focus:border-[#19e63c] dark:border-white/10 dark:bg-[#101915] dark:text-sage-50 dark:placeholder:text-sage-500"
                         onChange={(event) => setIntention(event.target.value)}
-                        placeholder={selectedPack.intentionPrompt}
+                        placeholder={intentionPrompt}
                         rows={3}
                         value={intention}
                       />
@@ -982,7 +645,7 @@ export default function DailyReflection() {
 
                     <div>
                       <label className="mb-2 block text-sm font-semibold dark:text-sage-200">Quick Wins (Bullet Points)</label>
-                      <p className="mb-3 text-sm leading-6 text-[#638869] dark:text-sage-300">{selectedPack.quickWinsPrompt}</p>
+                      <p className="mb-3 text-sm leading-6 text-[#638869] dark:text-sage-300">{quickWinsPrompt}</p>
                       <div className="space-y-2">
                         {quickWins.map((item, index) => (
                           <div key={`quick-win-${index + 1}`} className="flex items-center gap-3">
@@ -990,7 +653,7 @@ export default function DailyReflection() {
                             <input
                               className="flex-1 border-b border-[#e8ede8] bg-transparent py-1 outline-none placeholder:text-[#638869] focus:border-[#19e63c] dark:border-white/10 dark:text-sage-50 dark:placeholder:text-sage-500"
                               onChange={(event) => updateQuickWin(index, event.target.value)}
-                              placeholder={selectedPack.isPremium ? `Signal ${index + 1}` : `Task ${index + 1}`}
+                              placeholder={`Task ${index + 1}`}
                               type="text"
                               value={item}
                             />

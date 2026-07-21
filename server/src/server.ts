@@ -19,8 +19,10 @@ import billingRoutes from './routes/billingRoutes.js';
 import inspirationRoutes from './routes/inspirationRoutes.js';
 import userRoutes from './routes/userRoutes.js';
 import { startDailyReminderJob } from './jobs/reminderJob.js';
+import { assertRuntimeConfig, isProductionEnvironment, normalizeOrigin, parseAllowedOrigins } from './config/runtime.js';
 
 dotenv.config({ path: fileURLToPath(new URL('../.env', import.meta.url)) });
+assertRuntimeConfig();
 await connectDB();
 
 const app = express();
@@ -47,14 +49,11 @@ const parseTrustProxySetting = (value: string | undefined) => {
 app.set('trust proxy', parseTrustProxySetting(process.env.TRUST_PROXY));
 
 app.use(helmet());
-const allowedOrigins = (process.env.CLIENT_URL || 'http://localhost:5173')
-  .split(',')
-  .map((origin) => origin.trim())
-  .filter(Boolean);
+const allowedOrigins = parseAllowedOrigins();
 
 app.use(cors({
   origin: (origin, callback) => {
-    if (!origin || allowedOrigins.includes(origin)) {
+    if (!origin || allowedOrigins.includes(normalizeOrigin(origin))) {
       callback(null, true);
       return;
     }
@@ -66,7 +65,9 @@ app.use(cors({
 app.use(compression());
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
-app.use(process.env.NODE_ENV === 'development' ? morgan('dev') : morgan('combined'));
+app.use(morgan(isProductionEnvironment() ? 'combined' : 'dev', {
+  skip: (req) => req.path === '/api/health' || req.path === '/api/ready',
+}));
 
 const limiter = rateLimit({
   windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS || '900000', 10),
@@ -92,10 +93,13 @@ app.use('/api/auth/login', authLimiter);
 app.use('/api/auth/register', authLimiter);
 
 app.get('/api/health', (req: Request, res: Response) => {
+  res.set('Cache-Control', 'no-store');
   res.json({ success: true, message: 'Mindful Webapp API is running', timestamp: new Date().toISOString() });
 });
 
 app.get('/api/ready', async (req: Request, res: Response) => {
+  res.set('Cache-Control', 'no-store');
+
   if (isShuttingDown) {
     return res.status(503).json({ success: false, message: 'Server is shutting down' });
   }
@@ -123,6 +127,12 @@ const server = app.listen(PORT, () => {
   console.log(`🌿 Mindful Webapp API running on port ${PORT} [${process.env.NODE_ENV}]`);
   startDailyReminderJob();
 });
+
+const requestTimeoutMs = Number.parseInt(process.env.REQUEST_TIMEOUT_MS || '60000', 10);
+const keepAliveTimeoutMs = Number.parseInt(process.env.KEEP_ALIVE_TIMEOUT_MS || '5000', 10);
+server.requestTimeout = requestTimeoutMs;
+server.keepAliveTimeout = keepAliveTimeoutMs;
+server.headersTimeout = Math.max(requestTimeoutMs + 1000, keepAliveTimeoutMs + 1000);
 
 const shutdown = async (reason: string, exitCode: number) => {
   if (isShuttingDown) return;

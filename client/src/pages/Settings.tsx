@@ -916,18 +916,23 @@ export default function Settings() {
             </div>
 
             <div className="mt-6 grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(230px,0.7fr)]">
-              <div className="grid gap-3 sm:grid-cols-2">
-                {[
-                  'Full mood, sleep, and behavior analytics',
-                  'AI summaries and longer trend comparisons',
-                  'Monthly and quarterly report downloads',
-                  'Premium reflection packs and richer guidance',
-                ].map((feature) => (
-                  <div key={feature} className="flex gap-3 rounded-[1.25rem] border border-sage-100 bg-sage-50/70 p-4 dark:border-white/10 dark:bg-white/5">
-                    <span className="material-symbols-outlined mt-0.5 text-[18px] text-sage-700 dark:text-sage-200">check_circle</span>
-                    <p className="text-sm leading-6 text-sage-700 dark:text-sage-100">{feature}</p>
-                  </div>
-                ))}
+              <div className="rounded-[1.25rem] border border-sage-100 bg-sage-50/70 p-4 dark:border-white/10 dark:bg-white/5">
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-sage-500 dark:text-sage-300">
+                  Everything included
+                </p>
+                <div className="mt-3 grid gap-2.5">
+                  {[
+                    'Full mood, sleep, and behavior analytics',
+                    'AI summaries and longer trend comparisons',
+                    'Monthly and quarterly report downloads',
+                    'Premium reflection packs and richer guidance',
+                  ].map((feature) => (
+                    <div key={feature} className="flex gap-3">
+                      <span className="material-symbols-outlined mt-0.5 text-[18px] text-sage-700 dark:text-sage-200">check_circle</span>
+                      <p className="text-sm leading-6 text-sage-700 dark:text-sage-100">{feature}</p>
+                    </div>
+                  ))}
+                </div>
               </div>
 
               <div className="rounded-[1.5rem] border border-sand-200 bg-sand-50 p-5 dark:border-white/10 dark:bg-[#101915]">
