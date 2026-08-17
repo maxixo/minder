@@ -2,10 +2,24 @@ import axios, { AxiosHeaders, type AxiosRequestHeaders } from 'axios';
 
 const DEFAULT_API_URL = 'https://minder.oshodiusman.xyz';
 const trimTrailingSlashes = (value: string) => value.replace(/\/+$/, '');
+const isAbsoluteHttpUrl = (value: string) => /^https?:\/\//i.test(value);
+
+const getConfiguredApiUrl = () => {
+  const configuredApiUrl = import.meta.env.VITE_API_URL?.trim();
+
+  if (typeof window !== 'undefined' && window.location.origin === 'https://minder-client.vercel.app') {
+    return DEFAULT_API_URL;
+  }
+
+  if (!configuredApiUrl || !isAbsoluteHttpUrl(configuredApiUrl)) {
+    return DEFAULT_API_URL;
+  }
+
+  return configuredApiUrl;
+};
 
 const resolveApiBaseUrl = () => {
-  const configuredApiUrl = import.meta.env.VITE_API_URL?.trim();
-  const normalizedApiUrl = trimTrailingSlashes(configuredApiUrl || DEFAULT_API_URL);
+  const normalizedApiUrl = trimTrailingSlashes(getConfiguredApiUrl());
   return normalizedApiUrl.endsWith('/api') ? normalizedApiUrl : `${normalizedApiUrl}/api`;
 };
 

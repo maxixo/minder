@@ -3,7 +3,7 @@ import type { CookieOptions, NextFunction, Request, Response } from 'express';
 import { getCookieSameSite, getCookieSecure } from './auth.js';
 
 const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
-const ALLOWED_FETCH_SITES = new Set(['same-origin', 'same-site', 'none']);
+const ALLOWED_FETCH_SITES = new Set(['same-origin', 'same-site', 'cross-site', 'none']);
 
 export const CSRF_COOKIE_NAME = 'mindful_csrf';
 export const CSRF_HEADER_NAME = 'x-csrf-token';

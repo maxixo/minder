@@ -64,12 +64,13 @@ test('csrf token helpers enforce exact token matches', () => {
   assert.equal(csrfTokensMatch(token, null), false);
 });
 
-test('fetch metadata helper rejects explicit cross-site mutating requests', () => {
+test('fetch metadata helper accepts browser app requests for csrf validation', () => {
   assert.equal(isAllowedFetchSite(undefined), true);
   assert.equal(isAllowedFetchSite('same-origin'), true);
   assert.equal(isAllowedFetchSite('same-site'), true);
   assert.equal(isAllowedFetchSite('none'), true);
-  assert.equal(isAllowedFetchSite('cross-site'), false);
+  assert.equal(isAllowedFetchSite('cross-site'), true);
+  assert.equal(isAllowedFetchSite('unknown'), false);
 });
 
 test('runtime config parsing normalizes allowed origins and reports invalid values', () => {
