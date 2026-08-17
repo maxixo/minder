@@ -1,15 +1,11 @@
-import axios from 'axios';
+import axios, { AxiosHeaders, type AxiosRequestHeaders } from 'axios';
 
+const DEFAULT_API_URL = 'https://minder.oshodiusman.xyz';
 const trimTrailingSlashes = (value: string) => value.replace(/\/+$/, '');
 
 const resolveApiBaseUrl = () => {
   const configuredApiUrl = import.meta.env.VITE_API_URL?.trim();
-
-  if (!configuredApiUrl) {
-    return '/api';
-  }
-
-  const normalizedApiUrl = trimTrailingSlashes(configuredApiUrl);
+  const normalizedApiUrl = trimTrailingSlashes(configuredApiUrl || DEFAULT_API_URL);
   return normalizedApiUrl.endsWith('/api') ? normalizedApiUrl : `${normalizedApiUrl}/api`;
 };
 
@@ -32,7 +28,13 @@ const csrfApi = axios.create({
   withCredentials: true,
 });
 
-const fetchCsrfToken = async (forceRefresh = false) => {
+const setCsrfHeader = (headers: AxiosRequestHeaders | undefined, token: string): AxiosRequestHeaders => {
+  const nextHeaders = AxiosHeaders.from(headers);
+  nextHeaders.set('x-csrf-token', token);
+  return nextHeaders as AxiosRequestHeaders;
+};
+
+export const initializeCsrfToken = async (forceRefresh = false) => {
   if (csrfToken && !forceRefresh) {
     return csrfToken;
   }
@@ -40,7 +42,7 @@ const fetchCsrfToken = async (forceRefresh = false) => {
   if (!csrfTokenRequest || forceRefresh) {
     csrfTokenRequest = csrfApi.get('/auth/csrf')
       .then((response) => {
-        const token = response.data?.data?.csrfToken;
+        const token = response.data?.csrfToken || response.data?.data?.csrfToken;
 
         if (typeof token !== 'string' || !token) {
           throw new Error('Missing CSRF token in response.');
@@ -61,8 +63,8 @@ api.interceptors.request.use(async (config) => {
   const method = (config.method || 'get').toLowerCase();
 
   if (!SAFE_METHODS.has(method)) {
-    const token = await fetchCsrfToken();
-    config.headers.set('X-CSRF-Token', token);
+    const token = await initializeCsrfToken();
+    config.headers = setCsrfHeader(config.headers, token);
   }
 
   return config;
@@ -80,8 +82,8 @@ api.interceptors.response.use(
       && !retryConfig._csrfRetried
     ) {
       retryConfig._csrfRetried = true;
-      const token = await fetchCsrfToken(true);
-      retryConfig.headers.set('X-CSRF-Token', token);
+      const token = await initializeCsrfToken(true);
+      retryConfig.headers = setCsrfHeader(retryConfig.headers, token);
       return api.request(retryConfig);
     }
 

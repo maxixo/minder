@@ -17,6 +17,57 @@ This backend is prepared to run as a cPanel Node.js application with the `server
 
 `app.js` loads `dist/server.js`, which keeps the Passenger entrypoint aligned with the TypeScript build output.
 
+## PostgreSQL setup in cPanel
+
+Use cPanel's PostgreSQL Database Wizard for the first database and user:
+
+1. Open `Databases` -> `PostgreSQL Database Wizard`.
+2. Enter a database name, for example `minder`, and click `Create Database`.
+3. Create a PostgreSQL user, for example `minder_user`, with a strong generated password.
+4. Submit the final step to add the user to the database.
+
+cPanel may prefix database and user names with your account username. Use the full final names shown by cPanel, for example:
+
+```text
+cpaneluser_minder
+cpaneluser_minder_user
+```
+
+If you are not using the wizard, create the database and user from `Databases` -> `PostgreSQL Databases`, then use `Add User to Database` to attach the user to the database.
+
+Do not create databases or users from phpPgAdmin. Use phpPgAdmin only to inspect or manage data after cPanel has created the database and user.
+
+The PostgreSQL host is usually:
+
+```text
+localhost
+```
+
+Confirm this with your hosting provider if the app cannot connect. The default PostgreSQL port is:
+
+```text
+5432
+```
+
+Build the production `DATABASE_URL` like this:
+
+```env
+DATABASE_URL="postgresql://cpaneluser_minder_user:YOUR_PASSWORD@localhost:5432/cpaneluser_minder"
+```
+
+postgresql://hvklotdb_minder_user:GDx59WTJe43Rn3S@localhost:5432/hvklotdb_minder
+
+If the password contains special URL characters, encode them before placing the password in `DATABASE_URL`:
+
+```text
+@ -> %40
+# -> %23
+: -> %3A
+/ -> %2F
+```
+
+Store `DATABASE_URL` only in the backend cPanel environment. Do not add it to the frontend or Vercel.
+
 ## Required environment variables
 
 Set these in cPanel before starting the app:
