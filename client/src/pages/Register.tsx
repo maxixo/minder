@@ -117,7 +117,7 @@ export default function Register() {
 
               <div className="flex gap-2">
                 <Link
-                  className="flex h-10 min-w-[84px] items-center justify-center overflow-hidden rounded-full bg-[#f2f3f2] px-4 text-sm font-bold leading-normal text-[#141514] dark:bg-[#2d2f2d] dark:text-white"
+                  className="flex h-10 min-w-[84px] items-center justify-center overflow-hidden rounded-full bg-[#f2f3f2] px-4 text-sm font-semibold leading-normal text-[#141514] dark:bg-[#2d2f2d] dark:text-white"
                   to="/login"
                 >
                   <span>Login</span>
@@ -134,7 +134,7 @@ export default function Register() {
                 <div className="relative z-10 flex flex-col">
               <div className="mb-8 flex flex-col gap-3">
                 <div className="flex items-end justify-between gap-6">
-                  <p className="text-sm font-semibold uppercase tracking-wide text-[#5e7860]">
+                  <p className="text-sm font-medium uppercase tracking-wide text-[#5e7860]">
                     Basics Completed: {progress.completedFields} of {progress.totalFields}
                   </p>
                   <p className="text-sm font-normal text-[#737873] dark:text-[#a0a3a0]">{progress.percent}%</p>
@@ -150,20 +150,20 @@ export default function Register() {
               <div className="mb-10 text-center">
                 <BrandLogo
                   className="mb-5 justify-center"
-                  titleClassName="text-3xl text-[#141514] dark:text-sage-50 sm:text-[2.2rem]"
+                  titleClassName="compact-display-value text-[#141514] dark:text-sage-50 sm:text-[2.2rem]"
                   iconClassName="h-10 w-10 text-[#44604a] dark:text-sage-50"
                 />
-                <h1 className="mb-3 font-sans text-2xl font-bold leading-tight tracking-tight text-[#5e7860] sm:text-3xl md:text-4xl">
+                <h1 className="compact-section-title mb-3 font-sans font-semibold text-[#5e7860] md:text-4xl">
                   Create Your Account
                 </h1>
-                <p className="text-lg leading-relaxed text-gray-500 dark:text-sage-300">
+                <p className="compact-lead text-gray-500 dark:text-sage-300">
                   Set up your account, choose your reflection rhythm, and reach your first entry in a few minutes.
                 </p>
               </div>
 
               <form className="flex flex-col gap-5" onSubmit={handleSubmit}>
                 <div className="flex flex-col gap-2">
-                  <label className="mb-2 ml-1 block text-xs font-semibold uppercase tracking-wider text-[#5e7860]/70">Full Name</label>
+                  <label className="mb-2 ml-1 block text-xs font-medium uppercase tracking-wider text-[#5e7860]/70">Full Name</label>
                   <input
                     className="h-12 w-full rounded-xl border-2 border-transparent bg-sand-100 px-4 text-gray-800 outline-none placeholder:text-gray-400 focus:border-transparent focus:outline-none focus:ring-0 dark:bg-[#101915] dark:text-sage-50 dark:placeholder:text-sage-400"
                     disabled={isSubmitting}
@@ -175,7 +175,7 @@ export default function Register() {
                 </div>
 
                 <div className="flex flex-col gap-2">
-                  <label className="mb-2 ml-1 block text-xs font-semibold uppercase tracking-wider text-[#5e7860]/70">Email Address</label>
+                  <label className="mb-2 ml-1 block text-xs font-medium uppercase tracking-wider text-[#5e7860]/70">Email Address</label>
                   <input
                     className="h-12 w-full rounded-xl border-2 border-transparent bg-sand-100 px-4 text-gray-800 outline-none placeholder:text-gray-400 focus:border-transparent focus:outline-none focus:ring-0 dark:bg-[#101915] dark:text-sage-50 dark:placeholder:text-sage-400"
                     autoComplete="email"
@@ -189,7 +189,7 @@ export default function Register() {
 
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                   <div className="flex flex-col gap-2">
-                    <label className="mb-2 ml-1 block text-xs font-semibold uppercase tracking-wider text-[#5e7860]/70">Password</label>
+                    <label className="mb-2 ml-1 block text-xs font-medium uppercase tracking-wider text-[#5e7860]/70">Password</label>
                     <input
                       className="h-12 w-full rounded-xl border-2 border-transparent bg-sand-100 px-4 text-gray-800 outline-none placeholder:text-gray-400 focus:border-transparent focus:outline-none focus:ring-0 dark:bg-[#101915] dark:text-sage-50 dark:placeholder:text-sage-400"
                       autoComplete="new-password"
@@ -201,7 +201,7 @@ export default function Register() {
                     />
                   </div>
                   <div className="flex flex-col gap-2">
-                    <label className="mb-2 ml-1 block text-xs font-semibold uppercase tracking-wider text-[#5e7860]/70">Confirm Password</label>
+                    <label className="mb-2 ml-1 block text-xs font-medium uppercase tracking-wider text-[#5e7860]/70">Confirm Password</label>
                     <input
                       className="h-12 w-full rounded-xl border-2 border-transparent bg-sand-100 px-4 text-gray-800 outline-none placeholder:text-gray-400 focus:border-transparent focus:outline-none focus:ring-0 dark:bg-[#101915] dark:text-sage-50 dark:placeholder:text-sage-400"
                       autoComplete="new-password"
@@ -243,7 +243,7 @@ export default function Register() {
                 </div>
 
                 <button
-                  className="mt-4 flex h-12 w-full items-center justify-center rounded-full bg-[#5e7860] text-base font-bold leading-normal text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-70"
+                  className="mt-4 flex h-12 w-full items-center justify-center rounded-full bg-[#5e7860] text-base font-semibold leading-normal text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-70"
                   disabled={isSubmitting}
                   type="submit"
                 >
@@ -259,7 +259,7 @@ export default function Register() {
                 <p className="text-sm text-gray-500 dark:text-sage-300">
                   Already have an account?
                   <Link
-                    className="ml-1 font-semibold text-[#5e7860] hover:underline underline-offset-4"
+                    className="ml-1 font-medium text-[#5e7860] hover:underline underline-offset-4"
                     to="/login"
                   >
                     Sign in here

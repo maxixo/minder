@@ -258,19 +258,19 @@ export default function EmotionalGuidance() {
         <section className="overflow-hidden rounded-[2rem] border border-sage-100 bg-gradient-to-br from-white via-sand-50 to-sage-50 shadow-soft dark:border-white/10 dark:bg-gradient-to-br dark:from-[#18231d] dark:via-[#121b16] dark:to-[#0f1712]">
           <div className="flex flex-col gap-6 px-6 py-8 sm:px-8 lg:flex-row lg:items-end lg:justify-between lg:px-10">
             <div className="max-w-3xl">
-              <p className="text-xs font-semibold uppercase tracking-[0.32em] text-sage-500 dark:text-sage-300">Emotional Guidance</p>
-              <h1 className="mt-3 font-display text-4xl font-semibold text-sage-900 sm:text-5xl dark:text-sage-50">
+              <p className="text-xs font-medium uppercase tracking-[0.32em] text-sage-500 dark:text-sage-300">Emotional Guidance</p>
+              <h1 className="compact-hero-title mt-3 font-display text-sage-900 dark:text-sage-50">
                 A softer check-in for {firstName}
               </h1>
-              <p className="mt-4 max-w-2xl text-base leading-7 text-sage-600 sm:text-lg dark:text-sage-200">
+              <p className="compact-lead mt-4 max-w-2xl text-sage-600 dark:text-sage-200">
                 A sanctuary for your daily mindfulness and self-reflection. Name what is present, notice what you need,
                 and choose one gentle way to support yourself.
               </p>
             </div>
 
             <div className="flex flex-col gap-3 rounded-[1.5rem] border border-sage-100 bg-white/80 p-5 shadow-sm backdrop-blur sm:min-w-[240px] dark:border-white/10 dark:bg-white/5">
-              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-sage-500 dark:text-sage-300">Weekly Rhythm</p>
-              <p className="font-display text-3xl font-semibold text-sage-800 dark:text-sage-50">{completedDays}/7 days</p>
+              <p className="text-xs font-medium uppercase tracking-[0.24em] text-sage-500 dark:text-sage-300">Weekly Rhythm</p>
+              <p className="compact-display-value font-display text-sage-800 dark:text-sage-50">{completedDays}/7 days</p>
               <p className="text-sm text-sage-500 dark:text-sage-300">Small, steady moments of awareness count more than perfect streaks.</p>
             </div>
           </div>
@@ -298,8 +298,8 @@ export default function EmotionalGuidance() {
                 <span className="material-symbols-outlined">favorite</span>
               </div>
               <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.24em] text-sage-100/70">Check-in saved</p>
-                <h2 className="mt-2 text-2xl font-semibold">{reassuranceSummary.title}</h2>
+                <p className="text-xs font-medium uppercase tracking-[0.24em] text-sage-100/70">Check-in saved</p>
+                <h2 className="compact-section-title mt-2">{reassuranceSummary.title}</h2>
                 <p className="mt-2 max-w-3xl text-sm leading-7 text-sage-50/85">{reassuranceSummary.message}</p>
               </div>
             </div>
@@ -312,7 +312,7 @@ export default function EmotionalGuidance() {
               <span className="material-symbols-outlined">calendar_month</span>
             </div>
             <div>
-              <h2 className="font-display text-2xl font-semibold text-sage-900 dark:text-sage-50">Weekly Consistency Tracker</h2>
+              <h2 className="font-display text-2xl font-medium text-sage-900 dark:text-sage-50">Weekly Consistency Tracker</h2>
               <p className="text-sm text-sage-500 dark:text-sage-300">
                 Days are marked automatically when you save an emotional check-in.
               </p>
@@ -340,7 +340,7 @@ export default function EmotionalGuidance() {
                   )}
                 >
                   <span className={clsx(
-                    'text-xs font-bold uppercase tracking-[0.25em]',
+                    'text-xs font-semibold uppercase tracking-[0.25em]',
                     isCurrentDay ? 'text-sage-700 dark:text-sage-100' : 'text-sage-500 dark:text-sage-400'
                   )}>
                     {item.day}
@@ -374,10 +374,10 @@ export default function EmotionalGuidance() {
             <section className="rounded-[1.75rem] border border-sage-100 bg-white p-6 shadow-soft sm:p-8 lg:p-10 dark:border-white/10 dark:bg-white/5">
               <div className="mb-8 flex items-center justify-between gap-4 border-b border-sage-100 pb-4 dark:border-white/10">
                 <div>
-                  <h2 className="font-display text-3xl font-semibold text-sage-900 dark:text-sage-50">Emotional Check-In</h2>
+                  <h2 className="compact-section-title font-display text-sage-900 dark:text-sage-50">Emotional Check-In</h2>
                   <p className="mt-2 text-sm text-sage-500 dark:text-sage-300">Move slowly. Let each answer be true rather than polished.</p>
                 </div>
-                <div className="hidden rounded-full bg-sage-50 px-4 py-2 text-xs font-semibold uppercase tracking-[0.22em] text-sage-500 sm:block dark:bg-white/10 dark:text-sage-300">
+                <div className="hidden rounded-full bg-sage-50 px-4 py-2 text-xs font-medium uppercase tracking-[0.22em] text-sage-500 sm:block dark:bg-white/10 dark:text-sage-300">
                   Present Moment
                 </div>
               </div>
@@ -442,7 +442,7 @@ export default function EmotionalGuidance() {
             <section className="rounded-[1.75rem] border border-sand-200 bg-sand-100/70 p-6 shadow-soft sm:p-8 dark:border-white/10 dark:bg-[#18231d]">
               <div className="mb-5 flex items-center justify-between gap-4">
                 <div>
-                  <h3 className="font-display text-2xl font-semibold text-sage-900 dark:text-sage-50">Coping Strategies</h3>
+                  <h3 className="compact-section-title font-display font-semibold text-sage-900 dark:text-sage-50">Coping Strategies</h3>
                   <p className="mt-2 text-sm text-sage-600 dark:text-sage-200">Pick as many supportive actions as you want to return to if your emotions start to swell.</p>
                 </div>
                 <div className="rounded-full bg-white/70 px-4 py-2 text-xs font-semibold uppercase tracking-[0.24em] text-sage-500 dark:bg-white/10 dark:text-sage-300">
@@ -510,7 +510,7 @@ export default function EmotionalGuidance() {
                   value={customStrategyInput}
                 />
                 <button
-                  className="inline-flex items-center justify-center gap-2 rounded-full bg-sage-700 px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-sage-800 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="inline-flex items-center justify-center gap-2 rounded-full bg-sage-700 px-5 py-3 text-sm font-medium text-white transition-colors hover:bg-sage-800 disabled:cursor-not-allowed disabled:opacity-50"
                   disabled={!customStrategyInput.trim()}
                   onClick={handleAddCustomStrategy}
                   type="button"
@@ -521,8 +521,8 @@ export default function EmotionalGuidance() {
               </div>
 
               <div className="mt-6 rounded-[1.5rem] border border-white/70 bg-white/70 p-5 dark:border-white/10 dark:bg-white/5">
-                <p className="text-xs font-semibold uppercase tracking-[0.24em] text-sage-500 dark:text-sage-300">Chosen support</p>
-                <p className="mt-2 font-display text-2xl font-semibold text-sage-800 dark:text-sage-50">
+                <p className="text-xs font-medium uppercase tracking-[0.24em] text-sage-500 dark:text-sage-300">Chosen support</p>
+                <p className="compact-display-value mt-2 font-display text-sage-800 dark:text-sage-50">
                   {selectedStrategies.length ? selectedStrategies.join(', ') : 'Choose one or more grounding tools'}
                 </p>
                 <p className="mt-2 text-sm leading-6 text-sage-600 dark:text-sage-200">
@@ -530,7 +530,7 @@ export default function EmotionalGuidance() {
                 </p>
                 {selectedStrategies.length ? (
                   <Link
-                    className="mt-4 inline-flex items-center gap-2 rounded-full border border-sage-200 bg-white px-4 py-2 text-xs font-semibold text-sage-700 transition-colors hover:bg-sage-50 dark:border-white/10 dark:bg-white/10 dark:text-sage-100"
+                    className="mt-4 inline-flex items-center gap-2 rounded-full border border-sage-200 bg-white px-4 py-2 text-xs font-medium text-sage-700 transition-colors hover:bg-sage-50 dark:border-white/10 dark:bg-white/10 dark:text-sage-100"
                     to={sharePath}
                   >
                     <span className="material-symbols-outlined text-[17px]">ios_share</span>
@@ -539,7 +539,7 @@ export default function EmotionalGuidance() {
                 ) : null}
 
                 <div className="mt-6 border-t border-sage-100 pt-5 dark:border-white/10">
-                  <label className="text-sm font-semibold text-sage-800 dark:text-sage-100" htmlFor="feeling-before-go">
+                  <label className="text-sm font-medium text-sage-800 dark:text-sage-100" htmlFor="feeling-before-go">
                     Before you go, what feels different?
                   </label>
                   <p className="mt-1 text-xs leading-5 text-sage-500 dark:text-sage-300">
@@ -556,7 +556,7 @@ export default function EmotionalGuidance() {
                 </div>
 
                 <button
-                  className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-full bg-sage-700 px-6 py-3 text-sm font-semibold text-white transition-all hover:bg-sage-800 hover:shadow-lifted disabled:cursor-not-allowed disabled:opacity-70"
+                  className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-full bg-sage-700 px-6 py-3 text-sm font-medium text-white transition-all hover:bg-sage-800 hover:shadow-lifted disabled:cursor-not-allowed disabled:opacity-70"
                   disabled={loading || saving}
                   onClick={handleSave}
                   type="button"
@@ -570,8 +570,8 @@ export default function EmotionalGuidance() {
             <section className="rounded-[1.75rem] border border-sage-100 bg-white p-6 shadow-soft sm:p-8 dark:border-white/10 dark:bg-white/5">
               <div className="flex items-start justify-between gap-4">
                 <div>
-                  <p className="text-xs font-semibold uppercase tracking-[0.24em] text-sage-500 dark:text-sage-300">Saved Coping Plans</p>
-                  <h2 className="mt-2 text-3xl font-semibold text-sage-900 dark:text-sage-50">Support you can reuse</h2>
+                  <p className="text-xs font-medium uppercase tracking-[0.24em] text-sage-500 dark:text-sage-300">Saved Coping Plans</p>
+                  <h2 className="compact-section-title mt-2 text-sage-900 dark:text-sage-50">Support you can reuse</h2>
                   <p className="mt-2 text-sm leading-6 text-sage-600 dark:text-sage-200">
                     Plans are saved automatically with emotional check-ins, so useful combinations remain easy to find.
                   </p>
@@ -593,7 +593,7 @@ export default function EmotionalGuidance() {
                         <div>
                           <div className="flex flex-wrap gap-2">
                             {plan.strategies.map((strategy) => (
-                              <span key={strategy} className="rounded-full bg-white px-3 py-1.5 text-xs font-semibold text-sage-700 shadow-sm dark:bg-white/10 dark:text-sage-100">
+                              <span key={strategy} className="rounded-full bg-white px-3 py-1.5 text-xs font-medium text-sage-700 shadow-sm dark:bg-white/10 dark:text-sage-100">
                                 {strategy}
                               </span>
                             ))}
@@ -604,7 +604,7 @@ export default function EmotionalGuidance() {
                           </p>
                         </div>
                         <button
-                          className="inline-flex shrink-0 items-center justify-center gap-2 rounded-full border border-sage-200 bg-white px-4 py-2 text-xs font-semibold text-sage-700 transition-colors hover:bg-sage-100 dark:border-white/10 dark:bg-white/5 dark:text-sage-100 dark:hover:bg-white/10"
+                          className="inline-flex shrink-0 items-center justify-center gap-2 rounded-full border border-sage-200 bg-white px-4 py-2 text-xs font-medium text-sage-700 transition-colors hover:bg-sage-100 dark:border-white/10 dark:bg-white/5 dark:text-sage-100 dark:hover:bg-white/10"
                           onClick={() => applyCopingPlan(plan.strategies)}
                           type="button"
                         >
@@ -618,7 +618,7 @@ export default function EmotionalGuidance() {
               ) : (
                 <div className="mt-6 rounded-[1.5rem] border border-dashed border-sage-200 bg-sage-50/70 px-6 py-8 text-center dark:border-white/10 dark:bg-[#101915]">
                   <span className="material-symbols-outlined text-3xl text-sage-400">bookmark_add</span>
-                  <p className="mt-3 text-sm font-semibold text-sage-800 dark:text-sage-100">Your first saved plan will appear here.</p>
+                  <p className="mt-3 text-sm font-medium text-sage-800 dark:text-sage-100">Your first saved plan will appear here.</p>
                   <p className="mt-1 text-xs leading-5 text-sage-500 dark:text-sage-300">Choose a coping strategy and save today&apos;s check-in.</p>
                 </div>
               )}
@@ -627,23 +627,23 @@ export default function EmotionalGuidance() {
 
           <aside className="space-y-8">
             <section className="rounded-[1.75rem] border border-sage-100 bg-white p-6 shadow-soft sm:p-8 dark:border-white/10 dark:bg-white/5">
-              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-sage-500 dark:text-sage-300">What Helped Last Time</p>
+              <p className="text-xs font-medium uppercase tracking-[0.24em] text-sage-500 dark:text-sage-300">What Helped Last Time</p>
               {historyLoading ? (
                 <div className="mt-5 skeleton h-64 rounded-[1.5rem]" />
               ) : priorCopingRecall ? (
                 <div className="mt-4">
                   <p className="text-sm text-sage-500 dark:text-sage-300">{formatEmotionalHistoryDate(priorCopingRecall.date)}</p>
-                  <h3 className="mt-2 text-2xl font-semibold text-sage-900 dark:text-sage-50">
+                  <h3 className="compact-section-title mt-2 text-sage-900 dark:text-sage-50">
                     You reached for {priorCopingRecall.strategies.join(' and ')}.
                   </h3>
                   {priorCopingRecall.matchingThemes.length ? (
-                    <p className="mt-3 text-xs font-semibold uppercase tracking-[0.16em] text-sage-500 dark:text-sage-300">
+                    <p className="mt-3 text-xs font-medium uppercase tracking-[0.16em] text-sage-500 dark:text-sage-300">
                       Similar theme: {priorCopingRecall.matchingThemes.join(', ')}
                     </p>
                   ) : null}
                   {priorCopingRecall.closingReflection ? (
                     <div className="mt-5 rounded-2xl bg-sage-50 p-4 dark:bg-white/5">
-                      <p className="text-xs font-semibold uppercase tracking-[0.16em] text-sage-500 dark:text-sage-300">What shifted</p>
+                      <p className="text-xs font-medium uppercase tracking-[0.16em] text-sage-500 dark:text-sage-300">What shifted</p>
                       <p className="mt-2 text-sm leading-6 text-sage-700 dark:text-sage-100">{priorCopingRecall.closingReflection}</p>
                     </div>
                   ) : priorCopingRecall.mood != null ? (
@@ -656,7 +656,7 @@ export default function EmotionalGuidance() {
                     </p>
                   )}
                   <button
-                    className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-full bg-sage-700 px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-sage-800"
+                    className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-full bg-sage-700 px-5 py-3 text-sm font-medium text-white transition-colors hover:bg-sage-800"
                     onClick={() => applyCopingPlan(priorCopingRecall.strategies)}
                     type="button"
                   >
@@ -672,8 +672,8 @@ export default function EmotionalGuidance() {
             </section>
 
             <section className="rounded-[1.75rem] border border-sage-100 bg-sage-900 p-6 text-sage-50 shadow-soft sm:p-8">
-              <p className="text-xs font-semibold uppercase tracking-[0.3em] text-sage-200/80">Repeated Themes</p>
-              <h3 className="mt-3 text-3xl font-semibold">What has been showing up</h3>
+              <p className="text-xs font-medium uppercase tracking-[0.3em] text-sage-200/80">Repeated Themes</p>
+              <h3 className="compact-section-title mt-3">What has been showing up</h3>
               <p className="mt-3 text-sm leading-7 text-sage-100/75">
                 These are simple recurring themes in your own words, not a diagnosis or proof of cause.
               </p>
@@ -686,7 +686,7 @@ export default function EmotionalGuidance() {
                 <div className="mt-5 space-y-3">
                   {recurringTriggers.map((trigger) => (
                     <div key={trigger.id} className="rounded-2xl border border-white/10 bg-white/5 p-4">
-                      <p className="text-sm font-semibold text-white">{trigger.label}</p>
+                      <p className="text-sm font-medium text-white">{trigger.label}</p>
                       <p className="mt-1 text-xs leading-5 text-sage-200">
                         Appeared in {trigger.count} check-ins | Last seen {formatEmotionalHistoryDate(trigger.lastSeen)}
                       </p>
@@ -705,8 +705,8 @@ export default function EmotionalGuidance() {
         <section className="rounded-[1.75rem] border border-sage-100 bg-white p-6 shadow-soft sm:p-8 lg:p-10 dark:border-white/10 dark:bg-white/5">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
             <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-sage-500 dark:text-sage-300">Mood and Coping History</p>
-              <h2 className="mt-2 text-3xl font-semibold text-sage-900 dark:text-sage-50">How your support choices show up over time</h2>
+              <p className="text-xs font-medium uppercase tracking-[0.24em] text-sage-500 dark:text-sage-300">Mood and Coping History</p>
+              <h2 className="compact-section-title mt-2 text-sage-900 dark:text-sage-50">How your support choices show up over time</h2>
               <p className="mt-3 max-w-3xl text-sm leading-6 text-sage-600 dark:text-sage-200">
                 These are associations from your saved check-ins. They do not prove that a coping strategy caused a mood change.
               </p>
@@ -730,11 +730,11 @@ export default function EmotionalGuidance() {
                     <div className="flex size-11 items-center justify-center rounded-2xl bg-white text-sage-700 shadow-sm dark:bg-white/10 dark:text-sage-100">
                       <span className="material-symbols-outlined">self_improvement</span>
                     </div>
-                    <span className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-sage-600 shadow-sm dark:bg-white/10 dark:text-sage-200">
+                    <span className="rounded-full bg-white px-3 py-1 text-xs font-medium text-sage-600 shadow-sm dark:bg-white/10 dark:text-sage-200">
                       {pattern.uses} use{pattern.uses === 1 ? '' : 's'}
                     </span>
                   </div>
-                  <h3 className="mt-5 text-xl font-semibold text-sage-900 dark:text-sage-50">{pattern.strategy}</h3>
+                  <h3 className="mt-5 text-xl font-medium text-sage-900 dark:text-sage-50">{pattern.strategy}</h3>
                   <p className="mt-2 text-sm leading-6 text-sage-600 dark:text-sage-200">
                     {pattern.averageMood != null
                       ? `Mood averaged ${pattern.averageMood}/5 across ${pattern.moodSamples} rated check-in${pattern.moodSamples === 1 ? '' : 's'}.`
@@ -750,7 +750,7 @@ export default function EmotionalGuidance() {
           ) : (
             <div className="mt-6 rounded-[1.5rem] border border-dashed border-sage-200 bg-sage-50/70 px-6 py-9 text-center dark:border-white/10 dark:bg-[#101915]">
               <span className="material-symbols-outlined text-4xl text-sage-400">query_stats</span>
-              <p className="mt-3 text-lg font-semibold text-sage-800 dark:text-sage-100">Your coping history starts with one saved plan.</p>
+              <p className="mt-3 text-lg font-medium text-sage-800 dark:text-sage-100">Your coping history starts with one saved plan.</p>
               <p className="mx-auto mt-2 max-w-xl text-sm leading-6 text-sage-500 dark:text-sage-300">
                 Save emotional check-ins with coping strategies and mood ratings to build a more useful personal history.
               </p>

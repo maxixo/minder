@@ -184,10 +184,10 @@ export default function Review() {
         <div className="relative z-10 flex flex-col gap-7 lg:flex-row lg:items-end lg:justify-between">
           <div className="max-w-3xl">
             <p className="eyebrow text-sand-700 dark:text-sand-200">Daily closure ritual</p>
-            <h1 className="mt-3 font-display text-4xl font-medium leading-none tracking-[-0.03em] text-sage-900 sm:text-5xl lg:text-6xl dark:text-white">
+            <h1 className="compact-hero-title mt-3 font-display text-sage-900 lg:text-6xl dark:text-white">
               Set the day down.
             </h1>
-            <p className="mt-4 max-w-2xl text-base leading-7 text-sage-700 sm:text-lg dark:text-sage-100">
+            <p className="compact-lead mt-4 max-w-2xl text-sage-700 dark:text-sage-100">
               Notice what moved, name what remains, and choose what deserves to follow you into tomorrow.
             </p>
           </div>
@@ -228,7 +228,7 @@ export default function Review() {
         <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <p className="eyebrow">End-of-day scorecard</p>
-            <h2 className="mt-2 font-display text-3xl font-medium text-sage-900 dark:text-sage-50">A clear read, not a verdict</h2>
+            <h2 className="compact-section-title mt-2 font-display text-sage-900 dark:text-sage-50">A clear read, not a verdict</h2>
           </div>
           <p className="max-w-md text-sm leading-6 text-sage-600 dark:text-sage-300">
             The score reflects task progress, completed check-ins, self-care, and whether you paused to reflect.
@@ -241,7 +241,7 @@ export default function Review() {
               className="review-score-ring flex size-24 shrink-0 items-center justify-center rounded-full"
               style={{ '--review-score': `${scorecard.closureScore * 3.6}deg` } as React.CSSProperties}
             >
-              <div className="flex size-[74px] items-center justify-center rounded-full bg-sage-900 text-2xl font-bold dark:bg-sage-100">
+              <div className="flex size-[74px] items-center justify-center rounded-full bg-sage-900 text-2xl font-semibold dark:bg-sage-100">
                 {scorecard.closureScore}
               </div>
             </div>
@@ -284,7 +284,7 @@ export default function Review() {
                 <span className="material-symbols-outlined">{item.icon}</span>
               </div>
               <p className="mt-7 font-mono text-[10px] uppercase tracking-[0.18em] text-sage-500 dark:text-sage-300">{item.label}</p>
-              <p className="mt-1 font-display text-3xl font-semibold text-sage-900 dark:text-sage-50">{item.value}</p>
+              <p className="compact-display-value mt-1 font-display text-sage-900 dark:text-sage-50">{item.value}</p>
               <p className="mt-1 text-xs text-sage-600 dark:text-sage-300">{item.detail}</p>
             </div>
           ))}
@@ -296,7 +296,7 @@ export default function Review() {
           <div className="flex items-start justify-between gap-4">
             <div>
               <p className="eyebrow">What changed today</p>
-              <h2 className="mt-2 font-display text-3xl font-medium">The arc of the day</h2>
+              <h2 className="compact-section-title mt-2 font-display">The arc of the day</h2>
             </div>
             <span className="material-symbols-outlined rounded-2xl bg-sage-100 p-3 text-sage-700 dark:bg-white/10 dark:text-sage-100">timeline</span>
           </div>
@@ -318,7 +318,7 @@ export default function Review() {
 
         <section className="rounded-[1.75rem] border border-sand-200 bg-gradient-to-br from-sand-100 via-white to-sage-50 p-6 shadow-soft sm:p-8 dark:border-white/10 dark:bg-gradient-to-br dark:from-[#241f1a] dark:via-[#18201b] dark:to-[#142019]">
           <p className="eyebrow text-sand-700 dark:text-sand-200">Closure reflection</p>
-          <h2 className="mt-2 font-display text-3xl font-medium">Completed is not the only kind of progress.</h2>
+          <h2 className="compact-section-title mt-2 font-display">Completed is not the only kind of progress.</h2>
           <p className="mt-3 text-sm leading-6 text-sage-600 dark:text-sage-300">
             What did finishing teach you? What made the unfinished work difficult, and what would make tomorrow gentler?
           </p>
@@ -445,7 +445,7 @@ export default function Review() {
                     {selected ? 'check' : sourceIcon[suggestion.source]}
                   </span>
                   <span className="min-w-0 flex-1">
-                    <span className="block text-sm font-semibold">{suggestion.text}</span>
+                    <span className="block text-sm font-medium">{suggestion.text}</span>
                     <span className={clsx('mt-1 block text-xs', selected ? 'text-sage-600' : 'text-sage-300')}>
                       {suggestion.detail}
                     </span>
@@ -455,7 +455,7 @@ export default function Review() {
             }) : (
               <div className="rounded-2xl border border-dashed border-white/20 bg-white/5 p-6 text-center">
                 <span className="material-symbols-outlined text-3xl text-sage-300">done_all</span>
-                <p className="mt-3 text-sm font-semibold">Nothing needs to be carried forward.</p>
+                <p className="mt-3 text-sm font-medium">Nothing needs to be carried forward.</p>
                 <p className="mt-1 text-xs leading-5 text-sage-300">Unfinished tasks and open priorities will appear here.</p>
               </div>
             )}
@@ -465,7 +465,7 @@ export default function Review() {
             <p className="text-xs text-sage-300">{selectedCarryForward.length} selected for tomorrow</p>
             {selectedCarryForward.length ? (
               <button
-                className="text-xs font-semibold text-sand-200 hover:text-white"
+                className="text-xs font-medium text-sand-200 hover:text-white"
                 onClick={() => setSelectedCarryForward([])}
                 type="button"
               >
@@ -504,8 +504,8 @@ export default function Review() {
               { label: 'Average mood', value: weeklyReview.averageMood != null ? `${weeklyReview.averageMood}/5` : 'Not set' },
             ].map((item) => (
               <div key={item.label} className="rounded-2xl border border-sage-100 bg-sage-50/70 p-4 dark:border-white/10 dark:bg-white/5">
-                <p className="font-display text-2xl font-semibold">{item.value}</p>
-                <p className="mt-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-sage-500 dark:text-sage-300">{item.label}</p>
+                <p className="font-display text-2xl font-medium">{item.value}</p>
+                <p className="mt-1 text-[10px] font-medium uppercase tracking-[0.14em] text-sage-500 dark:text-sage-300">{item.label}</p>
               </div>
             ))}
           </div>
@@ -571,7 +571,7 @@ export default function Review() {
             <h2 className="mt-2 font-display text-3xl font-medium">Keep the list honest</h2>
           </div>
           <button
-            className="inline-flex items-center gap-2 rounded-full border border-sage-200 px-4 py-2 text-xs font-semibold text-sage-700 hover:bg-sage-50 dark:border-white/10 dark:text-sage-100 dark:hover:bg-white/10"
+          className="inline-flex items-center gap-2 rounded-full border border-sage-200 px-4 py-2 text-xs font-medium text-sage-700 hover:bg-sage-50 dark:border-white/10 dark:text-sage-100 dark:hover:bg-white/10"
             onClick={addPriority}
             type="button"
           >
@@ -583,7 +583,7 @@ export default function Review() {
         <div className="mt-6 grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
           {priorities.map((priority, index) => (
             <div key={`priority-${index + 1}`} className="group flex items-center gap-3 rounded-2xl border border-sage-100 bg-sage-50/60 p-4 dark:border-white/10 dark:bg-white/5">
-              <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-sand-200 font-mono text-xs font-bold text-sand-800 dark:bg-sand-800 dark:text-sand-100">
+              <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-sand-200 font-mono text-xs font-semibold text-sand-800 dark:bg-sand-800 dark:text-sand-100">
                 {index + 1}
               </span>
               <input

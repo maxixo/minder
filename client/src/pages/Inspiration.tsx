@@ -273,22 +273,22 @@ export default function Inspiration() {
   };
 
   return (
-    <div className="animate-fade-in pb-10 text-slate-900 [&_.font-display]:font-body [&_h1]:font-body [&_h2]:font-body [&_h3]:font-body dark:text-sage-50">
+    <div className="editorial-page animate-fade-in">
       <section className="overflow-hidden rounded-[2rem] border border-sage-200 bg-gradient-to-br from-white via-sage-50 to-sand-50 shadow-soft dark:border-white/10 dark:from-[#18231d] dark:via-[#121b16] dark:to-[#0f1712]">
         <div className="flex flex-col gap-6 px-6 py-8 sm:px-8 lg:flex-row lg:items-end lg:justify-between lg:px-10">
           <div className="max-w-3xl">
             <p className="text-xs font-semibold uppercase tracking-[0.32em] text-sage-500 dark:text-sage-300">Daily Inspiration</p>
-            <h1 className="mt-3 text-4xl font-semibold text-sage-900 sm:text-5xl dark:text-sage-50">
+            <h1 className="compact-hero-title mt-3 text-sage-900 dark:text-sage-50">
               A quieter utility for your daily reset.
             </h1>
-            <p className="mt-4 max-w-2xl text-base leading-7 text-sage-600 sm:text-lg dark:text-sage-200">
+            <p className="compact-lead mt-4 max-w-2xl text-sage-600 dark:text-sage-200">
               This page keeps inspiration separate from the dashboard so your home screen stays action-oriented while quotes remain easy to revisit, reflect on, and share.
             </p>
           </div>
 
           <div className="rounded-[1.5rem] border border-sage-100 bg-white/80 p-5 shadow-sm backdrop-blur dark:border-white/10 dark:bg-white/5">
             <p className="text-xs font-semibold uppercase tracking-[0.24em] text-sage-500 dark:text-sage-300">Today</p>
-            <p className="mt-2 text-2xl font-semibold text-sage-800 dark:text-sage-50">{featuredDate}</p>
+            <p className="compact-display-value mt-2 text-sage-800 dark:text-sage-50">{featuredDate}</p>
             <p className="mt-2 text-sm font-medium text-sage-700 dark:text-sage-100">By {featuredQuote.author}</p>
             <p className="mt-2 text-sm leading-6 text-sage-600 dark:text-sage-200">
               {isLoadingDailyQuote
@@ -314,7 +314,7 @@ export default function Inspiration() {
                       ? 'From your library'
                     : 'From the collection'}
               </p>
-              <h2 className="mt-3 text-3xl font-semibold tracking-tight text-slate-900 dark:text-sage-50">
+              <h2 className="compact-section-title mt-3 tracking-tight text-slate-900 dark:text-sage-50">
                 {isShowingDailyQuote
                   ? 'Today\'s quote'
                   : activeSavedQuote
@@ -334,7 +334,7 @@ export default function Inspiration() {
               <div>
                 <p className="text-xs font-semibold uppercase tracking-[0.28em] text-white/65">{activeQuote.author}</p>
                 <span className="material-symbols-outlined mt-6 text-5xl text-white/40">format_quote</span>
-                <blockquote className="mt-5 max-w-3xl text-3xl font-semibold leading-tight sm:text-4xl">
+                <blockquote className="compact-display-number mt-5 max-w-3xl font-semibold leading-tight sm:text-4xl">
                   {activeQuote.text}
                 </blockquote>
               </div>
@@ -448,7 +448,7 @@ export default function Inspiration() {
 
           <section className="rounded-[1.75rem] border border-slate-900 bg-gradient-to-br from-slate-900 via-[#1b2b22] to-sage-800 p-6 text-white shadow-soft">
             <p className="text-xs font-semibold uppercase tracking-[0.24em] text-white/60">Collection</p>
-            <h2 className="mt-3 text-2xl font-semibold leading-tight">A small quote set for daily reuse</h2>
+            <h2 className="compact-section-title mt-3 font-semibold leading-tight">A small quote set for daily reuse</h2>
             <p className="mt-3 text-sm leading-7 text-white/80">
               Today&apos;s featured quote now comes from the server, while this local collection stays available for quick browsing and fallback coverage.
             </p>
@@ -473,7 +473,7 @@ export default function Inspiration() {
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.24em] text-sage-500 dark:text-sage-300">Personal Quote Library</p>
-            <h2 className="mt-2 text-3xl font-semibold text-sage-900 dark:text-sage-50">Inspiration worth returning to</h2>
+            <h2 className="compact-section-title mt-2 font-semibold text-sage-900 dark:text-sage-50">Inspiration worth returning to</h2>
             <p className="mt-3 max-w-2xl text-sm leading-6 text-sage-600 dark:text-sage-200">
               Favorite quotes stay connected to your account so you can reopen, reflect on, download, or share them later.
             </p>

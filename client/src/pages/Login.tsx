@@ -109,7 +109,7 @@ export default function Login() {
                 Resources
               </a>
               <Link
-                className="rounded-full bg-[#5e7860] px-6 py-2 text-sm font-bold text-white transition-all hover:bg-sage-600"
+                className="rounded-full bg-[#5e7860] px-6 py-2 text-sm font-semibold text-white transition-all hover:bg-sage-600"
                 to="/register"
               >
                 Sign Up
@@ -130,18 +130,18 @@ export default function Login() {
                 <div className="relative z-10 flex flex-col items-center">
                   <BrandLogo
                     className="mb-5 justify-center"
-                    titleClassName="text-3xl text-[#141514] dark:text-sage-50 sm:text-[2.2rem]"
+                    titleClassName="compact-display-value text-[#141514] dark:text-sage-50 sm:text-[2.2rem]"
                     iconClassName="h-10 w-10 text-[#44604a] dark:text-sage-50"
                   />
 
-                  <h1 className="mb-2 text-center font-sans text-2xl font-semibold text-[#5e7860] sm:text-3xl md:text-4xl">
+                  <h1 className="compact-section-title mb-2 text-center font-sans text-[#5e7860] md:text-4xl">
                     Welcome Back
                   </h1>
-                  <p className="mb-6 text-center text-gray-500 dark:text-sage-300 sm:mb-8">Continue your journey to wellness</p>
+                  <p className="compact-lead mb-6 text-center text-gray-500 dark:text-sage-300 sm:mb-8">Continue your journey to wellness</p>
 
                   <form className="w-full space-y-6" onSubmit={handleSubmit}>
                     <div className="relative">
-                      <label className="mb-2 ml-1 block text-xs font-semibold uppercase tracking-wider text-[#5e7860]/70">
+                      <label className="mb-2 ml-1 block text-xs font-medium uppercase tracking-wider text-[#5e7860]/70">
                         Email Address
                       </label>
                       <div className="flex items-center rounded-xl border-2 border-transparent bg-sand-100 px-4 py-1 transition-all dark:bg-[#101915]">
@@ -160,8 +160,8 @@ export default function Login() {
 
                     <div className="relative">
                       <div className="mb-2 ml-1 flex items-center justify-between">
-                        <label className="text-xs font-semibold uppercase tracking-wider text-[#5e7860]/70">Password</label>
-                        <a className="text-xs font-semibold text-[#5e7860] hover:underline" href="#">
+                        <label className="text-xs font-medium uppercase tracking-wider text-[#5e7860]/70">Password</label>
+                        <a className="text-xs font-medium text-[#5e7860] hover:underline" href="#">
                           Forgot?
                         </a>
                       </div>
@@ -207,7 +207,7 @@ export default function Login() {
                     </div>
 
                     <button
-                      className="mt-2 flex w-full items-center justify-center gap-2 rounded-xl bg-[#5e7860] py-3.5 text-base font-bold text-white transition-all hover:bg-sage-600 hover:shadow-lg hover:shadow-[#5e7860]/20 disabled:cursor-not-allowed disabled:opacity-70 sm:mt-4 sm:py-4 sm:text-lg"
+                      className="mt-2 flex w-full items-center justify-center gap-2 rounded-xl bg-[#5e7860] py-3.5 text-base font-semibold text-white transition-all hover:bg-sage-600 hover:shadow-lg hover:shadow-[#5e7860]/20 disabled:cursor-not-allowed disabled:opacity-70 sm:mt-4 sm:py-4 sm:text-lg"
                       disabled={isSubmitting}
                       type="submit"
                     >
@@ -219,7 +219,7 @@ export default function Login() {
                   <div className="mt-8 flex flex-col items-center gap-4">
                     <p className="text-sm text-gray-500 dark:text-sage-300">
                       New to MindfulLife?{' '}
-                      <Link className="font-bold text-[#5e7860] hover:underline" to="/register">
+                      <Link className="font-semibold text-[#5e7860] hover:underline" to="/register">
                         Create an account
                       </Link>
                     </p>

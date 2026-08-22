@@ -268,7 +268,7 @@ export default function SelfCare() {
             <div className="flex size-8 items-center justify-center rounded-lg bg-[#13ec25]/20 dark:bg-[#13ec25]/15">
               <span className="material-symbols-outlined text-sage-600 dark:text-sage-100">psychology_alt</span>
             </div>
-            <h2 className="text-lg font-bold leading-tight tracking-[-0.015em] text-sage-900 dark:text-sage-50">Self-Care Hub</h2>
+            <h2 className="text-lg font-semibold leading-tight tracking-[-0.015em] text-sage-900 dark:text-sage-50">Self-Care Hub</h2>
           </div>
 
           <div className="flex flex-1 justify-end gap-8">
@@ -299,14 +299,14 @@ export default function SelfCare() {
           <div className="flex w-full flex-1 flex-col">
             <div className="mb-8 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
               <div className="flex flex-col gap-2">
-                <h1 className="text-4xl font-black leading-tight tracking-[-0.033em] text-sage-900 dark:text-sage-50">Daily Activity Hub</h1>
-                <p className="text-base font-normal leading-normal text-sage-500 dark:text-sage-300">
+                <h1 className="compact-hero-title text-sage-900 dark:text-sage-50">Daily Activity Hub</h1>
+                <p className="compact-lead text-sage-500 dark:text-sage-300">
                   Rooted in mindfulness. Nourish your mind and spirit today.
                 </p>
               </div>
 
               <button
-                className="inline-flex items-center justify-center gap-2 rounded-full bg-sage-900 px-6 py-3 text-sm font-semibold text-white transition-all hover:bg-sage-800 disabled:cursor-not-allowed disabled:opacity-70"
+                className="inline-flex items-center justify-center gap-2 rounded-full bg-sage-900 px-6 py-3 text-sm font-medium text-white transition-all hover:bg-sage-800 disabled:cursor-not-allowed disabled:opacity-70"
                 disabled={loading || saving}
                 onClick={handleSave}
                 type="button"
@@ -331,7 +331,7 @@ export default function SelfCare() {
             <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
               <div className="flex flex-col gap-8 lg:col-span-2">
                 <section>
-                  <h2 className="mb-4 text-[22px] font-bold leading-tight tracking-[-0.015em] text-sage-900 dark:text-sage-50">How are you feeling?</h2>
+                  <h2 className="compact-section-title mb-4 font-semibold text-sage-900 dark:text-sage-50">How are you feeling?</h2>
                   <div className="grid grid-cols-3 gap-3 md:grid-cols-4 lg:grid-cols-6">
                     {moodOptions.map((mood) => {
                       const isSelected = selectedMood === mood.key;
@@ -342,13 +342,22 @@ export default function SelfCare() {
                           className={clsx(
                             'group flex cursor-pointer flex-col items-center justify-center rounded-xl border bg-white p-4 shadow-sm transition-all dark:bg-white/5',
                             isSelected
-                              ? 'border-[#13ec25] bg-[#13ec25]/10 dark:bg-[#13ec25]/15'
+                              ? 'border-[#13ec25] shadow-[0_12px_28px_-20px_rgba(19,236,37,0.7)]'
                               : 'border-sage-100 hover:border-[#13ec25] dark:border-white/10'
                           )}
                           onClick={() => setSelectedMood(mood.key)}
                           type="button"
                         >
-                          <span className="mb-2 text-3xl">{mood.emoji}</span>
+                          <span
+                            className={clsx(
+                              'mb-2 text-3xl transition-all duration-200',
+                              isSelected
+                                ? 'scale-110 brightness-125 saturate-150 drop-shadow-[0_0_14px_rgba(19,236,37,0.35)]'
+                                : 'opacity-80 group-hover:opacity-100'
+                            )}
+                          >
+                            {mood.emoji}
+                          </span>
                           <p className="text-sm font-medium text-sage-900 dark:text-sage-100">{mood.label}</p>
                         </button>
                       );
@@ -357,7 +366,7 @@ export default function SelfCare() {
                 </section>
 
                 <section>
-                  <h2 className="mb-4 text-[22px] font-bold leading-tight tracking-[-0.015em] text-sage-900 dark:text-sage-50">Activity Progress</h2>
+                  <h2 className="compact-section-title mb-4 font-semibold text-sage-900 dark:text-sage-50">Activity Progress</h2>
                   <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
                     {activityConfig.map((activity) => (
                       <div
@@ -365,7 +374,7 @@ export default function SelfCare() {
                         className="flex flex-col items-center gap-3 rounded-xl border border-sage-100 bg-white p-6 shadow-sm dark:border-white/10 dark:bg-white/5"
                       >
                         <span className="material-symbols-outlined text-4xl text-sage-500">{activity.icon}</span>
-                        <span className="text-lg font-bold">{activity.label}</span>
+                        <span className="text-lg font-medium">{activity.label}</span>
                         <div className="flex items-center gap-4">
                           <button
                             className="flex size-8 items-center justify-center rounded-full bg-sage-50 text-sage-600 dark:bg-white/10 dark:text-sage-100"
@@ -374,7 +383,7 @@ export default function SelfCare() {
                           >
                             -
                           </button>
-                          <span className="text-2xl font-black">{activities[activity.key]}</span>
+                          <span className="text-2xl font-semibold">{activities[activity.key]}</span>
                           <button
                             className="flex size-8 items-center justify-center rounded-full bg-[#13ec25]/20 text-sage-600"
                             onClick={() => adjustActivity(activity.key, 1)}
@@ -390,7 +399,7 @@ export default function SelfCare() {
                 </section>
 
                 <section>
-                  <h2 className="mb-4 text-[22px] font-bold leading-tight tracking-[-0.015em] text-sage-900 dark:text-sage-50">Mind Thoughts</h2>
+                  <h2 className="compact-section-title mb-4 font-semibold text-sage-900 dark:text-sage-50">Mind Thoughts</h2>
                   <div className="relative overflow-hidden rounded-xl border border-sage-100 bg-white shadow-sm dark:border-white/10 dark:bg-white/5">
                     <div aria-hidden="true" className="self-care-botanical-watermark pointer-events-none absolute inset-0 opacity-5" />
                     <textarea
@@ -403,7 +412,7 @@ export default function SelfCare() {
                 </section>
 
                 <section className="mb-10 rounded-xl bg-sage-50 p-6 dark:bg-white/5">
-                  <h2 className="mb-6 text-xl font-bold text-sage-900 dark:text-sage-50">Daily Ratings</h2>
+                  <h2 className="compact-section-title mb-6 font-semibold text-sage-900 dark:text-sage-50">Daily Ratings</h2>
                   <div className="grid grid-cols-1 gap-8 md:grid-cols-3">
                     {ratingConfig.map((rating) => (
                       <div key={rating.key} className="flex flex-col gap-2">
@@ -440,8 +449,8 @@ export default function SelfCare() {
               <aside className="flex flex-col gap-6">
                 <div className="sticky top-24 rounded-xl border border-sage-100 bg-white p-6 shadow-sm dark:border-white/10 dark:bg-white/5">
                   <div className="mb-6 flex items-center justify-between">
-                    <h3 className="text-lg font-bold">Self-Care Checklist</h3>
-                    <span className="rounded bg-sage-50 px-2 py-1 text-xs font-bold text-sage-500 dark:bg-white/10 dark:text-sage-300">{completionRate}% Done</span>
+                    <h3 className="text-lg font-semibold">Self-Care Checklist</h3>
+                    <span className="rounded bg-sage-50 px-2 py-1 text-xs font-medium text-sage-500 dark:bg-white/10 dark:text-sage-300">{completionRate}% Done</span>
                   </div>
 
                   <div className="mb-8 h-2 w-full overflow-hidden rounded-full bg-sage-100">
@@ -479,7 +488,7 @@ export default function SelfCare() {
 
                   <div className="mt-7 border-t border-sage-100 pt-6 dark:border-white/10">
                     <div className="mb-4">
-                      <p className="text-sm font-bold text-sage-900 dark:text-sage-50">Your own checklist</p>
+                      <p className="text-sm font-semibold text-sage-900 dark:text-sage-50">Your own checklist</p>
                       <p className="mt-1 text-xs leading-5 text-sage-500 dark:text-sage-300">
                         Add the specific care actions that matter to you today.
                       </p>
@@ -546,7 +555,7 @@ export default function SelfCare() {
                   </div>
 
                   <div className="mt-8 rounded-xl border border-[#13ec25]/20 bg-[#13ec25]/10 p-4 dark:bg-[#13ec25]/12">
-                    <p className="mb-1 text-xs font-bold text-sage-600 dark:text-sage-200">PROMPT OF THE DAY</p>
+                    <p className="mb-1 text-xs font-medium text-sage-600 dark:text-sage-200">PROMPT OF THE DAY</p>
                     <p className="text-sm italic text-sage-700 dark:text-sage-100">
                       &quot;What is one thing you can forgive yourself for today?&quot;
                     </p>
@@ -557,7 +566,7 @@ export default function SelfCare() {
           </div>
         </main>
 
-        <footer className="border-t border-sage-100 px-10 py-6 text-center text-sm text-sage-400 dark:border-white/10 dark:text-sage-400">
+        <footer className="hidden border-t border-sage-100 px-10 py-6 text-center text-sm text-sage-400 dark:border-white/10 dark:text-sage-400 sm:block">
           <div className="flex flex-col items-center gap-3">
             <BrandLogo
               titleClassName="text-lg text-sage-700 dark:text-sage-50"

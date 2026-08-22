@@ -41,6 +41,7 @@ export const parseAllowedOrigins = (clientUrl = process.env.CLIENT_URL) => {
 
 export const getRuntimeConfigErrors = (env: NodeJS.ProcessEnv = process.env) => {
   const errors: string[] = [];
+  const effectiveCsrfSecret = env.CSRF_SECRET?.trim() || env.JWT_SECRET?.trim() || '';
 
   if (!env.DATABASE_URL?.trim()) {
     errors.push('DATABASE_URL is required.');
@@ -61,10 +62,10 @@ export const getRuntimeConfigErrors = (env: NodeJS.ProcessEnv = process.env) => 
     errors.push('JWT_SECRET must be at least 32 characters in production.');
   }
 
-  if (!env.CSRF_SECRET?.trim()) {
-    errors.push('CSRF_SECRET is required.');
-  } else if (isProductionEnvironment(env.NODE_ENV) && env.CSRF_SECRET.trim().length < 32) {
-    errors.push('CSRF_SECRET must be at least 32 characters in production.');
+  if (!effectiveCsrfSecret) {
+    errors.push('CSRF_SECRET or JWT_SECRET is required.');
+  } else if (isProductionEnvironment(env.NODE_ENV) && effectiveCsrfSecret.length < 32) {
+    errors.push('CSRF_SECRET or JWT_SECRET must be at least 32 characters in production.');
   }
 
   if (env.PORT && !isPositiveInteger(env.PORT.trim())) {

@@ -120,9 +120,9 @@ const normalizePreferences = (preferences: any): PreferencesState => ({
   },
 });
 
-const settingsPanelClassName = 'rounded-[1.75rem] border border-sage-200 bg-gradient-to-br from-sage-50 via-[#f8fcf8] to-sage-100/80 p-6 shadow-soft sm:p-8 dark:border-white/10 dark:bg-gradient-to-br dark:from-[#18231d] dark:via-[#121b16] dark:to-[#0f1712]';
+const settingsPanelClassName = 'panel-shell-gradient';
 const settingsInputClassName = 'input rounded-[1.25rem] border-sage-200 bg-sage-100/70 dark:border-white/10 dark:bg-[#101915]';
-const settingsInsetClassName = 'rounded-[1.25rem] border border-sage-200 bg-sage-50/90 p-4 shadow-sm dark:border-white/10 dark:bg-white/5';
+const settingsInsetClassName = 'panel-inset';
 const MAX_AVATAR_FILE_BYTES = 2 * 1024 * 1024;
 const ACCEPTED_AVATAR_FILE_TYPES = ['image/png', 'image/jpeg', 'image/webp', 'image/gif'];
 
@@ -170,7 +170,7 @@ const ToggleRow = ({
     type="button"
   >
     <div>
-      <p className="font-semibold text-slate-900 dark:text-sage-50">{label}</p>
+      <p className="font-medium text-slate-900 dark:text-sage-50">{label}</p>
       <p className="mt-1 text-sm leading-6 text-sage-600 dark:text-sage-300">{description}</p>
     </div>
     <span className={clsx(
@@ -805,15 +805,15 @@ export default function Settings() {
   };
 
   return (
-    <div className="animate-fade-in pb-10 text-slate-900 [&_.font-display]:font-body [&_h1]:font-body [&_h2]:font-body [&_h3]:font-body [&_h4]:font-body [&_h5]:font-body [&_h6]:font-body dark:text-sage-50">
-      <section className="overflow-hidden rounded-[2rem] border border-sage-200 bg-gradient-to-br from-white via-sage-50 to-sand-50 shadow-soft dark:border-white/10 dark:bg-gradient-to-br dark:from-[#18231d] dark:via-[#121b16] dark:to-[#0f1712]" id="account-overview">
+    <div className="editorial-page animate-fade-in">
+      <section className="hero-shell section-reveal-soft" id="account-overview">
         <div className="flex flex-col gap-6 px-6 py-8 sm:px-8 lg:flex-row lg:items-end lg:justify-between lg:px-10">
           <div className="max-w-3xl">
-            <p className="text-xs font-semibold uppercase tracking-[0.32em] text-sage-500 dark:text-sage-300">Settings</p>
-            <h1 className="mt-3 font-display text-4xl font-semibold text-sage-900 sm:text-5xl dark:text-sage-50">
+            <p className="text-xs font-medium uppercase tracking-[0.32em] text-sage-500 dark:text-sage-300">Settings</p>
+            <h1 className="compact-hero-title mt-3 font-display text-sage-900 dark:text-sage-50">
               A calmer space for your account, {firstName}.
             </h1>
-            <p className="mt-4 max-w-2xl text-base leading-7 text-sage-600 sm:text-lg dark:text-sage-200">
+            <p className="compact-lead mt-4 max-w-2xl text-sage-600 dark:text-sage-200">
               Shape how MindfulLife feels day to day, protect your privacy, and keep your account details aligned with the rhythm you want.
             </p>
           </div>
@@ -823,14 +823,14 @@ export default function Settings() {
               ariaHidden
               avatar={safeAvatarUrl}
               className="h-16 w-16 rounded-2xl shadow-sm"
-              fallbackClassName="flex items-center justify-center bg-sage-100 text-lg font-semibold text-sage-700 dark:bg-white/10 dark:text-sage-100"
+              fallbackClassName="flex items-center justify-center bg-sage-100 text-lg font-medium text-sage-700 dark:bg-white/10 dark:text-sage-100"
               imgClassName="object-cover"
               name={name || user?.name}
             />
 
             <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-sage-500 dark:text-sage-300">Account Snapshot</p>
-              <p className="mt-2 font-display text-2xl font-semibold text-sage-800 dark:text-sage-50">{user?.name || 'Mindful member'}</p>
+              <p className="text-xs font-medium uppercase tracking-[0.24em] text-sage-500 dark:text-sage-300">Account Snapshot</p>
+              <p className="compact-display-value mt-2 font-display text-sage-800 dark:text-sage-50">{user?.name || 'Mindful member'}</p>
               <p className="mt-1 text-sm text-sage-600 dark:text-sage-200">{user?.email || 'No email available'}</p>
               <p className="mt-2 text-sm text-sage-500 dark:text-sage-300">Member since {memberSince}</p>
             </div>
@@ -839,14 +839,15 @@ export default function Settings() {
       </section>
 
       <section
-        className="mt-8 overflow-hidden rounded-[1.75rem] border border-sage-200 bg-white shadow-soft dark:border-white/10 dark:bg-white/5"
+        className="panel-shell mt-8 overflow-hidden section-reveal"
         id="billing"
+        style={{ animationDelay: '90ms' }}
       >
         <div className="grid grid-cols-1">
           <div className="bg-gradient-to-br from-sage-800 via-sage-700 to-[#4f6d58] p-6 text-white sm:p-8">
             <div className="flex items-center justify-between gap-4">
-              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-white/65">Current Plan</p>
-              <span className="rounded-full border border-white/15 bg-white/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-white/85">
+              <p className="text-xs font-medium uppercase tracking-[0.24em] text-white/65">Current Plan</p>
+              <span className="rounded-full border border-white/15 bg-white/10 px-3 py-1 text-[10px] font-medium uppercase tracking-[0.18em] text-white/85">
                 {billingStatusLabel[billing.status]}
               </span>
             </div>
@@ -855,21 +856,21 @@ export default function Settings() {
               <div className="mt-6 skeleton h-44 rounded-[1.5rem] bg-white/10" />
             ) : (
               <>
-                <h2 className="mt-5 font-display text-4xl font-semibold">
+                <h2 className="compact-display-number mt-5 font-display">
                   {billing.plan === 'free' ? 'MindfulLife Free' : `MindfulLife ${billing.plan[0].toUpperCase()}${billing.plan.slice(1)}`}
                 </h2>
                 <p className="mt-4 max-w-xl text-sm leading-7 text-white/80">{billingRenewalMessage}</p>
 
                 <div className="mt-6 grid grid-cols-2 gap-3">
                   <div className="rounded-[1.25rem] border border-white/10 bg-white/10 p-4">
-                    <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-white/60">Billing</p>
-                    <p className="mt-2 text-sm font-semibold text-white">
+                    <p className="text-[10px] font-medium uppercase tracking-[0.18em] text-white/60">Billing</p>
+                    <p className="mt-2 text-sm font-medium text-white">
                       {billing.billingInterval ? `${billing.billingInterval[0].toUpperCase()}${billing.billingInterval.slice(1)}` : 'No recurring charge'}
                     </p>
                   </div>
                   <div className="rounded-[1.25rem] border border-white/10 bg-white/10 p-4">
-                    <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-white/60">Provider</p>
-                    <p className="mt-2 text-sm font-semibold text-white">
+                    <p className="text-[10px] font-medium uppercase tracking-[0.18em] text-white/60">Provider</p>
+                    <p className="mt-2 text-sm font-medium text-white">
                       {billing.billingProvider || 'Not connected'}
                     </p>
                   </div>
@@ -877,7 +878,7 @@ export default function Settings() {
 
                 {billing.plan !== 'free' ? (
                   <button
-                    className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-full bg-white px-5 py-3 text-sm font-bold text-sage-900 transition-transform hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-60"
+                    className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-full bg-white px-5 py-3 text-sm font-semibold text-sage-900 transition-transform hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-60"
                     disabled={isBillingActionPending}
                     onClick={() => void handleManageSubscription()}
                     type="button"
@@ -893,15 +894,15 @@ export default function Settings() {
           <div className="p-6 sm:p-8">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
               <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.24em] text-sage-500 dark:text-sage-300">Premium Upgrade</p>
-                <h2 className="mt-2 font-display text-3xl font-semibold text-sage-900 dark:text-sage-50">Turn daily check-ins into longer-term clarity.</h2>
+                <p className="text-xs font-medium uppercase tracking-[0.24em] text-sage-500 dark:text-sage-300">Premium Upgrade</p>
+                <h2 className="compact-section-title mt-2 font-display text-sage-900 dark:text-sage-50">Turn daily check-ins into longer-term clarity.</h2>
               </div>
               <div className="inline-flex rounded-full border border-sage-200 bg-sage-50 p-1 dark:border-white/10 dark:bg-white/5">
                 {(['monthly', 'annual'] as BillingInterval[]).map((interval) => (
                   <button
                     key={interval}
                     className={clsx(
-                      'rounded-full px-4 py-2 text-xs font-semibold transition-colors',
+                      'rounded-full px-4 py-2 text-xs font-medium transition-colors',
                       billingInterval === interval
                         ? 'bg-sage-700 text-white dark:bg-sage-400 dark:text-sage-950'
                         : 'text-sage-600 hover:text-sage-900 dark:text-sage-200 dark:hover:text-white'
@@ -917,7 +918,7 @@ export default function Settings() {
 
             <div className="mt-6 grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(230px,0.7fr)]">
               <div className="rounded-[1.25rem] border border-sage-100 bg-sage-50/70 p-4 dark:border-white/10 dark:bg-white/5">
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-sage-500 dark:text-sage-300">
+                <p className="text-xs font-medium uppercase tracking-[0.18em] text-sage-500 dark:text-sage-300">
                   Everything included
                 </p>
                 <div className="mt-3 grid gap-2.5">
@@ -936,10 +937,10 @@ export default function Settings() {
               </div>
 
               <div className="rounded-[1.5rem] border border-sand-200 bg-sand-50 p-5 dark:border-white/10 dark:bg-[#101915]">
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-sand-700 dark:text-sand-200">
+                <p className="text-xs font-medium uppercase tracking-[0.18em] text-sand-700 dark:text-sand-200">
                   {billingInterval === 'annual' ? 'Best value' : 'Flexible plan'}
                 </p>
-                <p className="mt-3 font-display text-4xl font-semibold text-sage-900 dark:text-sage-50">
+                <p className="compact-display-number mt-3 font-display text-sage-900 dark:text-sage-50">
                   ${billing.pricing[billingInterval].amount}
                   <span className="ml-1 text-base font-medium text-sage-500 dark:text-sage-300">
                     /{billing.pricing[billingInterval].interval}
@@ -955,7 +956,7 @@ export default function Settings() {
 
                 {billing.plan === 'free' ? (
                   <button
-                    className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-full bg-sage-700 px-5 py-3 text-sm font-bold text-white transition-all hover:-translate-y-0.5 hover:bg-sage-800 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-sage-400 dark:text-sage-950"
+                    className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-full bg-sage-700 px-5 py-3 text-sm font-semibold text-white transition-all hover:-translate-y-0.5 hover:bg-sage-800 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-sage-400 dark:text-sage-950"
                     disabled={isBillingActionPending || Boolean(billing.premiumInterestAt && !billing.checkout[billingInterval])}
                     onClick={() => void handleUpgrade()}
                     type="button"
@@ -972,7 +973,7 @@ export default function Settings() {
                           : 'Request Premium access'}
                   </button>
                 ) : (
-                  <div className="mt-5 rounded-2xl bg-sage-100 px-4 py-3 text-sm font-semibold text-sage-700 dark:bg-white/10 dark:text-sage-100">
+                  <div className="mt-5 rounded-2xl bg-sage-100 px-4 py-3 text-sm font-medium text-sage-700 dark:bg-white/10 dark:text-sage-100">
                     Your account already includes paid-plan access.
                   </div>
                 )}
@@ -990,7 +991,7 @@ export default function Settings() {
         <div className="border-t border-sage-100 px-6 py-6 sm:px-8 dark:border-white/10">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-sage-500 dark:text-sage-300">Billing History</p>
+              <p className="text-xs font-medium uppercase tracking-[0.2em] text-sage-500 dark:text-sage-300">Billing History</p>
               <p className="mt-2 text-sm leading-6 text-sage-600 dark:text-sage-200">
                 {billing.invoices.length
                   ? `${billing.invoices.length} billing record${billing.invoices.length === 1 ? '' : 's'} available.`
@@ -1004,7 +1005,7 @@ export default function Settings() {
                 {billing.invoices.slice(0, 3).map((invoice) => (
                   <a
                     key={invoice.id}
-                    className="rounded-full border border-sage-200 px-4 py-2 text-xs font-semibold text-sage-700 hover:bg-sage-50 dark:border-white/10 dark:text-sage-100 dark:hover:bg-white/10"
+                    className="rounded-full border border-sage-200 px-4 py-2 text-xs font-medium text-sage-700 hover:bg-sage-50 dark:border-white/10 dark:text-sage-100 dark:hover:bg-white/10"
                     href={invoice.receiptUrl || undefined}
                     rel="noreferrer"
                     target={invoice.receiptUrl ? '_blank' : undefined}
@@ -1014,7 +1015,7 @@ export default function Settings() {
                 ))}
               </div>
             ) : (
-              <span className="inline-flex items-center gap-2 rounded-full bg-sage-50 px-4 py-2 text-xs font-semibold text-sage-600 dark:bg-white/10 dark:text-sage-200">
+              <span className="inline-flex items-center gap-2 rounded-full bg-sage-50 px-4 py-2 text-xs font-medium text-sage-600 dark:bg-white/10 dark:text-sage-200">
                 <span className="material-symbols-outlined text-[16px]">receipt_long</span>
                 Nothing billed
               </span>
@@ -1025,13 +1026,13 @@ export default function Settings() {
 
       <div className="mt-8 grid grid-cols-1 gap-8 xl:grid-cols-[minmax(0,1.6fr)_minmax(320px,1fr)]">
         <div className="space-y-8">
-          <section className={settingsPanelClassName} id="profile-details">
+          <section className={`${settingsPanelClassName} section-reveal`} id="profile-details" style={{ animationDelay: '150ms' }}>
             <div className="mb-6 flex items-center gap-4">
               <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-sage-100 text-sage-700 dark:bg-white/10 dark:text-sage-100">
                 <span className="material-symbols-outlined">badge</span>
               </div>
               <div>
-                <h2 className="font-display text-2xl font-semibold text-sage-900 dark:text-sage-50">Profile Details</h2>
+                <h2 className="font-display text-2xl font-medium text-sage-900 dark:text-sage-50">Profile Details</h2>
                 <p className="text-sm text-sage-500 dark:text-sage-300">Update the parts of your account that feel most personal and visible.</p>
               </div>
             </div>
@@ -1058,12 +1059,12 @@ export default function Settings() {
                         ariaHidden
                         avatar={safeAvatarUrl}
                         className="h-20 w-20 rounded-2xl shadow-sm"
-                        fallbackClassName="flex items-center justify-center bg-sage-200 text-lg font-semibold text-sage-700 dark:bg-white/10 dark:text-sage-100"
+                        fallbackClassName="flex items-center justify-center bg-sage-200 text-lg font-medium text-sage-700 dark:bg-white/10 dark:text-sage-100"
                         imgClassName="object-cover"
                         name={name || user?.name}
                       />
                       <div>
-                        <p className="text-sm font-semibold text-slate-900 dark:text-sage-50">Stored in Cloudinary</p>
+                        <p className="text-sm font-medium text-slate-900 dark:text-sage-50">Stored in Cloudinary</p>
                         <p className="mt-1 text-sm text-sage-600 dark:text-sage-300">PNG, JPEG, WEBP, or GIF up to 2MB.</p>
                       </div>
                     </div>
@@ -1124,21 +1125,21 @@ export default function Settings() {
             </div>
           </section>
 
-          <section className={settingsPanelClassName}>
+          <section className={`${settingsPanelClassName} section-reveal`} style={{ animationDelay: '220ms' }}>
             <div className="mb-6 flex items-center gap-4">
               <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-sage-100 text-sage-700 dark:bg-white/10 dark:text-sage-100">
                 <span className="material-symbols-outlined">tune</span>
               </div>
               <div>
-                <h2 className="font-display text-2xl font-semibold text-sage-900 dark:text-sage-50">Preferences</h2>
+                <h2 className="font-display text-2xl font-medium text-sage-900 dark:text-sage-50">Preferences</h2>
                 <p className="text-sm text-sage-500 dark:text-sage-300">Choose the pace, reminders, and privacy settings that best support your routine.</p>
               </div>
             </div>
 
             <div>
               <div className="flex items-center justify-between gap-3">
-                <p className="text-sm font-semibold uppercase tracking-[0.22em] text-sage-500 dark:text-sage-300">Theme</p>
-                <span className="inline-flex items-center gap-2 rounded-full bg-sage-100 px-3 py-1 text-xs font-semibold text-sage-700 dark:bg-white/10 dark:text-sage-100">
+                <p className="text-sm font-medium uppercase tracking-[0.22em] text-sage-500 dark:text-sage-300">Theme</p>
+                <span className="inline-flex items-center gap-2 rounded-full bg-sage-100 px-3 py-1 text-xs font-medium text-sage-700 dark:bg-white/10 dark:text-sage-100">
                   <span className="material-symbols-outlined text-[16px]">{isDarkMode ? 'dark_mode' : 'light_mode'}</span>
                   {isDarkMode ? 'Dark active' : 'Light active'}
                 </span>
@@ -1151,7 +1152,7 @@ export default function Settings() {
                     <button
                       key={option.value}
                       className={clsx(
-                        'flex items-center justify-center gap-2 rounded-[1.25rem] border px-4 py-4 text-sm font-semibold transition-all',
+                        'flex items-center justify-center gap-2 rounded-[1.25rem] border px-4 py-4 text-sm font-medium transition-all',
                         isActive
                           ? 'border-sage-300 bg-sage-100 text-sage-900 shadow-sm dark:border-sage-400/50 dark:bg-white/10 dark:text-sage-50'
                           : 'border-sage-200 bg-sage-50/90 text-sage-600 hover:border-sage-300 hover:bg-sage-100/80 dark:border-white/10 dark:bg-white/5 dark:text-sage-200 dark:hover:bg-white/10'
@@ -1292,13 +1293,13 @@ export default function Settings() {
             </div>
           </section>
 
-          <section className={settingsPanelClassName}>
+          <section className={`${settingsPanelClassName} section-reveal`} style={{ animationDelay: '290ms' }}>
             <div className="mb-6 flex items-center gap-4">
               <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-sage-100 text-sage-700 dark:bg-white/10 dark:text-sage-100">
                 <span className="material-symbols-outlined">password</span>
               </div>
               <div>
-                <h2 className="font-display text-2xl font-semibold text-sage-900 dark:text-sage-50">Password & Security</h2>
+                <h2 className="font-display text-2xl font-medium text-sage-900 dark:text-sage-50">Password & Security</h2>
                 <p className="text-sm text-sage-500 dark:text-sage-300">Keep your account protected with a fresh password when you need one.</p>
               </div>
             </div>
@@ -1349,10 +1350,10 @@ export default function Settings() {
           </section>
         </div>
 
-        <aside className="space-y-8">
-          <section className="rounded-[1.75rem] border border-sage-200 bg-gradient-to-b from-sage-50 via-[#f7fbf7] to-sage-100/80 p-6 shadow-soft sm:p-8 dark:border-white/10 dark:bg-gradient-to-b dark:from-[#18231d] dark:via-[#121b16] dark:to-[#0f1712]">
-            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-sage-500 dark:text-sage-300">Account Overview</p>
-            <h2 className="mt-2 font-display text-3xl font-semibold text-sage-900 dark:text-sage-50">Your current rhythm</h2>
+        <aside className="space-y-8 xl:sticky xl:top-6 xl:self-start">
+          <section className="panel-shell-gradient section-reveal" style={{ animationDelay: '180ms' }}>
+            <p className="text-xs font-medium uppercase tracking-[0.24em] text-sage-500 dark:text-sage-300">Account Overview</p>
+            <h2 className="compact-section-title mt-2 font-display text-sage-900 dark:text-sage-50">Your current rhythm</h2>
             <p className="mt-3 text-sm leading-7 text-sage-600 dark:text-sage-200">
               These settings shape how the app feels in your day, from visual tone to when gentle prompts arrive.
             </p>
@@ -1365,7 +1366,7 @@ export default function Settings() {
                       <span className="material-symbols-outlined text-[20px]">{item.icon}</span>
                     </div>
                     <div>
-                      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-sage-500 dark:text-sage-300">{item.label}</p>
+                      <p className="text-xs font-medium uppercase tracking-[0.18em] text-sage-500 dark:text-sage-300">{item.label}</p>
                       <p className="mt-1 text-sm font-medium leading-6 text-slate-700 dark:text-sage-100">{item.value}</p>
                     </div>
                   </div>
@@ -1374,13 +1375,13 @@ export default function Settings() {
             </div>
           </section>
 
-          <section className={settingsPanelClassName}>
+          <section className={`${settingsPanelClassName} section-reveal`} style={{ animationDelay: '250ms' }}>
             <div className="flex items-start gap-4">
               <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-sage-100 text-sage-700 dark:bg-white/10 dark:text-sage-100">
                 <span className="material-symbols-outlined">install_mobile</span>
               </div>
               <div className="flex-1">
-                <h3 className="font-display text-2xl font-semibold text-sage-900 dark:text-sage-50">App Install & Notifications</h3>
+                <h3 className="font-display text-2xl font-medium text-sage-900 dark:text-sage-50">App Install & Notifications</h3>
                 <p className="mt-2 text-sm leading-7 text-sage-600 dark:text-sage-200">
                   Install MindfulLife like an app and keep daily reflection reminders connected to this device.
                 </p>
@@ -1389,7 +1390,7 @@ export default function Settings() {
 
             <div className="mt-6 space-y-4">
               <div className={settingsInsetClassName}>
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-sage-500 dark:text-sage-300">Install Status</p>
+                <p className="text-xs font-medium uppercase tracking-[0.18em] text-sage-500 dark:text-sage-300">Install Status</p>
                 <p className="mt-2 text-sm font-medium text-slate-700 dark:text-sage-100">
                   {installStatusMessage}
                 </p>
@@ -1401,7 +1402,7 @@ export default function Settings() {
               </div>
 
               <div className={settingsInsetClassName}>
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-sage-500 dark:text-sage-300">Notification Status</p>
+                <p className="text-xs font-medium uppercase tracking-[0.18em] text-sage-500 dark:text-sage-300">Notification Status</p>
                 <p className="mt-2 text-sm font-medium text-slate-700 dark:text-sage-100">
                   Permission: {notificationPermission}. Device subscription: {isPushSubscribed ? 'active' : 'inactive'}.
                 </p>
@@ -1456,13 +1457,13 @@ export default function Settings() {
             </div>
           </section>
 
-          <section className={settingsPanelClassName}>
+          <section className={`${settingsPanelClassName} section-reveal`} style={{ animationDelay: '320ms' }}>
             <div className="flex items-start gap-4">
               <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-sage-100 text-sage-700 dark:bg-white/10 dark:text-sage-100">
                 <span className="material-symbols-outlined">download</span>
               </div>
               <div>
-                <h3 className="font-display text-2xl font-semibold text-sage-900 dark:text-sage-50">Export Your Data</h3>
+                <h3 className="font-display text-2xl font-medium text-sage-900 dark:text-sage-50">Export Your Data</h3>
                 <p className="mt-2 text-sm leading-7 text-sage-600 dark:text-sage-200">
                   Download a JSON copy of your profile basics and journal entries for personal backup or migration.
                 </p>
@@ -1475,13 +1476,13 @@ export default function Settings() {
             </button>
           </section>
 
-          <section className="rounded-[1.75rem] border border-red-200 bg-gradient-to-b from-red-50/90 to-red-100/70 p-6 shadow-soft sm:p-8 dark:border-red-500/30 dark:bg-gradient-to-b dark:from-red-950/40 dark:to-[#261313]">
+          <section className="section-reveal rounded-[1.75rem] border border-red-200 bg-gradient-to-b from-red-50/90 to-red-100/70 p-6 shadow-soft sm:p-8 dark:border-red-500/30 dark:bg-gradient-to-b dark:from-red-950/40 dark:to-[#261313]" style={{ animationDelay: '390ms' }}>
             <div className="flex items-start gap-4">
               <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-red-100 text-red-700 dark:bg-red-500/15 dark:text-red-200">
                 <span className="material-symbols-outlined">warning</span>
               </div>
               <div>
-                <h3 className="font-display text-2xl font-semibold text-red-900 dark:text-red-100">Danger Zone</h3>
+                <h3 className="font-display text-2xl font-medium text-red-900 dark:text-red-100">Danger Zone</h3>
                 <p className="mt-2 text-sm leading-7 text-red-800/80 dark:text-red-200/85">
                   Deleting your account permanently removes your profile and all saved journal data. This action cannot be undone.
                 </p>

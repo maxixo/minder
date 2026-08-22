@@ -1,11 +1,12 @@
 .review-page {
   position: relative;
   isolation: isolate;
+  overflow-x: clip;
 }
 
 .review-page::before {
   position: absolute;
-  inset: 8rem -2rem auto;
+  inset: 8rem 0 auto;
   z-index: -1;
   height: 36rem;
   content: '';
@@ -14,6 +15,12 @@
     radial-gradient(circle at 18% 20%, rgba(214, 194, 171, 0.24), transparent 34%),
     radial-gradient(circle at 82% 54%, rgba(174, 207, 181, 0.18), transparent 30%);
   filter: blur(20px);
+}
+
+@media (min-width: 640px) {
+  .review-page::before {
+    inset: 8rem -2rem auto;
+  }
 }
 
 .review-hero {

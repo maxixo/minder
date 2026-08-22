@@ -23,7 +23,11 @@ registerRoute(
   }
 );
 
-registerRoute(({ url }) => url.pathname.startsWith('/api/'), new NetworkOnly(), 'GET');
+registerRoute(
+  ({ url }) => url.origin === self.location.origin && url.pathname.startsWith('/api/'),
+  new NetworkOnly(),
+  'GET'
+);
 
 self.addEventListener('push', (event) => {
   if (!event.data) return;

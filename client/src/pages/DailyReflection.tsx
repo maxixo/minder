@@ -675,7 +675,7 @@ export default function DailyReflection() {
                   <div className="space-y-8">
                 <div>
                   <p className="mb-4 text-sm font-semibold">Mood Check-in</p>
-                  <div className="grid grid-cols-7 gap-2">
+                  <div className="grid grid-cols-7 gap-x-2 gap-y-4 sm:gap-2">
                     {moodOptions.map((option) => {
                       const isActive = mood === option.key;
 
@@ -683,17 +683,26 @@ export default function DailyReflection() {
                         <button
                           key={option.key}
                           className={clsx(
-                            'rounded-xl px-1 py-2 text-center transition-transform',
+                            'flex min-w-0 appearance-none flex-col items-center justify-start rounded-xl px-0.5 py-2 text-center transition-transform focus:outline-none focus:ring-0 focus-visible:outline-none focus-visible:ring-0 [-webkit-tap-highlight-color:transparent] sm:px-1',
                             isActive
-                              ? 'scale-105 bg-[#19e63c]/10 ring-2 ring-[#19e63c]/30'
+                              ? 'scale-105'
                               : 'opacity-60 grayscale hover:scale-105 hover:opacity-100 hover:grayscale-0'
                           )}
                           onClick={() => setMood(option.key)}
                           title={option.text}
                           type="button"
                         >
-                          <span className="block text-2xl">{option.emoji}</span>
-                          <span className="mt-1 block text-[10px] font-semibold text-slate-500 dark:text-sage-300">{option.text}</span>
+                          <span
+                            className={clsx(
+                              'block text-2xl transition-all duration-200',
+                              isActive
+                                ? 'scale-110 brightness-125 saturate-150 drop-shadow-[0_0_14px_rgba(25,230,60,0.35)]'
+                                : ''
+                            )}
+                          >
+                            {option.emoji}
+                          </span>
+                          <span className="mt-1 hidden text-[10px] font-semibold text-slate-500 dark:text-sage-300 sm:block">{option.text}</span>
                         </button>
                       );
                     })}
@@ -907,13 +916,13 @@ export default function DailyReflection() {
             <span>{saving ? 'Saving...' : 'Save Reflection'}</span>
           </button>
 
-      <footer className="mt-20 border-t border-[#e8ede8] bg-[#f4f7f4] py-10 dark:border-white/10 dark:bg-[#15201a]">
-        <div className="flex w-full flex-col items-center justify-between gap-6 px-6 md:flex-row">
+      <footer className="mt-20 hidden border-t border-[#e8ede8] bg-[#f4f7f4] py-10 dark:border-white/10 dark:bg-[#15201a] sm:block">
+        <div className="flex w-full flex-col items-center justify-between gap-6 px-6 text-center md:flex-row md:text-left">
           <BrandLogo
             titleClassName="text-lg text-sage-800 dark:text-sage-50"
             iconClassName="h-8 w-8 text-[#44604a] dark:text-sage-50"
           />
-          <div className="flex gap-8 text-sm font-medium text-[#638869] dark:text-sage-300">
+          <div className="flex flex-col items-center gap-3 text-sm font-medium text-[#638869] dark:text-sage-300 sm:flex-row sm:flex-wrap sm:justify-center sm:gap-6">
             <a className="hover:text-[#19e63c]" href="#">Guide</a>
             <a className="hover:text-[#19e63c]" href="#">Community</a>
             <a className="hover:text-[#19e63c]" href="#">Privacy</a>

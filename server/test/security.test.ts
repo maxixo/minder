@@ -94,12 +94,26 @@ test('runtime config parsing normalizes allowed origins and reports invalid valu
 
   assert.match(errors.join('\n'), /CLIENT_URL contains invalid origins/);
   assert.match(errors.join('\n'), /JWT_SECRET must be at least 32 characters in production/);
-  assert.match(errors.join('\n'), /CSRF_SECRET must be at least 32 characters in production/);
+  assert.match(errors.join('\n'), /CSRF_SECRET or JWT_SECRET must be at least 32 characters in production/);
   assert.match(errors.join('\n'), /PORT must be a positive integer/);
   assert.match(errors.join('\n'), /RATE_LIMIT_WINDOW_MS must be a positive integer/);
   assert.match(errors.join('\n'), /RATE_LIMIT_MAX_REQUESTS must be a positive integer/);
   assert.match(errors.join('\n'), /REQUEST_TIMEOUT_MS must be a positive integer/);
   assert.match(errors.join('\n'), /KEEP_ALIVE_TIMEOUT_MS must be a positive integer/);
+});
+
+test('runtime config accepts JWT_SECRET as the effective CSRF secret fallback', () => {
+  const errors = getRuntimeConfigErrors({
+    DATABASE_URL: 'postgresql://postgres:postgres@127.0.0.1:5432/mindfullife',
+    JWT_SECRET: 'mindful_super_secret_jwt_key_change_in_production_32chars',
+    CLIENT_URL: 'http://localhost:5173',
+    NODE_ENV: 'development',
+  });
+
+  assert.equal(
+    errors.some((error) => /CSRF_SECRET|JWT_SECRET is required/.test(error)),
+    false,
+  );
 });
 
 test('auth bearer helper extracts only valid authorization tokens', () => {

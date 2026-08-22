@@ -2,12 +2,21 @@ import axios, { AxiosHeaders, type AxiosRequestHeaders } from 'axios';
 
 const trimTrailingSlashes = (value: string) => value.replace(/\/+$/, '');
 const isAbsoluteHttpUrl = (value: string) => /^https?:\/\//i.test(value);
+const isRelativeApiUrl = (value: string) => value.startsWith('/');
 
 const getConfiguredApiUrl = () => {
   const configuredApiUrl = import.meta.env.VITE_API_URL?.trim();
 
-  if (!configuredApiUrl || !isAbsoluteHttpUrl(configuredApiUrl)) {
-    throw new Error('VITE_API_URL is missing or invalid. Set it in the client .env file.');
+  if (!configuredApiUrl) {
+    if (import.meta.env.DEV) {
+      return '/api';
+    }
+
+    throw new Error('VITE_API_URL is missing. Set it in the client .env file.');
+  }
+
+  if (!isAbsoluteHttpUrl(configuredApiUrl) && !isRelativeApiUrl(configuredApiUrl)) {
+    throw new Error('VITE_API_URL is invalid. Use an absolute URL or a relative /api path.');
   }
 
   return configuredApiUrl;
