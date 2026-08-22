@@ -22,11 +22,13 @@ VITE_VAPID_PUBLIC_KEY=your_vapid_public_key
 
 `VITE_API_URL` can be set with or without a trailing `/api`; the client normalizes both forms.
 
-## Domain guidance
+## Domain and CSP guidance
 
 Use a custom frontend domain such as `https://app.your-domain.example` and keep the API on `https://api.your-domain.example`.
 
-This project uses an HTTP-only session cookie from the API. That is much more reliable when the frontend and backend share the same registrable domain than when the frontend stays on a default `*.vercel.app` hostname.
+This project uses `Authorization: Bearer <jwt>` API authentication instead of a browser-managed session cookie, so login persistence does not depend on third-party cookie support.
+
+`client/vercel.json` keeps a strict Content Security Policy while allowing HTTPS API calls, so the frontend no longer hardcodes one backend hostname.
 
 ## Matching backend settings
 

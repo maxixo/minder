@@ -27,6 +27,7 @@ const parseAllowedOrigins = (clientUrl) => (
 const requiredEnvVars = [
   'DATABASE_URL',
   'JWT_SECRET',
+  'CSRF_SECRET',
   'CLIENT_URL',
   'CRON_SECRET',
   'VAPID_PUBLIC_KEY',
@@ -51,6 +52,10 @@ if ((process.env.JWT_SECRET || '').trim().length > 0 && process.env.JWT_SECRET.t
   errors.push('JWT_SECRET must be at least 32 characters long.');
 }
 
+if ((process.env.CSRF_SECRET || '').trim().length > 0 && process.env.CSRF_SECRET.trim().length < 32) {
+  errors.push('CSRF_SECRET must be at least 32 characters long.');
+}
+
 const configuredOrigins = parseAllowedOrigins(process.env.CLIENT_URL);
 if (configuredOrigins.length === 0) {
   errors.push('CLIENT_URL must include at least one valid frontend origin.');
@@ -60,20 +65,12 @@ if ((process.env.NODE_ENV || '').trim() !== 'production') {
   warnings.push('NODE_ENV should be set to `production` on cPanel.');
 }
 
-if ((process.env.COOKIE_SECURE || '').trim().toLowerCase() !== 'true') {
-  warnings.push('COOKIE_SECURE should be `true` for HTTPS production deployments.');
-}
-
-if ((process.env.COOKIE_SAME_SITE || '').trim().toLowerCase() !== 'none') {
-  warnings.push('COOKIE_SAME_SITE should usually be `none` for a split frontend/backend deployment.');
-}
-
 if ((process.env.TRUST_PROXY || '').trim() !== '1') {
   warnings.push('TRUST_PROXY is usually `1` behind cPanel/Passenger.');
 }
 
 if (configuredOrigins.some((origin) => origin.includes('vercel.app'))) {
-  warnings.push('Using a `vercel.app` domain for the frontend can cause cross-site cookie issues. Prefer a custom domain such as `app.your-domain.com` and keep the API on `api.your-domain.com`.');
+  warnings.push('Using a custom frontend domain is still recommended for production trust and branding, but API auth now uses Authorization bearer tokens instead of third-party cookies.');
 }
 
 if ((process.env.RUN_DAILY_REMINDER_JOB || '').trim().toLowerCase() === 'true') {

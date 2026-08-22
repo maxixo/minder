@@ -1,18 +1,13 @@
 import axios, { AxiosHeaders, type AxiosRequestHeaders } from 'axios';
 
-const DEFAULT_API_URL = 'https://minder.oshodiusman.xyz';
 const trimTrailingSlashes = (value: string) => value.replace(/\/+$/, '');
 const isAbsoluteHttpUrl = (value: string) => /^https?:\/\//i.test(value);
 
 const getConfiguredApiUrl = () => {
   const configuredApiUrl = import.meta.env.VITE_API_URL?.trim();
 
-  if (typeof window !== 'undefined' && window.location.origin === 'https://minder-client.vercel.app') {
-    return DEFAULT_API_URL;
-  }
-
   if (!configuredApiUrl || !isAbsoluteHttpUrl(configuredApiUrl)) {
-    return DEFAULT_API_URL;
+    throw new Error('VITE_API_URL is missing or invalid. Set it in the client .env file.');
   }
 
   return configuredApiUrl;
@@ -26,20 +21,48 @@ const resolveApiBaseUrl = () => {
 const baseURL = resolveApiBaseUrl();
 const SAFE_METHODS = new Set(['get', 'head', 'options']);
 const CSRF_ERROR_MESSAGE = 'CSRF token validation failed.';
+const AUTH_TOKEN_STORAGE_KEY = 'mindful_auth_token';
 
 let csrfToken: string | null = null;
 let csrfTokenRequest: Promise<string> | null = null;
 
+export const getAuthToken = () => {
+  if (typeof window === 'undefined') return null;
+  const sessionToken = window.sessionStorage.getItem(AUTH_TOKEN_STORAGE_KEY);
+  const legacyLocalToken = window.localStorage.getItem(AUTH_TOKEN_STORAGE_KEY);
+
+  if (legacyLocalToken) {
+    window.localStorage.removeItem(AUTH_TOKEN_STORAGE_KEY);
+  }
+
+  if (sessionToken) return sessionToken;
+  if (legacyLocalToken) {
+    window.sessionStorage.setItem(AUTH_TOKEN_STORAGE_KEY, legacyLocalToken);
+  }
+
+  return legacyLocalToken;
+};
+
+export const setAuthToken = (token: string) => {
+  if (typeof window === 'undefined') return;
+  window.localStorage.removeItem(AUTH_TOKEN_STORAGE_KEY);
+  window.sessionStorage.setItem(AUTH_TOKEN_STORAGE_KEY, token);
+};
+
+export const clearAuthToken = () => {
+  if (typeof window === 'undefined') return;
+  window.localStorage.removeItem(AUTH_TOKEN_STORAGE_KEY);
+  window.sessionStorage.removeItem(AUTH_TOKEN_STORAGE_KEY);
+};
+
 const api = axios.create({
   baseURL,
   headers: { 'Content-Type': 'application/json' },
-  withCredentials: true,
 });
 
 const csrfApi = axios.create({
   baseURL,
   headers: { 'Content-Type': 'application/json' },
-  withCredentials: true,
 });
 
 const setCsrfHeader = (headers: AxiosRequestHeaders | undefined, token: string): AxiosRequestHeaders => {
@@ -75,6 +98,13 @@ export const initializeCsrfToken = async (forceRefresh = false) => {
 
 api.interceptors.request.use(async (config) => {
   const method = (config.method || 'get').toLowerCase();
+  const authToken = getAuthToken();
+
+  if (authToken) {
+    const nextHeaders = AxiosHeaders.from(config.headers);
+    nextHeaders.set('Authorization', `Bearer ${authToken}`);
+    config.headers = nextHeaders as AxiosRequestHeaders;
+  }
 
   if (!SAFE_METHODS.has(method)) {
     const token = await initializeCsrfToken();
@@ -106,9 +136,12 @@ api.interceptors.response.use(
     const isSessionCheck = requestUrl.includes('/auth/me');
 
     if (err.response?.status === 401 && !isAuthSubmission && !isSessionCheck) {
+      clearAuthToken();
       if (window.location.pathname !== '/login') {
         window.location.href = '/login';
       }
+    } else if (err.response?.status === 401 && isSessionCheck) {
+      clearAuthToken();
     }
 
     return Promise.reject(err);

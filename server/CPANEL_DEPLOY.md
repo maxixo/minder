@@ -55,7 +55,6 @@ Build the production `DATABASE_URL` like this:
 DATABASE_URL="postgresql://cpaneluser_minder_user:YOUR_PASSWORD@localhost:5432/cpaneluser_minder"
 ```
 
-postgresql://hvklotdb_minder_user:GDx59WTJe43Rn3S@localhost:5432/hvklotdb_minder
 
 If the password contains special URL characters, encode them before placing the password in `DATABASE_URL`:
 
@@ -76,10 +75,9 @@ Set these in cPanel before starting the app:
 NODE_ENV=production
 DATABASE_URL=postgresql://...
 JWT_SECRET=...
+CSRF_SECRET=...
 JWT_EXPIRES_IN=7d
 CLIENT_URL=https://your-frontend-domain.example
-COOKIE_SAME_SITE=none
-COOKIE_SECURE=true
 TRUST_PROXY=1
 RATE_LIMIT_WINDOW_MS=900000
 RATE_LIMIT_MAX_REQUESTS=100
@@ -92,6 +90,12 @@ CLOUDINARY_CLOUD_NAME=...
 CLOUDINARY_API_KEY=...
 CLOUDINARY_API_SECRET=...
 CLOUDINARY_AVATAR_FOLDER=mindfullife/avatars
+```
+
+Generate `CSRF_SECRET` with:
+
+```bash
+node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 ```
 
 ## Deploy sequence
@@ -112,7 +116,7 @@ Then restart the Node.js app from cPanel.
 - `TRUST_PROXY=1` is recommended because cPanel commonly runs Node.js behind Apache/Passenger.
 - Leave `RUN_DAILY_REMINDER_JOB=false` when cPanel cron is triggering reminders through the protected HTTP endpoint.
 - If your hosting plan does not provide PostgreSQL, use an external PostgreSQL service before deploying this backend.
-- Prefer a custom frontend domain such as `app.your-domain.example` instead of relying on the default `*.vercel.app` hostname for production auth. This API uses a secure cookie session, and sibling subdomains are more reliable than cross-site domains.
+- Auth uses `Authorization: Bearer <jwt>` headers instead of a session cookie, so production login no longer depends on third-party cookie availability. A custom frontend domain is still preferred for trust, branding, and stable CORS configuration.
 
 ## cPanel cron job
 

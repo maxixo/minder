@@ -1,73 +1,22 @@
-import type { Response, NextFunction, CookieOptions } from 'express';
+import type { NextFunction, Response } from 'express';
 import jwt, { type JwtPayload, type SignOptions } from 'jsonwebtoken';
-import { isProductionEnvironment } from '../config/runtime.js';
 import prisma from '../lib/prisma.js';
 import { serializeUser } from '../lib/serializers.js';
 import type { AuthRequest } from '../types/auth.js';
 
-export const SESSION_COOKIE_NAME = 'mindful_session';
+export const getTokenFromAuthorizationHeader = (authorizationHeader: string | string[] | undefined) => {
+  const headerValue = Array.isArray(authorizationHeader) ? authorizationHeader[0] : authorizationHeader;
+  if (typeof headerValue !== 'string') return null;
 
-export const getCookieSecure = () => {
-  if (isProductionEnvironment()) return true;
-  if (process.env.COOKIE_SECURE) return process.env.COOKIE_SECURE === 'true';
-  return false;
-};
+  const [scheme, token] = headerValue.trim().split(/\s+/, 2);
+  if (scheme?.toLowerCase() !== 'bearer' || !token) return null;
 
-export const getCookieSameSite = (): CookieOptions['sameSite'] => {
-  if (isProductionEnvironment()) return 'none';
-  const configured = process.env.COOKIE_SAME_SITE?.toLowerCase();
-  if (configured === 'lax' || configured === 'strict' || configured === 'none') {
-    return configured;
-  }
-  return 'strict';
-};
-
-const parseCookieMaxAge = () => {
-  const expiresIn = process.env.JWT_EXPIRES_IN || '7d';
-
-  if (/^\d+$/.test(expiresIn)) {
-    return Number(expiresIn) * 1000;
-  }
-
-  const match = expiresIn.match(/^(\d+)([smhd])$/i);
-  if (!match) return 7 * 24 * 60 * 60 * 1000;
-
-  const value = Number(match[1]);
-  const unit = match[2].toLowerCase();
-  const multipliers: Record<string, number> = {
-    s: 1000,
-    m: 60 * 1000,
-    h: 60 * 60 * 1000,
-    d: 24 * 60 * 60 * 1000,
-  };
-
-  return value * multipliers[unit];
-};
-
-const getSessionCookieOptions = (): CookieOptions => ({
-  httpOnly: true,
-  secure: getCookieSecure(),
-  sameSite: getCookieSameSite(),
-  path: '/',
-  maxAge: parseCookieMaxAge(),
-});
-
-const getTokenFromCookieHeader = (cookieHeader?: string) => {
-  if (!cookieHeader) return null;
-
-  const sessionCookie = cookieHeader
-    .split(';')
-    .map((cookie) => cookie.trim())
-    .find((cookie) => cookie.startsWith(`${SESSION_COOKIE_NAME}=`));
-
-  if (!sessionCookie) return null;
-
-  return decodeURIComponent(sessionCookie.slice(SESSION_COOKIE_NAME.length + 1));
+  return token;
 };
 
 export const protect = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
-    const token = getTokenFromCookieHeader(req.headers.cookie);
+    const token = getTokenFromAuthorizationHeader(req.headers.authorization);
 
     if (!token) {
       return res.status(401).json({ success: false, message: 'Not authorized' });
@@ -89,11 +38,3 @@ export const protect = async (req: AuthRequest, res: Response, next: NextFunctio
 
 export const generateToken = (id: string) =>
   jwt.sign({ id }, process.env.JWT_SECRET as string, { expiresIn: (process.env.JWT_EXPIRES_IN || '7d') as SignOptions['expiresIn'] });
-
-export const setSessionCookie = (res: Response, token: string) => {
-  res.cookie(SESSION_COOKIE_NAME, token, getSessionCookieOptions());
-};
-
-export const clearSessionCookie = (res: Response) => {
-  res.clearCookie(SESSION_COOKIE_NAME, getSessionCookieOptions());
-};

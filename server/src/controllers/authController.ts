@@ -4,7 +4,7 @@ import { sendInternalServerError } from '../lib/http.js';
 import { deleteAvatarImage, isCloudinaryConfigured, uploadAvatarImage } from '../lib/cloudinary.js';
 import { comparePassword, hashPassword } from '../lib/password.js';
 import { serializeUser } from '../lib/serializers.js';
-import { clearSessionCookie, generateToken, setSessionCookie } from '../middleware/auth.js';
+import { generateToken } from '../middleware/auth.js';
 import type { AuthRequest } from '../types/auth.js';
 
 const setNoStore = (res: Response) => {
@@ -30,7 +30,6 @@ export const register = async (req: Request, res: Response) => {
     });
 
     setNoStore(res);
-    clearSessionCookie(res);
     res.status(201).json({
       success: true,
       message: 'Account created successfully. Please log in.',
@@ -54,8 +53,7 @@ export const login = async (req: Request, res: Response) => {
     const token = generateToken(user.id);
 
     setNoStore(res);
-    setSessionCookie(res, token);
-    res.json({ success: true, data: { user: serializeUser(user) } });
+    res.json({ success: true, data: { user: serializeUser(user), token } });
   } catch (err: any) {
     return sendInternalServerError(res, err, 'Login failed');
   }
@@ -63,7 +61,6 @@ export const login = async (req: Request, res: Response) => {
 
 export const logout = async (_req: Request, res: Response) => {
   setNoStore(res);
-  clearSessionCookie(res);
   res.json({ success: true, message: 'Logged out successfully' });
 };
 

@@ -1,5 +1,4 @@
 const DEFAULT_CLIENT_ORIGIN = 'http://localhost:5173';
-const VALID_SAME_SITE_VALUES = new Set(['lax', 'strict', 'none']);
 
 const trimTrailingSlashes = (value: string) => value.replace(/\/+$/, '');
 
@@ -62,8 +61,10 @@ export const getRuntimeConfigErrors = (env: NodeJS.ProcessEnv = process.env) => 
     errors.push('JWT_SECRET must be at least 32 characters in production.');
   }
 
-  if (env.COOKIE_SAME_SITE && !VALID_SAME_SITE_VALUES.has(env.COOKIE_SAME_SITE.trim().toLowerCase())) {
-    errors.push('COOKIE_SAME_SITE must be one of: lax, strict, none.');
+  if (!env.CSRF_SECRET?.trim()) {
+    errors.push('CSRF_SECRET is required.');
+  } else if (isProductionEnvironment(env.NODE_ENV) && env.CSRF_SECRET.trim().length < 32) {
+    errors.push('CSRF_SECRET must be at least 32 characters in production.');
   }
 
   if (env.PORT && !isPositiveInteger(env.PORT.trim())) {

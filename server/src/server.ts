@@ -48,7 +48,43 @@ const parseTrustProxySetting = (value: string | undefined) => {
 
 app.set('trust proxy', parseTrustProxySetting(process.env.TRUST_PROXY));
 
-app.use(helmet());
+app.use(helmet({
+  contentSecurityPolicy: {
+    useDefaults: false,
+    directives: {
+      defaultSrc: ["'none'"],
+      baseUri: ["'none'"],
+      connectSrc: ["'none'"],
+      fontSrc: ["'none'"],
+      formAction: ["'none'"],
+      frameAncestors: ["'none'"],
+      frameSrc: ["'none'"],
+      imgSrc: ["'none'"],
+      objectSrc: ["'none'"],
+      scriptSrc: ["'none'"],
+      scriptSrcAttr: ["'none'"],
+      styleSrc: ["'none'"],
+      upgradeInsecureRequests: [],
+    },
+  },
+  crossOriginEmbedderPolicy: false,
+  crossOriginOpenerPolicy: { policy: 'same-origin' },
+  crossOriginResourcePolicy: { policy: 'same-site' },
+  referrerPolicy: { policy: 'no-referrer' },
+}));
+
+app.use((_req, res, next) => {
+  res.set('Permissions-Policy', [
+    'camera=()',
+    'display-capture=()',
+    'fullscreen=(self)',
+    'geolocation=()',
+    'microphone=()',
+    'payment=()',
+    'usb=()',
+  ].join(', '));
+  next();
+});
 const allowedOrigins = parseAllowedOrigins();
 
 app.use(cors({
@@ -60,7 +96,6 @@ app.use(cors({
 
     callback(new Error('CORS origin not allowed'));
   },
-  credentials: true,
 }));
 app.use(compression());
 app.use(express.json({ limit: '10mb' }));

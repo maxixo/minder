@@ -8,7 +8,7 @@ import {
   validateAvatarUploadDataUrl,
 } from '../src/lib/cloudinary.ts';
 import { getRuntimeConfigErrors, parseAllowedOrigins } from '../src/config/runtime.ts';
-import { getCookieSameSite, getCookieSecure } from '../src/middleware/auth.ts';
+import { getTokenFromAuthorizationHeader } from '../src/middleware/auth.ts';
 import { csrfTokensMatch, generateCsrfToken, isAllowedFetchSite } from '../src/middleware/csrf.ts';
 
 test('isAllowedAvatarUrl only accepts https and localhost http urls', () => {
@@ -82,6 +82,7 @@ test('runtime config parsing normalizes allowed origins and reports invalid valu
   const errors = getRuntimeConfigErrors({
     DATABASE_URL: 'postgresql://postgres:postgres@127.0.0.1:5432/mindfullife',
     JWT_SECRET: 'short-secret',
+    CSRF_SECRET: 'short-csrf',
     CLIENT_URL: 'notaurl',
     NODE_ENV: 'production',
     PORT: 'abc',
@@ -93,6 +94,7 @@ test('runtime config parsing normalizes allowed origins and reports invalid valu
 
   assert.match(errors.join('\n'), /CLIENT_URL contains invalid origins/);
   assert.match(errors.join('\n'), /JWT_SECRET must be at least 32 characters in production/);
+  assert.match(errors.join('\n'), /CSRF_SECRET must be at least 32 characters in production/);
   assert.match(errors.join('\n'), /PORT must be a positive integer/);
   assert.match(errors.join('\n'), /RATE_LIMIT_WINDOW_MS must be a positive integer/);
   assert.match(errors.join('\n'), /RATE_LIMIT_MAX_REQUESTS must be a positive integer/);
@@ -100,40 +102,11 @@ test('runtime config parsing normalizes allowed origins and reports invalid valu
   assert.match(errors.join('\n'), /KEEP_ALIVE_TIMEOUT_MS must be a positive integer/);
 });
 
-test('auth cookie helpers evaluate the current runtime environment', () => {
-  const originalNodeEnv = process.env.NODE_ENV;
-  const originalCookieSecure = process.env.COOKIE_SECURE;
-  const originalCookieSameSite = process.env.COOKIE_SAME_SITE;
-
-  try {
-    process.env.NODE_ENV = 'development';
-    process.env.COOKIE_SECURE = 'true';
-    process.env.COOKIE_SAME_SITE = 'lax';
-    assert.equal(getCookieSecure(), true);
-    assert.equal(getCookieSameSite(), 'lax');
-
-    process.env.NODE_ENV = 'production';
-    process.env.COOKIE_SECURE = 'false';
-    process.env.COOKIE_SAME_SITE = 'strict';
-    assert.equal(getCookieSecure(), true);
-    assert.equal(getCookieSameSite(), 'none');
-  } finally {
-    if (originalNodeEnv === undefined) {
-      delete process.env.NODE_ENV;
-    } else {
-      process.env.NODE_ENV = originalNodeEnv;
-    }
-
-    if (originalCookieSecure === undefined) {
-      delete process.env.COOKIE_SECURE;
-    } else {
-      process.env.COOKIE_SECURE = originalCookieSecure;
-    }
-
-    if (originalCookieSameSite === undefined) {
-      delete process.env.COOKIE_SAME_SITE;
-    } else {
-      process.env.COOKIE_SAME_SITE = originalCookieSameSite;
-    }
-  }
+test('auth bearer helper extracts only valid authorization tokens', () => {
+  assert.equal(getTokenFromAuthorizationHeader('Bearer abc.def.ghi'), 'abc.def.ghi');
+  assert.equal(getTokenFromAuthorizationHeader('bearer token-value'), 'token-value');
+  assert.equal(getTokenFromAuthorizationHeader(['Bearer first-token', 'Bearer second-token']), 'first-token');
+  assert.equal(getTokenFromAuthorizationHeader('Basic abc.def.ghi'), null);
+  assert.equal(getTokenFromAuthorizationHeader('Bearer'), null);
+  assert.equal(getTokenFromAuthorizationHeader(undefined), null);
 });
