@@ -37,25 +37,22 @@ let csrfTokenRequest: Promise<string> | null = null;
 
 export const getAuthToken = () => {
   if (typeof window === 'undefined') return null;
+  // Persisted token survives browser/PWA restarts so reminders keep firing.
+  const localToken = window.localStorage.getItem(AUTH_TOKEN_STORAGE_KEY);
+  if (localToken) return localToken;
+
+  // Migrate legacy session-only tokens to localStorage.
   const sessionToken = window.sessionStorage.getItem(AUTH_TOKEN_STORAGE_KEY);
-  const legacyLocalToken = window.localStorage.getItem(AUTH_TOKEN_STORAGE_KEY);
-
-  if (legacyLocalToken) {
-    window.localStorage.removeItem(AUTH_TOKEN_STORAGE_KEY);
+  if (sessionToken) {
+    window.localStorage.setItem(AUTH_TOKEN_STORAGE_KEY, sessionToken);
+    window.sessionStorage.removeItem(AUTH_TOKEN_STORAGE_KEY);
   }
-
-  if (sessionToken) return sessionToken;
-  if (legacyLocalToken) {
-    window.sessionStorage.setItem(AUTH_TOKEN_STORAGE_KEY, legacyLocalToken);
-  }
-
-  return legacyLocalToken;
+  return sessionToken;
 };
 
 export const setAuthToken = (token: string) => {
   if (typeof window === 'undefined') return;
-  window.localStorage.removeItem(AUTH_TOKEN_STORAGE_KEY);
-  window.sessionStorage.setItem(AUTH_TOKEN_STORAGE_KEY, token);
+  window.localStorage.setItem(AUTH_TOKEN_STORAGE_KEY, token);
 };
 
 export const clearAuthToken = () => {
