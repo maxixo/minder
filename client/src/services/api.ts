@@ -83,7 +83,7 @@ export const initializeCsrfToken = async (forceRefresh = false) => {
   }
 
   if (!csrfTokenRequest || forceRefresh) {
-    csrfTokenRequest = csrfApi.get('/auth/csrf')
+    csrfTokenRequest = csrfApi.get('/auth/csrf', { timeout: 8000 })
       .then((response) => {
         const token = response.data?.csrfToken || response.data?.data?.csrfToken;
 
@@ -93,6 +93,12 @@ export const initializeCsrfToken = async (forceRefresh = false) => {
 
         csrfToken = token;
         return token;
+      })
+      .catch((error: unknown) => {
+        // Never block a request forever on a CSRF handshake failure.
+        // A stale/missing token is handled by the 403+retry path on the actual request.
+        console.error('Failed to fetch CSRF token:', error);
+        return null as unknown as string;
       })
       .finally(() => {
         csrfTokenRequest = null;
@@ -114,7 +120,9 @@ api.interceptors.request.use(async (config) => {
 
   if (!SAFE_METHODS.has(method)) {
     const token = await initializeCsrfToken();
-    config.headers = setCsrfHeader(config.headers, token);
+    if (typeof token === 'string' && token) {
+      config.headers = setCsrfHeader(config.headers, token);
+    }
   }
 
   return config;
