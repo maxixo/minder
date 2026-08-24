@@ -3,6 +3,7 @@ import prisma from '../lib/prisma.js';
 import { sendInternalServerError } from '../lib/http.js';
 import { deleteAvatarImage, isCloudinaryConfigured, uploadAvatarImage } from '../lib/cloudinary.js';
 import { comparePassword, hashPassword } from '../lib/password.js';
+import { OAuth2Client } from 'google-auth-library';
 import { serializeUser } from '../lib/serializers.js';
 import { generateToken } from '../middleware/auth.js';
 import type { AuthRequest } from '../types/auth.js';
@@ -56,6 +57,57 @@ export const login = async (req: Request, res: Response) => {
     res.json({ success: true, data: { user: serializeUser(user), token } });
   } catch (err: any) {
     return sendInternalServerError(res, err, 'Login failed');
+  }
+};
+
+export const getGoogleConfig = (_req: Request, res: Response) => {
+  const clientId = process.env.GOOGLE_CLIENT_ID || null;
+  setNoStore(res);
+  res.json({ success: true, data: { clientId } });
+};
+
+const googleClient = process.env.GOOGLE_CLIENT_ID
+  ? new OAuth2Client(process.env.GOOGLE_CLIENT_ID)
+  : null;
+
+export const googleLogin = async (req: Request, res: Response) => {
+  try {
+    if (!googleClient || !process.env.GOOGLE_CLIENT_ID) {
+      return res.status(503).json({ success: false, message: 'Google sign-in is not configured' });
+    }
+
+    const credential = typeof req.body?.credential === 'string' ? req.body.credential : '';
+    if (!credential) {
+      return res.status(400).json({ success: false, message: 'Missing Google credential' });
+    }
+
+    const ticket = await googleClient.verifyIdToken({ idToken: credential, audience: process.env.GOOGLE_CLIENT_ID });
+    const payload = ticket.getPayload();
+    if (!payload?.email || !payload.email_verified) {
+      return res.status(401).json({ success: false, message: 'Google account email is not verified' });
+    }
+
+    const normalizedEmail = payload.email.toLowerCase();
+    let user = await prisma.user.findUnique({ where: { email: normalizedEmail } });
+
+    if (!user) {
+      user = await prisma.user.create({
+        data: {
+          name: payload.name || normalizedEmail.split('@')[0],
+          email: normalizedEmail,
+          avatar: payload.picture || null,
+        },
+      });
+    } else if (payload.picture && user.avatar !== payload.picture) {
+      user = await prisma.user.update({ where: { id: user.id }, data: { avatar: payload.picture } });
+    }
+
+    const token = generateToken(user.id);
+
+    setNoStore(res);
+    res.json({ success: true, data: { user: serializeUser(user), token } });
+  } catch (err: any) {
+    return sendInternalServerError(res, err, 'Google login failed');
   }
 };
 

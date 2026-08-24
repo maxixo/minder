@@ -5,6 +5,8 @@ import {
   login,
   logout,
   getMe,
+  googleLogin,
+  getGoogleConfig,
   acknowledgeDashboardWelcome,
   updateProfile,
   updatePassword,
@@ -32,6 +34,9 @@ router.post('/login', [
   body('password').notEmpty(),
   validate,
 ], login);
+
+router.get('/google/config', getGoogleConfig);
+router.post('/google', googleLogin);
 
 router.post('/logout', logout);
 

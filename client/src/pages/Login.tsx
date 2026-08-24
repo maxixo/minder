@@ -1,7 +1,10 @@
 import { useEffect, useState, type FormEvent } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import AuthThemeToggle from '@/components/common/AuthThemeToggle';
 import BrandLogo from '@/components/common/BrandLogo';
+import GoogleSignInButton from '@/components/common/GoogleSignInButton';
+import authService from '@/services/authService';
+import { toast } from 'sonner';
 import { useAuth } from '@/contexts/useAuth';
 import {
   isLoginReturnContextEnabled,
@@ -19,7 +22,8 @@ interface LoginLocationState {
 
 export default function Login() {
   const location = useLocation();
-  const { login } = useAuth();
+  const { login, syncUser } = useAuth();
+  const navigate = useNavigate();
   const locationState = location.state as LoginLocationState | null;
   const isNewlyRegistered = Boolean(locationState?.newlyRegistered);
   const registeredEmail = typeof locationState?.registeredEmail === 'string' ? locationState.registeredEmail : '';
@@ -56,6 +60,24 @@ export default function Login() {
 
     setPostLoginPath('/dashboard');
   }, [isNewlyRegistered]);
+
+  const handleGoogleSuccess = async (credential: string) => {
+    setError('');
+    setIsSubmitting(true);
+    setPostLoginRedirectPath(postLoginPath || '/dashboard');
+
+    try {
+      const response = await authService.googleLogin(credential);
+      syncUser(response.data.user);
+      toast.success('Welcome!');
+      navigate(postLoginPath || '/dashboard', { replace: true });
+    } catch (err: any) {
+      clearPostLoginRedirectPath();
+      setError(err.response?.data?.message || 'Google sign-in failed.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -215,6 +237,16 @@ export default function Login() {
                       <span className="material-symbols-outlined text-xl">arrow_forward</span>
                     </button>
                   </form>
+
+                  <div className="mt-6 flex w-full items-center gap-3">
+                    <div className="h-px flex-1 bg-[#5e7860]/15 dark:bg-white/10" />
+                    <span className="text-xs uppercase tracking-wider text-gray-400 dark:text-sage-300/50">or</span>
+                    <div className="h-px flex-1 bg-[#5e7860]/15 dark:bg-white/10" />
+                  </div>
+
+                  <div className="mt-4 w-full">
+                    <GoogleSignInButton onSuccess={handleGoogleSuccess} onError={(message) => setError(message)} />
+                  </div>
 
                   <div className="mt-8 flex flex-col items-center gap-4">
                     <p className="text-sm text-gray-500 dark:text-sage-300">

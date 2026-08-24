@@ -13,6 +13,15 @@ const authService = {
     }
     return res.data;
   },
+  googleConfig: async () => (await api.get('/auth/google/config')).data,
+  googleLogin: async (credential: string) => {
+    const res = await api.post('/auth/google', { credential });
+    const token = res.data?.data?.token;
+    if (typeof token === 'string' && token) {
+      setAuthToken(token);
+    }
+    return res.data;
+  },
   acknowledgeDashboardWelcome: async () => (await api.post('/auth/dashboard-welcome/ack')).data,
   logout: async () => {
     try {
