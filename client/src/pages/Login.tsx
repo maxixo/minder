@@ -68,9 +68,11 @@ export default function Login() {
 
     try {
       const response = await authService.googleLogin(credential);
+      const isNewUser = Boolean(response?.data?.isNewUser);
       syncUser(response.data.user);
       toast.success('Welcome!');
-      navigate(postLoginPath || '/dashboard', { replace: true });
+      // New Google users (no existing account) go through onboarding.
+      navigate(isNewUser ? '/onboarding' : postLoginPath || '/dashboard', { replace: true });
     } catch (err: any) {
       clearPostLoginRedirectPath();
       setError(err.response?.data?.message || 'Google sign-in failed.');

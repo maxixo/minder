@@ -90,7 +90,9 @@ export const googleLogin = async (req: Request, res: Response) => {
     const normalizedEmail = payload.email.toLowerCase();
     let user = await prisma.user.findUnique({ where: { email: normalizedEmail } });
 
+    let isNewUser = false;
     if (!user) {
+      isNewUser = true;
       user = await prisma.user.create({
         data: {
           name: payload.name || normalizedEmail.split('@')[0],
@@ -105,7 +107,7 @@ export const googleLogin = async (req: Request, res: Response) => {
     const token = generateToken(user.id);
 
     setNoStore(res);
-    res.json({ success: true, data: { user: serializeUser(user), token } });
+    res.json({ success: true, data: { user: serializeUser(user), token, isNewUser } });
   } catch (err: any) {
     return sendInternalServerError(res, err, 'Google login failed');
   }
