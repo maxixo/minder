@@ -101,6 +101,15 @@ export default function GoogleSignInButton({ onSuccess, onError }: GoogleButtonP
               onError('Google sign-in was cancelled.');
             }
           },
+          error_callback: (err: { type?: string }) => {
+            const type = err?.type || 'unknown_error';
+            // popup_closed = user backed out. Anything else is a real failure.
+            if (type === 'popup_closed') {
+              onError('Google sign-in was cancelled.');
+            } else {
+              onError(`Google sign-in failed (${type}). Please try again.`);
+            }
+          },
         });
         window.google.accounts.id.renderButton(containerRef.current, {
           theme: 'outline',
@@ -108,6 +117,7 @@ export default function GoogleSignInButton({ onSuccess, onError }: GoogleButtonP
           width: 360,
           text: 'continue_with',
           shape: 'pill',
+          ux_mode: 'popup',
         });
       })
       .catch(() => onError('Could not load Google sign-in.'));
