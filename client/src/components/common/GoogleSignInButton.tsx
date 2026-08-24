@@ -39,7 +39,33 @@ const loadGisScript = () =>
 
 export default function GoogleSignInButton({ onSuccess, onError }: GoogleButtonProps) {
   const containerRef = useRef<HTMLDivElement>(null);
+  const scaleHostRef = useRef<HTMLDivElement>(null);
   const [clientId, setClientId] = useState<string | null>(null);
+
+  // GIS injects a fixed-width (360px) iframe into the container. On narrow
+  // screens we scale the iframe down to match the host width (e.g. a ~330px
+  // phone viewport) so it never overflows or gets cut off.
+  useEffect(() => {
+    const host = scaleHostRef.current;
+    if (!host) return;
+    const updateScale = () => {
+      const hostWidth = host.clientWidth;
+      if (!hostWidth) return;
+      const scale = Math.min(1, hostWidth / 360);
+      host.style.transform = `scale(${scale})`;
+      host.style.transformOrigin = 'center';
+      host.style.height = `${44 * scale}px`;
+    };
+    updateScale();
+    const resizeObserver =
+      typeof ResizeObserver !== 'undefined' ? new ResizeObserver(updateScale) : null;
+    resizeObserver?.observe(host);
+    window.addEventListener('resize', updateScale);
+    return () => {
+      resizeObserver?.disconnect();
+      window.removeEventListener('resize', updateScale);
+    };
+  }, [clientId]);
 
   useEffect(() => {
     let cancelled = false;
@@ -95,7 +121,11 @@ export default function GoogleSignInButton({ onSuccess, onError }: GoogleButtonP
 
   return (
     <div className="flex w-full justify-center">
-      <div ref={containerRef} />
+      <div className="w-full max-w-[360px]">
+        <div ref={scaleHostRef} className="w-full" style={{ height: 44 }}>
+          <div ref={containerRef} className="flex justify-center" />
+        </div>
+      </div>
     </div>
   );
 }
