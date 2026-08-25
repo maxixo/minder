@@ -35,6 +35,18 @@ const authService = {
   uploadProfileAvatar: async (file: string) => (await api.post('/auth/profile/avatar', { file })).data,
   deleteProfileAvatar: async () => (await api.delete('/auth/profile/avatar')).data,
   updatePassword: async (d: any) => (await api.put('/auth/password', d)).data,
+  verifyEmail: async (token: string) => {
+    const res = await api.post('/auth/verify-email', { token });
+    return res.data;
+  },
+  forgotPassword: async (email: string) => {
+    const res = await api.post('/auth/forgot-password', { email });
+    return res.data;
+  },
+  resetPassword: async (token: string, password: string) => {
+    const res = await api.post('/auth/reset-password', { token, password });
+    return res.data;
+  },
 };
 
 export default authService;
