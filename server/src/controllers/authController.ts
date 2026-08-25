@@ -312,8 +312,8 @@ export const updatePassword = async (req: AuthRequest, res: Response) => {
  */
 export const forgotPassword = async (req: Request, res: Response) => {
   try {
-    const { email } = req.body;
-    const normalizedEmail = String(email ?? '').trim().toLowerCase();
+    const { email: emailAddress } = req.body;
+    const normalizedEmail = String(emailAddress ?? '').trim().toLowerCase();
 
     const user = normalizedEmail ? await prisma.user.findUnique({ where: { email: normalizedEmail } }) : null;
 
