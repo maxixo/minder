@@ -58,13 +58,13 @@ export default function ResetPassword() {
               iconClassName="h-8 w-8 text-[#44604a] dark:text-sage-50"
             />
             <div className="hidden items-center gap-4 md:flex">
-              <AuthThemeToggle />
+              <AuthThemeToggle showLabel={false} />
               <Link className="text-sm font-medium text-[#141514] transition-colors hover:text-[#5e7860] dark:text-sage-100" to="/">
                 Home
               </Link>
             </div>
-            <div className="flex items-center gap-2 md:hidden">
-              <AuthThemeToggle className="gap-2 px-2.5" />
+            <div className="flex items-center md:hidden">
+              <AuthThemeToggle showLabel={false} />
             </div>
           </header>
 

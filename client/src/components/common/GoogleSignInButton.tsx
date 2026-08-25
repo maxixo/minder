@@ -114,8 +114,8 @@ export default function GoogleSignInButton({ onSuccess, onError }: GoogleButtonP
         window.google.accounts.id.renderButton(containerRef.current, {
           theme: 'outline',
           size: 'large',
-          width: 360,
-          text: 'continue_with',
+          width: 280,
+          text: 'signin_with',
           shape: 'pill',
           ux_mode: 'popup',
         });
@@ -131,7 +131,7 @@ export default function GoogleSignInButton({ onSuccess, onError }: GoogleButtonP
 
   return (
     <div className="flex w-full justify-center">
-      <div className="w-full max-w-[360px]">
+      <div className="w-full max-w-[280px]">
         <div ref={scaleHostRef} className="w-full" style={{ height: 44 }}>
           <div ref={containerRef} className="flex justify-center" />
         </div>

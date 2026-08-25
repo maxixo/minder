@@ -122,27 +122,17 @@ export default function Login() {
             />
 
             <div className="hidden items-center gap-4 md:flex">
-              <AuthThemeToggle />
-              <a className="text-sm font-medium text-[#141514] transition-colors hover:text-[#5e7860] dark:text-sage-100" href="#">
+              <AuthThemeToggle showLabel={false} />
+              <Link className="text-sm font-medium text-[#141514] transition-colors hover:text-[#5e7860] dark:text-sage-100" to="/">
                 Home
-              </a>
-              <a className="text-sm font-medium text-[#141514] transition-colors hover:text-[#5e7860] dark:text-sage-100" href="#">
-                About
-              </a>
-              <a className="text-sm font-medium text-[#141514] transition-colors hover:text-[#5e7860] dark:text-sage-100" href="#">
-                Resources
-              </a>
-              <Link
-                className="rounded-full bg-[#5e7860] px-6 py-2 text-sm font-semibold text-white transition-all hover:bg-sage-600"
-                to="/register"
-              >
+              </Link>
+              <Link className="text-sm font-medium text-[#141514] transition-colors hover:text-[#5e7860] dark:text-sage-100" to="/register">
                 Sign Up
               </Link>
             </div>
 
             <div className="flex items-center gap-2 md:hidden">
-              <AuthThemeToggle className="gap-2 px-2.5" />
-              <span className="material-symbols-outlined cursor-pointer text-[#141514] dark:text-sage-100">menu</span>
+              <AuthThemeToggle showLabel={false} />
             </div>
           </header>
 

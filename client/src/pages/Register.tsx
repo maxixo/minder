@@ -92,29 +92,7 @@ export default function Register() {
             />
 
             <div className="flex flex-1 justify-end gap-3 md:gap-8">
-              <AuthThemeToggle />
-
-              <div className="hidden items-center gap-9 md:flex">
-                <a
-                  className="text-sm font-medium leading-normal text-[#141514] transition-colors hover:text-[#5e7860] dark:text-white"
-                  href="#"
-                >
-                  Our Vision
-                </a>
-                <a
-                  className="text-sm font-medium leading-normal text-[#141514] transition-colors hover:text-[#5e7860] dark:text-white"
-                  href="#"
-                >
-                  Practices
-                </a>
-                <a
-                  className="text-sm font-medium leading-normal text-[#141514] transition-colors hover:text-[#5e7860] dark:text-white"
-                  href="#"
-                >
-                  Journal
-                </a>
-              </div>
-
+              <AuthThemeToggle showLabel={false} />
               <div className="flex gap-2">
                 <Link
                   className="flex h-10 min-w-[84px] items-center justify-center overflow-hidden rounded-full bg-[#f2f3f2] px-4 text-sm font-semibold leading-normal text-[#141514] dark:bg-[#2d2f2d] dark:text-white"
