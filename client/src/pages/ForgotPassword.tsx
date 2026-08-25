@@ -98,9 +98,8 @@ export default function ForgotPassword() {
                   ) : (
                     <>
                       <p className="compact-lead mb-6 text-center text-gray-500 dark:text-sage-300">
-                        Enter your email and we\u2019ll send you a link to reset your password.
+                        Enter your email and we&rsquo;ll send you a link to reset your password.
                       </p>
-
                       <form className="w-full space-y-5" onSubmit={handleSubmit}>
                         <div>
                           <label className="mb-2 ml-1 block text-xs font-medium uppercase tracking-wider text-[#5e7860]/70">

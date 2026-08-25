@@ -199,13 +199,17 @@ export default function Landing() {
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
-            <AuthThemeToggle className="shrink-0" showLabel={false} />
+          <div className="flex items-center justify-between gap-3">
+            <AuthThemeToggle
+              aria-label={isDarkMode ? 'Switch to light mode' : 'Switch to dark mode'}
+              className="shrink-0"
+              showLabel={false}
+            />
             <Link
-              className="rounded-full bg-primary-container px-6 py-2 font-label-md text-label-md text-on-primary-container transition-all duration-200 hover:opacity-80"
+              className="hidden rounded-full bg-primary-container px-6 py-2 font-label-md text-label-md text-on-primary-container transition-all duration-200 hover:opacity-80 sm:inline-flex"
               to={primaryCtaPath}
             >
-              Start Your Journey
+              Start now
             </Link>
           </div>
         </div>
@@ -519,7 +523,7 @@ export default function Landing() {
                 Begin with one quiet check-in and let the next step become clear.
               </p>
               <Link className="btn-sage mt-6 inline-block" to={primaryCtaPath}>
-                Start Your Journey
+                Start now
               </Link>
             </div>
           </div>
