@@ -36,6 +36,11 @@ model User {
   cancelAtPeriodEnd  Boolean            @default(false)
   premiumInterestAt  DateTime?
   premiumInterestInterval String?
+  emailVerifiedAt    DateTime?
+  emailVerificationTokenHash String?
+  emailVerificationTokenExpiresAt DateTime?
+  resetTokenHash     String?
+  resetTokenExpiresAt DateTime?
   pushSubscriptions  PushSubscription[]
   savedInspirationQuotes SavedInspirationQuote[]
   entries            Entry[]
