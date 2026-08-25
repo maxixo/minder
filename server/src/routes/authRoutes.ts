@@ -12,6 +12,9 @@ import {
   updatePassword,
   uploadProfileAvatar,
   deleteProfileAvatar,
+  forgotPassword,
+  resetPassword,
+  verifyEmail,
 } from '../controllers/authController.js';
 import { protect } from '../middleware/auth.js';
 import { getCsrfToken } from '../middleware/csrf.js';
@@ -34,6 +37,22 @@ router.post('/login', [
   body('password').notEmpty(),
   validate,
 ], login);
+
+router.post('/forgot-password', [
+  body('email').isEmail().normalizeEmail(),
+  validate,
+], forgotPassword);
+
+router.post('/verify-email', [
+  body('token').notEmpty(),
+  validate,
+], verifyEmail);
+
+router.post('/reset-password', [
+  body('token').notEmpty(),
+  body('newPassword').isLength({ min: 8 }).withMessage('Password min 8 chars'),
+  validate,
+], resetPassword);
 
 router.get('/google/config', getGoogleConfig);
 router.post('/google', googleLogin);
