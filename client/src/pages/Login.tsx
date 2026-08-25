@@ -185,9 +185,9 @@ export default function Login() {
                     <div className="relative">
                       <div className="mb-2 ml-1 flex items-center justify-between">
                         <label className="text-xs font-medium uppercase tracking-wider text-[#5e7860]/70">Password</label>
-                        <a className="text-xs font-medium text-[#5e7860] hover:underline" href="#">
+                        <Link className="text-xs font-medium text-[#5e7860] hover:underline" to="/forgot-password">
                           Forgot?
-                        </a>
+                        </Link>
                       </div>
                       <div className="flex items-center rounded-xl border-2 border-transparent bg-sand-100 px-4 py-1 transition-all dark:bg-[#101915]">
                         <span className="material-symbols-outlined mr-3 text-[#5e7860]/50 dark:text-sage-300/60">lock</span>

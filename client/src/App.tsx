@@ -13,6 +13,7 @@ const Login = lazy(() => import('@/pages/Login'));
 const Register = lazy(() => import('@/pages/Register'));
 const VerifyEmail = lazy(() => import('@/pages/VerifyEmail'));
 const ResetPassword = lazy(() => import('@/pages/ResetPassword'));
+const ForgotPassword = lazy(() => import('@/pages/ForgotPassword'));
 const Onboarding = lazy(() => import('@/pages/Onboarding'));
 const Welcome = lazy(() => import('@/pages/Welcome'));
 const Home = lazy(() => import('@/pages/Home'));
@@ -46,6 +47,7 @@ export default function App() {
               <Route path="/register" element={<PublicOnlyRoute><Register /></PublicOnlyRoute>} />
               <Route path="/verify-email" element={<VerifyEmail />} />
               <Route path="/reset-password" element={<ResetPassword />} />
+              <Route path="/forgot-password" element={<ForgotPassword />} />
               <Route path="/onboarding" element={<ProtectedRoute><Onboarding /></ProtectedRoute>} />
               <Route path="/welcome" element={<ProtectedRoute><Welcome /></ProtectedRoute>} />
               <Route element={<ProtectedRoute><Layout /></ProtectedRoute>}>
