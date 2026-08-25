@@ -44,7 +44,7 @@ const authService = {
     return res.data;
   },
   resetPassword: async (token: string, password: string) => {
-    const res = await api.post('/auth/reset-password', { token, password });
+    const res = await api.post('/auth/reset-password', { token, newPassword: password });
     return res.data;
   },
 };
