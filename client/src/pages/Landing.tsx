@@ -238,16 +238,25 @@ export default function Landing() {
                   <p className="type-scale-p mt-6 max-w-2xl font-label-sm text-secondary dark:text-sage-50">
                     MindfulLife helps you log one honest check-in a day, then turns it into clear weekly patterns so you can feel steadier and respond earlier.
                   </p>
-                  <div className="mt-10">
+                  <div className="mt-10 flex flex-col items-center gap-4 sm:flex-row sm:items-center sm:gap-0 lg:items-start">
                     <Link className="btn-sage text-lg" to={primaryCtaPath}>
                       Start Free
                     </Link>
+                    {!isAuthenticated ? (
+                      <Link className="inline-flex items-center font-label-md text-label-md font-semibold text-primary underline decoration-primary/30 underline-offset-4 transition-colors hover:text-secondary dark:text-primary-fixed dark:hover:text-white sm:ml-4" to="/login">
+                        Already have an account?
+                      </Link>
+                    ) : null}
                   </div>
                   <div className="mt-5 flex flex-wrap items-center justify-center gap-4 text-sm text-secondary dark:text-sage-100 lg:justify-start">
                     <span>No card required</span>
                     <span className="hidden h-1 w-1 rounded-full bg-primary/30 sm:block dark:bg-white/20" />
                     <span>First reflection in under 5 minutes</span>
                   </div>
+                  <p className="mt-5 flex items-center justify-center gap-2 text-xs text-secondary/90 dark:text-sage-100/90 lg:justify-start">
+                    <span className="material-symbols-outlined text-base" aria-hidden="true">lock</span>
+                    Private by design — your reflections are yours.
+                  </p>
                 </div>
 
                 <div className="landing-preview-shell">
@@ -321,36 +330,48 @@ export default function Landing() {
 
         <section className="bg-surface px-gutter py-section-gap dark:bg-sage-700" data-reveal id="reflection">
           <div className="mx-auto max-w-7xl">
+            <div className="mb-10 max-w-3xl">
+              <p className="font-label-md text-label-md uppercase tracking-[0.24em] text-primary dark:text-primary-fixed">How Minder works</p>
+              <h2 className="mt-4 expressive-heading text-[40px] leading-tight text-primary dark:text-white md:text-[52px]">
+                One small check-in. A clearer next step.
+              </h2>
+              <p className="mt-4 max-w-2xl font-body-md text-body-md leading-7 text-secondary dark:text-sage-50">
+                Minder turns a few honest minutes into a gentle rhythm you can actually keep.
+              </p>
+            </div>
             <div className="grid grid-cols-1 gap-stack-lg md:grid-cols-3">
               <div className="group rounded-card bg-surface-container-low p-8 transition-all duration-500 hover:bg-surface-container-highest hover:shadow-2xl hover:shadow-primary/5 dark:bg-sage-600 dark:hover:bg-sage-500">
+                <p className="mb-6 font-label-md text-label-md font-bold uppercase tracking-[0.18em] text-primary/70 dark:text-primary-fixed/80">01 · Check in</p>
                 <div className="mb-8 flex h-14 w-14 items-center justify-center rounded-full bg-secondary-container text-primary transition-transform duration-500 group-hover:scale-110 dark:bg-sage-500/30 dark:text-white">
                   <span className="material-symbols-outlined text-3xl">spa</span>
                 </div>
-                <h3 className="mb-4 font-headline-sm text-headline-sm italic text-primary dark:text-white">Daily Reflections</h3>
+                <h3 className="mb-4 font-headline-sm text-headline-sm italic text-primary dark:text-white">Name what&apos;s here</h3>
                 <p className="font-label-sm text-label-sm leading-loose text-on-surface-variant dark:text-sage-50">
-                  Gentle prompts designed to help you navigate your inner world with kindness and curiosity.
+                  Gentle prompts help you notice your mood and energy without needing to write perfectly.
                 </p>
               </div>
 
               <div className="group rounded-card bg-surface-container-low p-8 transition-all duration-500 hover:bg-surface-container-highest hover:shadow-2xl hover:shadow-primary/5 dark:bg-sage-600 dark:hover:bg-sage-500" id="energy">
+                <p className="mb-6 font-label-md text-label-md font-bold uppercase tracking-[0.18em] text-primary/70 dark:text-primary-fixed/80">02 · Notice</p>
                 <div className="mb-8 flex h-14 w-14 items-center justify-center rounded-full bg-secondary-container text-primary transition-transform duration-500 group-hover:scale-110 dark:bg-sage-500/30 dark:text-white">
                   <span className="material-symbols-outlined text-3xl" style={{ fontVariationSettings: "'FILL' 1" }}>
                     eco
                   </span>
                 </div>
-                <h3 className="mb-4 font-headline-sm text-headline-sm italic text-primary dark:text-white">Energy Awareness</h3>
+                <h3 className="mb-4 font-headline-sm text-headline-sm italic text-primary dark:text-white">See your rhythm</h3>
                 <p className="font-label-sm text-label-sm leading-loose text-on-surface-variant dark:text-sage-50">
-                  Monitor your emotional and physical rhythm to optimize your day for natural productivity.
+                  Your check-ins make the week visible, so you can spot what restores you and what drains you.
                 </p>
               </div>
 
               <div className="group rounded-card bg-surface-container-low p-8 transition-all duration-500 hover:bg-surface-container-highest hover:shadow-2xl hover:shadow-primary/5 dark:bg-sage-600 dark:hover:bg-sage-500" id="guidance">
+                <p className="mb-6 font-label-md text-label-md font-bold uppercase tracking-[0.18em] text-primary/70 dark:text-primary-fixed/80">03 · Respond</p>
                 <div className="mb-8 flex h-14 w-14 items-center justify-center rounded-full bg-secondary-container text-primary transition-transform duration-500 group-hover:scale-110 dark:bg-sage-500/30 dark:text-white">
                   <span className="material-symbols-outlined text-3xl">psychology</span>
                 </div>
-                <h3 className="mb-4 font-headline-sm text-headline-sm italic text-primary dark:text-white">Emotional Guidance</h3>
+                <h3 className="mb-4 font-headline-sm text-headline-sm italic text-primary dark:text-white">Choose your next step</h3>
                 <p className="font-label-sm text-label-sm leading-loose text-on-surface-variant dark:text-sage-50">
-                  AI-assisted tools that provide calming perspectives when you need a moment of clarity.
+                  Use a grounded prompt or coping tool when you need a little clarity, not another thing to perform.
                 </p>
               </div>
             </div>
@@ -378,6 +399,15 @@ export default function Landing() {
                 </article>
               ))}
             </div>
+          </div>
+        </section>
+
+        <section className="px-gutter pb-section-gap dark:bg-sage-700" data-reveal>
+          <div className="mx-auto max-w-5xl rounded-[36px] bg-primary-container px-8 py-12 text-center text-on-primary-container shadow-xl shadow-primary/10 md:px-16 md:py-16 dark:bg-sage-500 dark:text-white">
+            <span className="material-symbols-outlined text-4xl" aria-hidden="true">self_improvement</span>
+            <h2 className="mx-auto mt-4 max-w-3xl expressive-heading text-[40px] leading-tight md:text-[52px]">Make a little room for yourself today.</h2>
+            <p className="mx-auto mt-4 max-w-2xl font-body-md text-body-md leading-7 opacity-85">Start with one private reflection. Minder will help you notice what comes next.</p>
+            <Link className="mt-8 inline-flex rounded-full bg-white px-7 py-3 font-label-md text-label-md font-bold text-primary transition-transform hover:-translate-y-0.5 dark:bg-sage-50" to={primaryCtaPath}>Begin your first check-in</Link>
           </div>
         </section>
 

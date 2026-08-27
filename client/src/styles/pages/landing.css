@@ -493,3 +493,19 @@ html.dark .landing-testimonial-quote {
     grid-template-columns: 1fr;
   }
 }
+
+@media (prefers-reduced-motion: reduce) {
+  .landing-page-body *,
+  .landing-page-body *::before,
+  .landing-page-body *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+
+  .landing-page-body [data-reveal] {
+    opacity: 1 !important;
+    transform: none !important;
+  }
+}
