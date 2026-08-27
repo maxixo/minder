@@ -524,7 +524,7 @@ export default function DailyReflection() {
               </button>
             </div>
 
-            <div className="mx-auto flex w-full max-w-[13rem] flex-col gap-3 sm:max-w-none sm:flex-row sm:items-center">
+            <div className="mx-auto flex w-full max-w-[11rem] flex-col gap-3 sm:max-w-none sm:flex-row sm:items-center">
               <input
                 className="w-full rounded-full border border-[#d1dbd2] bg-white px-3 py-2 text-center text-sm font-semibold text-[#3a523e] outline-none focus:border-[#19e63c] dark:border-white/20 dark:bg-[#0f1712] dark:text-sage-50 sm:w-auto sm:max-w-[160px] sm:text-xs sm:px-4"
                 disabled={controlsDisabled}
