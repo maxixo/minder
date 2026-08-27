@@ -526,7 +526,7 @@ export default function DailyReflection() {
 
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
               <input
-                className="w-full rounded-md border border-[#d1dbd2] bg-white px-3 py-2 text-sm font-semibold text-[#3a523e] outline-none focus:border-[#19e63c] dark:border-white/20 dark:bg-[#0f1712] dark:text-sage-50 sm:w-auto sm:text-xs"
+                className="w-full rounded-full border border-[#d1dbd2] bg-white px-4 py-2 text-sm font-semibold text-[#3a523e] outline-none focus:border-[#19e63c] dark:border-white/20 dark:bg-[#0f1712] dark:text-sage-50 sm:w-auto sm:text-xs"
                 disabled={controlsDisabled}
                 max={todayInputMax}
                 onChange={handleDateChange}
@@ -783,7 +783,7 @@ export default function DailyReflection() {
               </div>
             </div>
 
-            <section className="w-full rounded-xl border border-[#e8ede8] bg-white p-8 shadow-sm dark:border-white/10 dark:bg-white/5">
+            <section className="hidden w-full rounded-xl border border-[#e8ede8] bg-white p-8 shadow-sm dark:border-white/10 dark:bg-white/5 lg:block">
               <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
                 <div className="flex items-center gap-3">
                   <span className="material-symbols-outlined text-[#19e63c]">bolt</span>
