@@ -533,7 +533,7 @@ export default function DailyReflection() {
                 type="date"
                 value={selectedDateInputValue}
               />
-              <div className="flex w-full items-center justify-center gap-3 rounded-full bg-white/70 px-3 py-2 dark:bg-[#0f1712] sm:w-auto">
+              <div className="flex w-fit self-center items-center justify-center gap-3 rounded-full bg-white/70 px-3 py-2 dark:bg-[#0f1712] sm:w-auto">
                 {weatherOptions.map((option) => (
                   <button key={option.key} onClick={() => setWeather(option.key)} title={option.title} type="button">
                     <span
